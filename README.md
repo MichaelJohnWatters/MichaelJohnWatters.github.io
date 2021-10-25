@@ -13,4 +13,7 @@ npm run dev
 
 # Build for production in the dist/ directory
 npm run build
+
+# push to gh-pages branch
+git subtree push --prefix dist origin gh-pages
 ```

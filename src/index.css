@@ -2,6 +2,13 @@
   color-scheme: dark;
 }
 
+/* While the pointer is on a monitor's glass (set by Monitors.jsx), hide the
+   native cursor everywhere — only the in-world retro cursor shows. */
+html.on-glass,
+html.on-glass * {
+  cursor: none !important;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -13,34 +20,365 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  overflow: hidden;
   background: #0a0a0f;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none;
-  text-align: center;
-  padding: 1rem;
+body {
+  overflow: hidden;
 }
 
-.overlay h1 {
+/* --- Title (top-left) --- */
+.title {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  z-index: 8388640; /* above the blending-mode canvas (~8388635) */
+  pointer-events: none;
+}
+.title h1 {
   color: #f5f5f7;
-  font-size: clamp(2rem, 8vw, 5rem);
+  font-size: clamp(1.5rem, 5vw, 2.6rem);
   font-weight: 700;
   letter-spacing: -0.03em;
-  text-shadow: 0 2px 40px rgba(120, 130, 255, 0.4);
+  text-shadow: 0 2px 30px rgba(120, 130, 255, 0.35);
+}
+.title p {
+  color: #9a9aa8;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  letter-spacing: 0.08em;
+  margin-top: 0.2rem;
 }
 
-.overlay p {
-  color: #9a9aa8;
-  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
-  margin-top: 0.5rem;
+/* --- Scroll hint (bottom-center) --- */
+.scroll-hint {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8388640; /* above the blending-mode canvas (~8388635) */
+  color: #c9c9d6;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  animation: bob 2s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(6px); }
+}
+
+/* ============================================================
+   Retro-Linux desktop ("on the monitor")
+   ============================================================ */
+/* Each monitor's "framebuffer": authored at a fixed px resolution (set inline
+   from layout.js) and mapped onto the glass by drei <Html transform occlude>.
+   It's a 3D object — always rendering, from any angle, in any mode. */
+.os-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #0f2b2b;
+  border: 3px solid #16151a;
+  border-radius: 4px;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  pointer-events: none;
+  font-family: 'DejaVu Sans Mono', 'SF Mono', Menlo, monospace;
+}
+
+/* Secondary monitor: terminal with tabs (claude tab active) */
+.term {
+  background: #0a0f0a;
+  color: #6fe37f;
+  font-size: 13px;
+  line-height: 1.7;
+  text-shadow: 0 0 6px rgba(111, 227, 127, 0.45);
+}
+.term-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 6px 8px 0;
+  background: #10160f;
+  border-bottom: 1px solid #23301f;
+  text-shadow: none;
+}
+.term-tab {
+  padding: 4px 14px;
+  font-size: 11px;
+  color: #4c6a4c;
+  background: #0d120c;
+  border: 1px solid #23301f;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+.term-tab.active {
+  color: #f5ead9;
+  background: #1a1915;
+  border-color: #3a352c;
+}
+.term-tab-fill {
+  flex: 1;
+}
+.term-body {
+  flex: 1;
+  padding: 10px 14px;
+  overflow: hidden;
+}
+/* Claude Code session — warm dark, terracotta accents */
+.term-body.claude {
+  background: #1a1915;
+  color: #e8e0d0;
+  text-shadow: none;
+  font-size: 12px;
+  line-height: 1.75;
+}
+.claude-logo {
+  color: #d97757;
+  font-size: 14px;
+}
+.claude-dot {
+  color: #d97757;
+}
+.claude-user {
+  color: #8a8375;
+}
+.term-dim {
+  color: #6a6455;
+}
+.term-line {
+  white-space: pre-wrap;
+}
+.term-ok { color: #8dff9a; }
+.term-warn { color: #ffd35a; }
+.term-caret {
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+/* CRT scanlines + subtle vignette */
+.os-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 1px, transparent 2px, transparent 3px),
+    radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.45));
+  z-index: 5;
+}
+
+/* Desktop surface (classic teal) */
+.desktop {
+  position: relative;
+  flex: 1;
+  padding: 0.7rem;
+  background:
+    linear-gradient(135deg, #1c5757 0%, #0f3b3b 100%);
+  overflow: hidden;
+}
+
+/* Desktop icons down the left */
+.desk-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: 84px;
+}
+.desk-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: 1px dotted transparent;
+  color: #eafffb;
+  font-family: inherit;
+  font-size: 0.62rem;
+  cursor: inherit;
+}
+.desk-icon-glyph {
+  width: 34px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  color: #ffe08a;
+  background: #2b6b6b;
+  border: 2px solid;
+  border-color: #4fbdbd #124040 #124040 #4fbdbd; /* beveled */
+}
+.desk-icon-label {
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* A window with Motif-ish beveled chrome */
+.win {
+  position: absolute;
+  top: 22%;
+  left: 120px;
+  width: 60%;
+  max-width: 380px;
+  background: #c3c7cb;
+  border: 2px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+.win-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem;
+  background: linear-gradient(90deg, #3a3f6b, #6b70a3);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.win-btns {
+  display: flex;
+  gap: 3px;
+}
+.win-btns i {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 0.6rem;
+  color: #111;
+  background: #c3c7cb;
+  border: 1px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+}
+.win-body {
+  padding: 0.7rem;
+  color: #1a1a1a;
+  background: #d9dadd;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.win-note {
+  margin-top: 0.6rem;
+  color: #555;
+  font-style: italic;
+}
+
+.desk-hint {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.7rem;
+  color: #bfeee8;
+  font-size: 0.6rem;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Bottom taskbar / panel */
+.taskbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  background: #c3c7cb;
+  border-top: 2px solid #f4f4f4;
+  font-size: 0.7rem;
+  color: #111;
+}
+.start-btn {
+  background: #c3c7cb;
+  border: 2px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+  color: #111;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  cursor: inherit;
+}
+.task-open {
+  padding: 0.2rem 0.6rem;
+  background: #b3b7bb;
+  border: 2px solid;
+  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70; /* pressed-in */
+}
+.clock {
+  margin-left: auto;
+  padding: 0.2rem 0.5rem;
+  border: 2px solid;
+  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70;
+}
+
+/* --- Mode control buttons --- */
+.ctl {
+  position: fixed;
+  z-index: 8388645; /* above the blending-mode canvas */
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: 'DejaVu Sans Mono', 'SF Mono', Menlo, monospace;
+  font-size: 0.85rem;
+  color: #eafffb;
+  background: rgba(20, 40, 40, 0.85);
+  border: 1px solid rgba(120, 190, 180, 0.5);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, transform 0.15s;
+}
+.ctl:hover {
+  background: rgba(40, 80, 78, 0.95);
+  transform: translateY(-1px);
+}
+.ctl-step {
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ctl-step:hover {
+  transform: translateX(-50%) translateY(-1px);
+}
+.ctl-back {
+  top: 2rem;
+  left: 2rem;
+}
+.explore-hint {
+  position: fixed;
+  z-index: 8388645; /* above the blending-mode canvas */
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  color: #bfeee8;
+  font-size: 0.85rem;
   letter-spacing: 0.05em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* Fake retro cursor — absolute inside a screen's framebuffer; the dual-display
+   router (Monitors.jsx) moves it and hops it between monitors. */
+.os-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5));
+  will-change: transform;
+}
+
+.ctl-sit {
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 70, 50, 0.9);
+  border-color: rgba(120, 220, 160, 0.6);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.ctl-sit:hover {
+  transform: translateX(-50%) translateY(-1px);
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(120, 220, 160, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(120, 220, 160, 0); }
 }

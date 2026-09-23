@@ -24,6 +24,7 @@ function WebBrowser({ focused }) {
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
   const [live, setLive] = useState(false) // true = real input INTO the page
   const [results, setResults] = useState(null) // native in-OS search results
+  const [notice, setNotice] = useState(null) // { label, url } for frame-blockers
   const hidRef = useRef()
 
   const openPage = (url, label) => {
@@ -112,9 +113,12 @@ function WebBrowser({ focused }) {
           tabIndex={-1}
           onClick={(e) => {
             e.stopPropagation()
-            // from an article → back to results; from results → home
+            // from an article → back to results; from results/notice → home
             if (page) setPage(null)
-            else setResults(null)
+            else {
+              setResults(null)
+              setNotice(null)
+            }
             setLive(false)
             document.documentElement.classList.remove('over-embed')
             setStatus(page && results ? `${results.items.length} results for “${results.q}”` : 'ready.')
@@ -178,15 +182,17 @@ function WebBrowser({ focused }) {
             tabIndex={-1}
             onClick={(e) => {
               const external = e.shiftKey || e.metaKey
-              if (kind === 'embed' && !external) {
+              if (external) {
+                window.open(url, '_blank', 'noopener')
+                setStatus(`→ opened ${label} in your browser`)
+              } else if (kind === 'embed') {
+                setNotice(null)
                 openPage(url, label)
               } else {
-                window.open(url, '_blank', 'noopener')
-                setStatus(
-                  kind === 'embed'
-                    ? `→ opened ${label} in your browser`
-                    : `→ ${label} in your browser (that site blocks embedding)`,
-                )
+                // frame-blocked site: explain in-world (shift rule stays uniform)
+                setPage(null)
+                setNotice({ label, url })
+                setStatus(`${label} refuses to be embedded`)
               }
             }}
           >
@@ -194,7 +200,29 @@ function WebBrowser({ focused }) {
           </button>
         ))}
       </div>
-      {results && !page ? (
+      {notice && !page ? (
+        <div className="web-notice">
+          <div className="web-notice-icon">🚫</div>
+          <div className="web-notice-text">
+            <b>{notice.label}</b> refuses to be embedded
+            <br />
+            <span className="term-dim-dark">(X-Frame-Options — their servers forbid it)</span>
+          </div>
+          <button
+            className="web-go"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              window.open(notice.url, '_blank', 'noopener')
+              setStatus(`→ opened ${notice.label} in your browser`)
+            }}
+          >
+            open in your browser ↗
+          </button>
+          <div className="web-res-note">tip: ⇧shift+click any link does this directly</div>
+        </div>
+      ) : results && !page ? (
         <div className="web-results">
           {results.loading && <div className="web-res-note">searching…</div>}
           {!results.loading && !results.items.length && (
@@ -243,7 +271,7 @@ function WebBrowser({ focused }) {
             onPointerLeave={() => document.documentElement.classList.remove('over-embed')}
             style={{
               width: '200%',
-              height: '200%',
+              height: 3600, // tall canvas = real content to ▲▼ through
               border: 'none',
               pointerEvents: live ? 'auto' : 'none',
               transform: `scale(0.5) translateY(${-scrollY * 2}px)`,

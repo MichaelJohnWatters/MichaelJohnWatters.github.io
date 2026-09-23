@@ -704,6 +704,31 @@ body {
   background: #fff;
   min-height: 0;
 }
+/* frame-blocked site notice */
+.web-notice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fff;
+  min-height: 0;
+  text-align: center;
+}
+.web-notice-icon {
+  font-size: 26px;
+}
+.web-notice-text {
+  font-size: 0.7rem;
+  color: #333;
+  line-height: 1.5;
+}
+.term-dim-dark {
+  color: #888;
+  font-size: 0.6rem;
+}
+
 /* native in-OS search results (clickable with the in-game cursor) */
 .web-results {
   flex: 1;

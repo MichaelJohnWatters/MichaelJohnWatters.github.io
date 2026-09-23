@@ -5,9 +5,11 @@ import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
 import Joystick from './Joystick'
+import Phone from './Phone'
 import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
+import { TV_PRESETS, ytSearch } from './content'
 
 // Global brightness: lights-on raises the tone-mapping exposure — the one
 // knob that brightens every surface uniformly.
@@ -19,7 +21,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, onTvToggle, onPhone }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -42,7 +44,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} tv={tv} onTvToggle={onTvToggle} onPhone={onPhone} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -64,6 +66,41 @@ export default function App() {
   const [muted, setMutedUI] = useState(false)
   const [lights, setLights] = useState(true) // workshop lights on by default
   const [toast, setToast] = useState(null) // task-complete popup
+  const [tv, setTv] = useState(null) // cave TV: casting videoId, or null = off
+  const [phone, setPhone] = useState(false) // the cast-remote phone overlay
+
+  const cast = (id) => {
+    clickDown()
+    setTv(id)
+    complete('tv') // whiteboard task
+  }
+  // Clicking the TV itself: off → quick-cast the default channel; on → off.
+  const tvToggle = () => {
+    clickDown()
+    if (tv) {
+      setTv(null)
+      return
+    }
+    ytSearch(TV_PRESETS[0].q).then((items) => {
+      if (items[0]) cast(items[0].id)
+      else setPhone(true) // no worker/results: hand over the remote
+    })
+  }
+  // Phone up: free the mouse (exit pointer lock) so the buttons are
+  // clickable; Player ignores keys/look while it's open.
+  useEffect(() => {
+    window.__phoneOpen = phone
+    if (phone && document.pointerLockElement) document.exitPointerLock()
+    return () => {
+      window.__phoneOpen = false
+    }
+  }, [phone])
+  const closePhone = () => {
+    setPhone(false)
+    // back to FP mouse-look — we're inside the click's user activation
+    if (mode === 'explore' && view === 'first' && !IS_TOUCH)
+      document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
+  }
 
   // Task completions surface a toast alongside the ding.
   useEffect(() => {
@@ -110,11 +147,13 @@ export default function App() {
     setMutedUI(isMuted())
   }
 
-  // V toggles first/third person while exploring.
+  // V toggles first/third person while exploring; P picks up the cast phone.
   useEffect(() => {
     if (mode !== 'explore') return
     const onKey = (e) => {
+      if (window.__termTyping) return
       if (e.code === 'KeyV') setView((v) => (v === 'third' ? 'first' : 'third'))
+      if (e.code === 'KeyP') setPhone(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -186,12 +225,22 @@ export default function App() {
             joyRef={joyRef}
             lights={lights}
             onToggleLights={toggleLights}
+            tv={tv}
+            onTvToggle={tvToggle}
+            onPhone={() => setPhone(true)}
           />
         </ScrollControls>
       </Canvas>
 
       {/* DOM overlays */}
       {toast && <div className="toast">✔ task complete — {toast}</div>}
+      <Phone
+        open={phone}
+        tv={tv}
+        onCast={cast}
+        onStop={() => setTv(null)}
+        onClose={closePhone}
+      />
       <button className="ctl ctl-mute" onClick={toggleMute} title="toggle sound">
         {muted ? '🔇' : '🔊'}
       </button>

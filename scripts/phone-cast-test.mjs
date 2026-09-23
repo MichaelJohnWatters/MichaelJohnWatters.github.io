@@ -1,0 +1,40 @@
+// step away → P opens the phone → search → cast → TV iframe renders
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new' })
+const page = await b.newPage()
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise((r) => setTimeout(r, 3500))
+await page.evaluate(() => {
+  const el = [...document.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto')
+  el.scrollTop = el.scrollHeight
+})
+await new Promise((r) => setTimeout(r, 2500))
+await page.evaluate(() => document.querySelector('.ctl-step')?.click())
+await new Promise((r) => setTimeout(r, 800))
+await page.keyboard.press('KeyP')
+await new Promise((r) => setTimeout(r, 500))
+console.log('overlay:', await page.evaluate(() => !!document.querySelector('.phone')))
+await page.type('.phone-input', 'lofi hip hop radio', { delay: 15 })
+await page.keyboard.press('Enter')
+await new Promise((r) => setTimeout(r, 6000))
+const items = await page.evaluate(() => document.querySelectorAll('.phone-item').length)
+console.log('results:', items)
+await page.evaluate(() => document.querySelector('.phone-item')?.click())
+await new Promise((r) => setTimeout(r, 4000))
+const tv = await page.evaluate(() => {
+  const f = document.querySelector('.cave-tv iframe')
+  return { iframe: !!f, src: f?.src?.slice(0, 60), stop: !!document.querySelector('.phone-stop') }
+})
+console.log('tv:', JSON.stringify(tv))
+// preset quick-cast + stop
+await page.evaluate(() => document.querySelector('.phone-stop')?.click())
+await new Promise((r) => setTimeout(r, 500))
+console.log('after stop:', await page.evaluate(() => !!document.querySelector('.cave-tv iframe')))
+await page.evaluate(() => { const d = document.getElementById('phone-dot'); return true })
+await page.mouse.move(900, 400)
+await new Promise((r) => setTimeout(r, 300))
+const dot = await page.evaluate(() => { const d = document.getElementById('phone-dot'); return d ? d.style.left + ',' + d.style.top : null })
+console.log('dot follows:', dot)
+await page.screenshot({ path: '/tmp/shots/phone.png' })
+await b.close()

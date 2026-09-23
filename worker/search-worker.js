@@ -147,6 +147,45 @@ export default {
     if (reqUrl.pathname === '/page') {
       return servePage(reqUrl.searchParams.get('u') || '', reqUrl.origin, cors)
     }
+    // /tv?c=<channelId> → the channel's CURRENT live videoId. Live stream IDs
+    // go stale whenever a stream restarts (embeds then say "unavailable"), so
+    // the cave TV resolves the id fresh at cast time.
+    if (reqUrl.pathname === '/tv') {
+      const c = (reqUrl.searchParams.get('c') || '').replace(/[^\w-]/g, '')
+      let id = null
+      if (c) {
+        const html = await fetchHtml('https://www.youtube.com/channel/' + c + '/live')
+        // canonical watch link on the /live page = the active broadcast
+        const m =
+          html.match(/rel="canonical"[^>]+watch\?v=([\w-]{6,})/) ||
+          html.match(/"videoId":"([\w-]{6,})"/)
+        id = m ? m[1] : null
+      }
+      return new Response(JSON.stringify({ id }), {
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
+      })
+    }
+    // /yt?q= → YouTube search results [{id, title}] for the phone's cast UI.
+    // Thumbnails are predictable: https://i.ytimg.com/vi/<id>/mqdefault.jpg
+    if (reqUrl.pathname === '/yt') {
+      const q = (reqUrl.searchParams.get('q') || '').slice(0, 120)
+      const items = []
+      if (q) {
+        const html = await fetchHtml('https://www.youtube.com/results?search_query=' + encodeURIComponent(q))
+        const re = /"videoRenderer":\{"videoId":"([\w-]{11})"[\s\S]*?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g
+        let m
+        while ((m = re.exec(html)) && items.length < 12) {
+          let title = m[2]
+          try {
+            title = JSON.parse('"' + m[2] + '"')
+          } catch {}
+          if (!items.some((it) => it.id === m[1])) items.push({ id: m[1], title })
+        }
+      }
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
+      })
+    }
     const q = (reqUrl.searchParams.get('q') || '').slice(0, 200)
     const headers = {
       ...cors,

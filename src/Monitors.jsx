@@ -300,7 +300,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, onTvToggle, onPhone, phoneRef }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -344,11 +344,16 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   const eraserRef = useRef()
   const onToggleLightsRef = useRef(onToggleLights)
   onToggleLightsRef.current = onToggleLights
-  // Man-cave TV: click to power on/off — live stream on the glass when on.
-  const [tvOn, setTvOn] = useState(false)
+  // Man-cave TV (state owned by App — the phone remote casts to it too).
   const tvRef = useRef()
-  const tvOnRef = useRef(false)
-  tvOnRef.current = tvOn
+  const tvPropRef = useRef(tv)
+  tvPropRef.current = tv
+  const onTvToggleRef = useRef(onTvToggle)
+  onTvToggleRef.current = onTvToggle
+  const onPhoneRef = useRef(onPhone)
+  onPhoneRef.current = onPhone
+  const phonePropRef = useRef(phoneRef)
+  phonePropRef.current = phoneRef
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -451,11 +456,13 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           return
         }
         if (tvRef.current && raycaster.intersectObject(tvRef.current, false).length) {
+          onTvToggleRef.current?.()
+          return
+        }
+        const ph = phonePropRef.current?.current
+        if (ph && raycaster.intersectObject(ph, false).length) {
           clickDown()
-          setTvOn((v) => {
-            if (!v) complete('tv') // whiteboard task
-            return !v
-          })
+          onPhoneRef.current?.() // pick up the cast remote
           return
         }
       }
@@ -540,7 +547,12 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     } else if (eraserRef.current && r.rc.intersectObject(eraserRef.current, false).length) {
       label = 'wipe the whiteboard'
     } else if (tvRef.current && r.rc.intersectObject(tvRef.current, false).length) {
-      label = tvOnRef.current ? 'turn the TV off' : 'turn the TV on'
+      label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
+    } else if (
+      phonePropRef.current?.current &&
+      r.rc.intersectObject(phonePropRef.current.current, false).length
+    ) {
+      label = 'pick up the phone'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
     const el = document.getElementById('aim-label')
@@ -597,17 +609,17 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       <group position={[CAVE.couch.x, 1.9, -2.92]}>
         <mesh ref={tvRef}>
           <planeGeometry args={[1.2, 0.65]} />
-          {tvOn ? (
+          {tv ? (
             <meshStandardMaterial key="on" colorWrite={false} />
           ) : (
             <meshStandardMaterial key="off" color="#0a1420" emissive="#1e3a5a" emissiveIntensity={0.7} />
           )}
         </mesh>
-        {tvOn && (
+        {tv && (
           <Html {...common} distanceFactor={(400 * 1.2) / 480} position={[0, 0, 0.004]}>
             <div className="cave-tv">
               <iframe
-                src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1"
+                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
                 title="cave tv"
                 width={480}
                 height={260}

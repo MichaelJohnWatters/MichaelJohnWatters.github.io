@@ -71,9 +71,8 @@ function WebBrowser({ focused }) {
   const openPage = (url, label) => {
     setPage(url)
     setScrollY(0)
-    setLive(false)
-    document.documentElement.classList.remove('over-embed')
-    setStatus(`${label} · view mode — 🖱 to interact`)
+    setLive(true) // interactive by default — click buttons/links right away
+    setStatus(`${label} · live — 🔒 for view-only (in-game cursor)`)
   }
 
   // external=true (shift) → the visitor's real browser; else in-window Bing

@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { MONITORS } from './layout'
 import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
+import { downloadCV } from './content'
 import { clickDown, clickUp } from './sfx'
 
 // Both monitors render their UI onto the glass permanently via drei
@@ -15,22 +16,37 @@ import { clickDown, clickUp } from './sfx'
 // drei transform mode: world width = px * distanceFactor / 400.
 const df = (m) => (400 * m.w) / m.pxW
 
-// Hit-test [data-click] elements in FRAMEBUFFER (layout) coordinates.
+// Hit-test interactive elements in FRAMEBUFFER (layout) coordinates.
 // offsetLeft/Top are layout values — unaffected by the CSS 3D transform — so
 // this is exact regardless of screen angle. Last match wins (= topmost).
+function rectOf(root, el) {
+  let ox = 0
+  let oy = 0
+  let n = el
+  while (n && n !== root) {
+    ox += n.offsetLeft
+    oy += n.offsetTop
+    n = n.offsetParent
+  }
+  return { ox, oy, w: el.offsetWidth, h: el.offsetHeight }
+}
+
 function hitTest(root, x, y) {
   if (!root) return null
   let best = null
-  for (const el of root.querySelectorAll('[data-click]')) {
-    let ox = 0
-    let oy = 0
-    let n = el
-    while (n && n !== root) {
-      ox += n.offsetLeft
-      oy += n.offsetTop
-      n = n.offsetParent
+  for (const el of root.querySelectorAll('[data-click], [data-drag]')) {
+    const r = rectOf(root, el)
+    if (x >= r.ox && x <= r.ox + r.w && y >= r.oy && y <= r.oy + r.h) best = el
+  }
+  if (best) return best
+  // Tolerant second pass so skinny resize strips are still grabbable
+  // despite sub-pixel projection error.
+  const PAD = 4
+  for (const el of root.querySelectorAll('[data-drag]')) {
+    const r = rectOf(root, el)
+    if (x >= r.ox - PAD && x <= r.ox + r.w + PAD && y >= r.oy - PAD && y <= r.oy + r.h + PAD) {
+      best = el
     }
-    if (x >= ox && x <= ox + el.offsetWidth && y >= oy && y <= oy + el.offsetHeight) best = el
   }
   return best
 }
@@ -63,6 +79,15 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
         inputRef.current = ''
         setInput('')
         if (!q) return
+        if (/^(cv|download( cv)?|resume)$/i.test(q)) {
+          downloadCV()
+          setHistory((h) =>
+            [...h, { who: 'user', text: q }, { who: 'claude', text: 'downloading Michael Watters — CV.pdf ⬇' }].slice(-40),
+          )
+          setTab('claude')
+          e.preventDefault()
+          return
+        }
         const r = respond(q)
         setHistory((h) =>
           r === CLEAR
@@ -176,6 +201,7 @@ export default function Monitors({ mode = 'desk' }) {
   // layout coords and fire el.click(), so the OS uses normal React handlers.
   const posRef = useRef({ screen: null, x: 0, y: 0 })
   const hoverRef = useRef(null)
+  const dragRef = useRef(null) // { el, screen, lastX, lastY } while dragging
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
@@ -189,16 +215,32 @@ export default function Monitors({ mode = 'desk' }) {
     }
 
     const route = (which, cur, other, mon, root, uv) => {
-      const x = uv.x * mon.pxW
-      const y = (1 - uv.y) * mon.pxH
+      // UV spans the whole glass; layout coords start inside the 3px bezel
+      // border — compensate or everything sits ~3px off.
+      const BORDER = 3
+      const x = uv.x * mon.pxW - BORDER
+      const y = (1 - uv.y) * mon.pxH - BORDER
       posRef.current = { screen: which, x, y }
       if (cur) {
         cur.style.transform = `translate(${x}px, ${y}px)`
         cur.style.opacity = '1'
       }
       if (other) other.style.opacity = '0'
-      setHover(hitTest(root, x, y))
       document.documentElement.classList.add('on-glass')
+
+      // Active drag: emit framebuffer-space deltas to the dragged element.
+      const d = dragRef.current
+      if (d && d.screen === which) {
+        const dx = x - d.lastX
+        const dy = y - d.lastY
+        if (dx || dy) {
+          d.el.dispatchEvent(new CustomEvent('os-drag', { bubbles: true, detail: { dx, dy } }))
+          d.lastX = x
+          d.lastY = y
+        }
+        return // no hover churn while dragging
+      }
+      setHover(hitTest(root, x, y))
     }
 
     const move = (e) => {
@@ -226,10 +268,19 @@ export default function Monitors({ mode = 'desk' }) {
       if (!p.screen) return
       clickDown()
       const root = p.screen === 'A' ? screenA.current : screenB.current
-      hitTest(root, p.x, p.y)?.click()
+      const el = hitTest(root, p.x, p.y)
+      if (!el) return
+      if (el.dataset.drag !== undefined) {
+        // start a drag session instead of clicking
+        dragRef.current = { el, screen: p.screen, lastX: p.x, lastY: p.y }
+        el.dispatchEvent(new CustomEvent('os-dragstart', { bubbles: true }))
+      } else {
+        el.click()
+      }
     }
     const up = () => {
       if (posRef.current.screen) clickUp()
+      dragRef.current = null
     }
 
     window.addEventListener('pointermove', move)
@@ -309,6 +360,16 @@ export default function Monitors({ mode = 'desk' }) {
               focused={focused === 'terminal'}
               onFocusClick={() => setFocused('terminal')}
             />
+            {/* terminal's retro cursor — sibling of the screen so the
+                unfocused brightness filter doesn't dim it */}
+            <svg className="os-cursor" ref={curB} width="18" height="24" viewBox="0 0 18 24">
+              <path
+                d="M1 1 L1 17 L5 13 L8 20 L11 19 L8 12 L14 12 Z"
+                fill="#f5f5f5"
+                stroke="#111"
+                strokeWidth="1.2"
+              />
+            </svg>
           </div>
         </Html>
       </group>

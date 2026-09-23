@@ -14,31 +14,43 @@ const RULES = [
   {
     match: /about|who is michael|who's michael|whoami/,
     reply: [
-      'Michael Watters — developer. Builds things for the web,',
-      'currently this 3D garage. (Real bio coming soon — placeholder!)',
+      'Michael Watters — Scala Engineer, Belfast. Builds regulatory',
+      'reporting for an AI-powered AML compliance platform (RegTech).',
+      'Background: large-scale data pipelines. Type `cv` for the PDF.',
     ],
   },
   {
     match: /skill|stack|tech/,
     reply: [
-      'JS/TS · React · Three.js/R3F · [placeholder — real skills',
-      'landing here once Michael feeds me his CV]',
+      'Scala · Go · Python · SQL — Kubernetes, Kafka, Spark,',
+      'Databricks, Snowflake, ClickHouse, Postgres, Elasticsearch,',
+      'GitHub Actions, AWS, Prometheus/Grafana. Full list: skills.json',
     ],
   },
   {
     match: /project|work|built/,
     reply: [
-      'Latest project: the room you are standing in.',
-      'More on the big monitor → desktop icons. (Content WIP.)',
+      'Solo-built a programmatic advertising platform: ~170K lines of',
+      'Go, 18 microservices on k8s, RTB auctions at p95 ~73ms.',
+      'Also: the garage you are sitting in. See projects/ on the desktop.',
     ],
   },
   {
-    match: /experience|job|career|cv|resume/,
-    reply: ['Career timeline is being typed up — check back soon, or', 'grab the CV from contact.sh on the desktop.'],
+    match: /experience|job|career/,
+    reply: [
+      'Napier AI (Scala Engineer, 2025–now) ← Magnite (SE II,',
+      '2022–25, data pipelines) ← SpotX (Scala reporting, 2019–22).',
+      'Full detail in experience/ or type `cv` for the PDF.',
+    ],
   },
   {
     match: /contact|email|hire|linkedin|github/,
-    reply: ['github.com/MichaelJohnWatters — email + LinkedIn landing', 'in contact.sh soon.'],
+    reply: [
+      'email: mjwatters@outlook.com',
+      'github: github.com/MichaelJohnWatters',
+      'linkedin: linkedin.com/in/michael-watters-b50437167',
+      'Type `cv` to download the PDF. Open to interesting problems.',
+    ],
   },
   {
     match: /status/,
@@ -64,7 +76,7 @@ const RULES = [
   { match: /who are you|claude/, reply: ["Claude — well, a tiny scripted stand-in. The real one", 'built this site with Michael.'] },
   { match: /sudo/, reply: ['michael is not in the sudoers file.', 'This incident will be reported. 🚨'] },
   { match: /rm\s+-rf/, reply: ['nice try. the MX-5 is the only thing getting', 'disassembled around here.'] },
-  { match: /^ls\b/, reply: ['about.txt  experience/  projects/  skills.json  contact.sh  mx5_parts/'] },
+  { match: /^ls\b/, reply: ['about.txt  cv.html  experience/  projects/  skills.json  contact.sh  mx5_parts/'] },
   { match: /vim|emacs|nano/, reply: ['editor wars are not covered by my warranty.'] },
   { match: /^exit|quit|logout/, reply: ['You can leave the desk, but the terminal stays with you. ⎋'] },
   { match: /meaning of life|42/, reply: ['42. Obviously. Now ask me about the MX-5.'] },

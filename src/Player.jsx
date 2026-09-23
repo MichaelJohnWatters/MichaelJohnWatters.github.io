@@ -17,6 +17,7 @@ function useKeys() {
       KeyD: 'right', ArrowRight: 'right',
     }
     const down = (e) => {
+      if (window.__phoneOpen) return // typing on the cast phone ≠ walking
       const a = map[e.code]
       if (a) keys.current[a] = true
     }
@@ -144,11 +145,13 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       // movementX/Y deliver deltas with OR without pointer lock — unlocked
       // they just stop at the screen edge (the edge-turn in useFrame takes
       // over there), so turning is infinite either way.
+      if (window.__phoneOpen) return // mouse belongs to the phone
       if (e.target.closest?.('.joystick')) return
       camYaw.current -= (e.movementX || 0) * 0.0032
       lockPitch.current = clamp(lockPitch.current - (e.movementY || 0) * 0.0032, -0.9, 0.9)
     }
     const relock = () => {
+      if (window.__phoneOpen) return
       if (!document.pointerLockElement) canvas?.requestPointerLock?.()?.catch?.(() => {})
     }
     lockPitch.current = 0
@@ -165,7 +168,7 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
   // E to sit back down at the desk (only when close to the chair).
   useEffect(() => {
     const sit = (e) => {
-      if (e.code === 'KeyE' && near.current) onSit?.()
+      if (e.code === 'KeyE' && near.current && !window.__phoneOpen) onSit?.()
     }
     window.addEventListener('keydown', sit)
     return () => window.removeEventListener('keydown', sit)
@@ -179,7 +182,7 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     // the lock is off the cursor pins at the screen edge and deltas die —
     // edge-turn keeps rotating while it's parked there.
     const locked = typeof document !== 'undefined' && !!document.pointerLockElement
-    if (first && !locked && !IS_TOUCH) {
+    if (first && !locked && !IS_TOUCH && !window.__phoneOpen) {
       if (mouse.current.x <= 0.01) camYaw.current += 2.4 * delta
       else if (mouse.current.x >= 0.99) camYaw.current -= 2.4 * delta
     }

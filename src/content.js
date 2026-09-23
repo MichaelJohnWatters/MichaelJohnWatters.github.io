@@ -80,6 +80,28 @@ export const OS_WINDOWS = [
 // Wikipedia's free CORS API.
 export const SEARCH_PROXY = 'https://noogle-search.michaeljohnwatters.workers.dev'
 
+// Cave TV: preset "channels" for the phone remote. Each is a YouTube search —
+// casting the top hit means live-stream IDs can never go stale.
+export const TV_PRESETS = [
+  { key: 'lofi', label: '📻 lofi beats', q: 'lofi girl lofi hip hop radio beats to relax study' },
+  { key: 'synth', label: '🌌 synthwave', q: 'synthwave radio beats to chill game' },
+  { key: 'fire', label: '🔥 fireplace', q: 'cozy fireplace 4k crackling 10 hours' },
+  { key: 'race', label: '🏎 racing', q: 'f1 best onboard laps pure sound' },
+]
+
+// YouTube search via the worker: [{ id, title }]. Thumb:
+// https://i.ytimg.com/vi/<id>/mqdefault.jpg
+export async function ytSearch(q) {
+  if (!SEARCH_PROXY) return []
+  try {
+    const r = await fetch(`${SEARCH_PROXY}/yt?q=${encodeURIComponent(q)}`)
+    const d = await r.json()
+    return d.items || []
+  } catch {
+    return []
+  }
+}
+
 // Trigger a browser download of the rendered PDF.
 export function downloadCV() {
   import('./tasks').then((m) => m.complete?.('cv')).catch(() => {})

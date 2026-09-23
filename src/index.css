@@ -1170,6 +1170,17 @@ html.on-glass .desk-dot {
   font-size: 10px;
   color: #ff4e45;
 }
+.yt-vol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 0;
+  font-size: 13px;
+}
+.yt-vol input[type='range'] {
+  flex: 1;
+  accent-color: #ff0000;
+}
 
 /* lock screen */
 .phone-lockscreen {

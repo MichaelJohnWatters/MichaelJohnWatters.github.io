@@ -70,6 +70,26 @@ export default function App() {
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
   const [doors, setDoors] = useState([false, false]) // roller doors open?
+  const [tvVol, setTvVol] = useState(70) // TV volume, driven from the phone
+
+  // Drive the embed's player via the IFrame API postMessage channel
+  // (enablejsapi=1 on the iframe).
+  const sendTvVolume = (v) => {
+    const f = document.querySelector('.cave-tv iframe')
+    f?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func: 'setVolume', args: [v] }),
+      '*',
+    )
+  }
+  useEffect(() => {
+    sendTvVolume(tvVol)
+  }, [tvVol])
+  // Fresh cast: apply the volume once the player has booted.
+  useEffect(() => {
+    if (!tv) return
+    const t = setTimeout(() => sendTvVolume(tvVol), 1800)
+    return () => clearTimeout(t)
+  }, [tv])
 
   const toggleDoor = (i) => {
     doorMotor()
@@ -287,6 +307,8 @@ export default function App() {
       <Phone
         open={phone}
         tv={tv}
+        vol={tvVol}
+        onVol={setTvVol}
         onCast={cast}
         onStop={() => setTv(null)}
         onClose={closePhone}

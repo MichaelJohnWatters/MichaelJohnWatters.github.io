@@ -224,7 +224,8 @@ export default function Monitors({ mode = 'desk', onZoom }) {
   const camera = useThree((s) => s.camera)
 
   // Which surface owns the keyboard: 'terminal' | 'desk' | 'win:<key>'.
-  const [focused, setFocused] = useState('terminal')
+  // Starts on the CV window (it opens by default); click the terminal to type.
+  const [focused, setFocused] = useState('win:cv.html')
 
   // Cursor + click bridge via OUR OWN raycast (R3F mesh events silently die in
   // the ScrollControls + blending-occlusion setup): window pointermove → ray →

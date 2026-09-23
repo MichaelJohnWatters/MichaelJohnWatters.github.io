@@ -6,7 +6,7 @@ import { MONITORS } from './layout'
 import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
-import { clickDown, clickUp } from './sfx'
+import { clickDown, clickUp, keyClack } from './sfx'
 
 // Both monitors render their UI onto the glass permanently via drei
 // <Html transform occlude="blending">. One shared retro cursor travels between
@@ -133,6 +133,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
       }
       // Lets the screen-zoom keys (1/2) know whether we're mid-sentence.
       window.__termTyping = inputRef.current.length > 0
+      keyClack() // mechanical keyboard
       setTab('claude') // typing always lands in the claude tab
       e.preventDefault()
     }
@@ -226,6 +227,11 @@ export default function Monitors({ mode = 'desk', onZoom }) {
   // Which surface owns the keyboard: 'terminal' | 'desk' | 'win:<key>'.
   // Starts on the CV window (it opens by default); click the terminal to type.
   const [focused, setFocused] = useState('win:cv.html')
+
+  // Hide the ScrollControls scrollbar on classic-scrollbar platforms.
+  useEffect(() => {
+    scrollState.el?.classList.add('no-scrollbar')
+  }, [scrollState])
 
   // Cursor + click bridge via OUR OWN raycast (R3F mesh events silently die in
   // the ScrollControls + blending-occlusion setup): window pointermove → ray →

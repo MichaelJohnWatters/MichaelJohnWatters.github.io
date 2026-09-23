@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { GARAGE, COLLIDERS, SEAT } from './layout'
+import { footstep } from './sfx'
 
 // Minimal keyboard hook (no context — robust across the R3F boundary).
 function useKeys() {
@@ -170,7 +171,10 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, vie
       group.current.rotation.y = heading
       // Third person: swing the camera around behind the new heading.
       if (!first) camYaw.current = dampAngle(camYaw.current, heading, 0.08, delta)
+      // Footstep on each bob trough (~2 steps/sec at walk speed).
+      const prevPhase = Math.floor(bob.current / Math.PI)
       bob.current += delta * 10
+      if (Math.floor(bob.current / Math.PI) !== prevPhase) footstep()
     }
 
     group.current.visible = !first // hide the body in first person

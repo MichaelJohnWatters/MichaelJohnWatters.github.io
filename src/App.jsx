@@ -4,7 +4,7 @@ import { ScrollControls } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
-import { clickDown } from './sfx'
+import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
 
 function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit }) {
   return (
@@ -40,6 +40,23 @@ export default function App() {
   const [nearSeat, setNearSeat] = useState(false)
   const [view, setView] = useState('first') // 'first' | 'third' (explore camera)
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
+  const [muted, setMutedUI] = useState(false)
+
+  // Ambient room tone starts on the first user gesture (autoplay policy).
+  useEffect(() => {
+    const start = () => startRoomTone()
+    window.addEventListener('pointerdown', start, { once: true })
+    window.addEventListener('keydown', start, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', start)
+      window.removeEventListener('keydown', start)
+    }
+  }, [])
+
+  const toggleMute = () => {
+    setMuted(!isMuted())
+    setMutedUI(isMuted())
+  }
 
   // V toggles first/third person while exploring.
   useEffect(() => {
@@ -106,6 +123,9 @@ export default function App() {
       </Canvas>
 
       {/* DOM overlays */}
+      <button className="ctl ctl-mute" onClick={toggleMute} title="toggle sound">
+        {muted ? '🔇' : '🔊'}
+      </button>
       {mode === 'desk' && (
         <>
           <div className="title">

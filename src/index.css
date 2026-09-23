@@ -833,6 +833,11 @@ body {
 .postit b {
   font-size: 13px;
 }
+.postit-alt {
+  background: #b8e6f7; /* blue variant */
+  color: #1e3440;
+  transform: rotate(3deg);
+}
 
 /* Fake retro cursor — absolute inside a screen's framebuffer; the dual-display
    router (Monitors.jsx) moves it and hops it between monitors. */

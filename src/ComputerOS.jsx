@@ -27,7 +27,7 @@ function WebBrowser({ focused }) {
   const openPage = (url, label) => {
     setPage(url)
     setScrollY(0)
-    setStatus(`${label} · view-only · ⌂ = home`)
+    setStatus(`${label} · live — click away! (some sites refuse frames: shift-click those)`)
   }
 
   // external=true (shift) → the visitor's real browser; else in-window Bing
@@ -146,14 +146,22 @@ function WebBrowser({ focused }) {
       </div>
       {page ? (
         <div className="web-embed">
+          {/* pointerEvents AUTO: the browser natively hit-tests transformed
+              elements, so real clicks/wheel/typing go INTO the page — live
+              browsing on the in-world monitor. (Sites that forbid framing
+              will refuse to load when navigated to — that's on them.) */}
           <iframe
             src={page}
             title="embedded page"
+            // sandbox WITHOUT allow-top-navigation: framed sites cannot
+            // "frame-bust" and hijack the visitor's whole tab — links
+            // navigate IN-frame; explicit new-tab links still pop out.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
             style={{
               width: '200%',
-              height: 4200,
+              height: '200%',
               border: 'none',
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
               transform: `scale(0.5) translateY(${-scrollY * 2}px)`,
               transformOrigin: '0 0',
             }}

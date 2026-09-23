@@ -395,7 +395,6 @@ const CZ = (minZ + maxZ) / 2
 
 export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone }) {
   const switchesRef = useRef([])
-  const phoneRef = useRef() // the cast-remote phone on the couch armrest
   return (
     <group>
       {/* --- Shell --- */}
@@ -565,18 +564,8 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           <meshStandardMaterial color="#5f4633" />
         </mesh>
       ))}
-      {/* the phone (cast remote) lying on the couch armrest */}
-      <group position={[CAVE.couch.x - 0.85, 0.69, CAVE.couch.z]} rotation-y={-0.5}>
-        <mesh ref={phoneRef}>
-          <boxGeometry args={[0.075, 0.014, 0.15]} />
-          <meshStandardMaterial color="#101014" />
-        </mesh>
-        <mesh position={[0, 0.008, 0]} rotation-x={-Math.PI / 2}>
-          <planeGeometry args={[0.062, 0.135]} />
-          <meshStandardMaterial color="#0c1420" emissive="#2a6a8a" emissiveIntensity={1.1} />
-        </mesh>
-      </group>
-      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneRef={phoneRef} />
+      {/* the phone prop itself lives in Monitors (it has a live lock screen) */}
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

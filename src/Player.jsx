@@ -108,7 +108,7 @@ function blocked(x, z) {
 
 // Walkable character, third- OR first-person (view prop). Mounted in
 // "explore" mode. Spawns beside the desk on the open half of the garage.
-export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, view = 'third', joyRef }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view = 'third', joyRef }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()

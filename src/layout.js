@@ -3,7 +3,18 @@
 // CameraRig.jsx aims at them. Change here, everything stays in sync.
 
 // Interior of the garage shell (walls sit ON these lines).
-export const GARAGE = { minX: -4.5, maxX: 4.5, minZ: -3, maxZ: 4.5, ceiling: 2.8 }
+// Big double-bay workshop: 13 x 10m, 4m ceiling (lift headroom; a future
+// mezzanine floor could sit at ~2.6m). Desk corner unchanged at the back.
+export const GARAGE = { minX: -6.5, maxX: 6.5, minZ: -3, maxZ: 7, ceiling: 4 }
+
+// Two roller doors in the front wall (z = maxZ), one per bay.
+export const DOORS = [
+  { x: -2.2, w: 2.7, h: 2.4 }, // lift bay door
+  { x: 2.8, w: 2.7, h: 2.4 }, // parking bay door
+]
+
+// Two-post car lift (the MX-5 project car lives up here).
+export const LIFT = { x: -2.2, z: 2.0, postDX: 1.35, postH: 2.6, deckY: 1.45 }
 
 // Dual-monitor setup on the desk. Each: world position/rotation of the glass
 // centre, physical size (m), and framebuffer resolution (px). The DOM UI is
@@ -19,21 +30,40 @@ export const MONITORS = {
 // Where the chair sits — walking here lets you sit back down.
 export const SEAT = { x: 0, z: -1.85 }
 
-// Car bay group origins (Room.jsx places the models here).
-export const CIVIC_POS = [1.5, 0, 0.9]
-export const MX5_POS = [1.5, 0, 3.0]
+// Placement anchors (Room.jsx builds from these).
+export const CIVIC = { pos: [2.8, 0, 2.2], rotY: Math.PI / 2 } // nose to its door
+export const BIKES = [
+  { pos: [5.6, 0, 4.6], rotY: -0.5 },
+  { pos: [5.7, 0, 3.4], rotY: -0.35 },
+]
+export const CAVE = {
+  couch: { x: 4.9, z: -1.8 }, // against the back-right corner
+  fridge: { x: 6.1, z: -0.6 },
+  neon: { x: 6.49, y: 2.2, z: 1.5 }, // on the right wall
+}
 
 // Axis-aligned collision boxes for solid stuff (world coords).
 // Player radius is added at test time.
 export const COLLIDERS = [
-  // desk + monitors (desk widened to 1.8 for the dual setup)
+  // desk + monitors
   { minX: -1.0, maxX: 1.0, minZ: -3.0, maxZ: -2.15 },
-  // Civic FN4 (4.27 x 1.77 at CIVIC_POS)
-  { minX: 1.5 - 2.2, maxX: 1.5 + 2.2, minZ: 0.9 - 0.95, maxZ: 0.9 + 0.95 },
-  // MX-5 tub on stands (3.6 x 1.5 at MX5_POS)
-  { minX: 1.5 - 1.9, maxX: 1.5 + 1.9, minZ: 3.0 - 0.85, maxZ: 3.0 + 0.85 },
-  // engine block on the floor (world ~[3.9, 3.5])
-  { minX: 3.55, maxX: 4.25, minZ: 3.2, maxZ: 3.8 },
-  // wheel pile (world ~[-1.0..-0.4, 1.9..2.1])
-  { minX: -1.3, maxX: -0.1, minZ: 1.6, maxZ: 2.4 },
+  // Civic FN4 (rotated: 1.77 wide in x, 4.27 long in z)
+  { minX: 2.8 - 1.0, maxX: 2.8 + 1.0, minZ: 2.2 - 2.25, maxZ: 2.2 + 2.25 },
+  // lift posts (the raised MX-5 tub is overhead — walk under it)
+  { minX: -3.75, maxX: -3.15, minZ: 1.7, maxZ: 2.3 },
+  { minX: -1.25, maxX: -0.65, minZ: 1.7, maxZ: 2.3 },
+  // MX-5 parts on the floor around the lift
+  { minX: -1.2, maxX: -0.5, minZ: 3.4, maxZ: 4.0 }, // engine block
+  { minX: -3.9, maxX: -3.0, minZ: 3.6, maxZ: 4.4 }, // wheel pile
+  // doors leaning on the left wall
+  { minX: -6.5, maxX: -6.1, minZ: 0.8, maxZ: 3.4 },
+  // workbench along the left wall (back half)
+  { minX: -6.5, maxX: -5.8, minZ: -2.6, maxZ: -0.2 },
+  // shelving, right wall
+  { minX: 6.0, maxX: 6.5, minZ: 0.4, maxZ: 2.6 },
+  // motorbikes
+  { minX: 4.9, maxX: 6.3, minZ: 2.9, maxZ: 5.2 },
+  // man-cave corner: couch + fridge
+  { minX: 3.9, maxX: 5.9, minZ: -2.4, maxZ: -1.3 },
+  { minX: 5.75, maxX: 6.5, minZ: -1.0, maxZ: -0.2 },
 ]

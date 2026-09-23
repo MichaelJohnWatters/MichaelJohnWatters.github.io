@@ -10,15 +10,16 @@ import { MONITORS } from './layout'
 const PIVOT_Z = MONITORS.primary.z // spiral centres on the desk/monitors
 
 // Spiral endpoints (u = 0 at start, u = 1 seated). Metres.
-const R_START = 6.5 // orbit radius, far
+const R_START = 9.5 // orbit radius, far — shows off the whole workshop
 const R_END = 1.15 // seated ~1.1m back so both screens frame up
-const Y_START = 4.0 // high establishing shot
+const Y_START = 5.2 // high establishing shot
 const Y_END = 1.15 // seated eye height
-const THETA_START = Math.PI / 3 // a gentle 60° arc swinging in…
+const THETA_START = -Math.PI / 3 // a gentle 60° arc from the LEFT (lift-bay side)…
 const THETA_END = 0 // …ending directly in front of the desk (+z)
 
-// Look target eases from a wide room framing to between the two screens.
-const LOOK_START = [0.8, 0.9, -0.8]
+// Look target starts toward the room centre (lift + bays in frame), then
+// pans onto the desk as you descend.
+const LOOK_START = [1.2, 0.8, 0.4]
 const LOOK_END = [0.06, 1.13, -2.8]
 
 // Where the camera ends up when fully seated.

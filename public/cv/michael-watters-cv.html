@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #111;
+    font-size: 11px;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 22mm 18mm 18mm 18mm;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    column-gap: 26px;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* left column */
+  .name-block h1 {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+  .name-block .role {
+    color: #e8551f;
+    font-weight: 700;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+  .side-label {
+    font-weight: 800;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .side-label .dash {
+    display: block;
+    width: 14px;
+    border-top: 2px solid #111;
+    margin-bottom: 20px;
+  }
+
+  /* right column */
+  .contact .who { font-weight: 800; font-size: 13px; }
+  .contact .addr { margin-top: 2px; }
+  .contact .links { color: #e8551f; margin-top: 8px; }
+  .contact .links a { color: #e8551f; text-decoration: none; }
+
+  .rule { border-top: 2px solid #111; margin: 18px 0 12px 0; }
+
+  .entry { margin-bottom: 16px; }
+  .entry .title { font-size: 13px; }
+  .entry .title strong { font-weight: 800; }
+  .entry .meta { color: #8a8a8a; font-size: 10.5px; margin: 2px 0 6px 0; }
+  .entry p { margin: 0 0 6px 0; }
+  .entry .stack strong { font-weight: 800; }
+  ul { margin: 4px 0 6px 0; padding-left: 16px; }
+  li { margin-bottom: 3px; }
+  .section-gap { height: 6px; }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <!-- left -->
+  <div>
+    <div class="name-block">
+      <h1>Michael<br>Watters</h1>
+      <div class="role">Scala Engineer</div>
+    </div>
+    <div style="height:70px"></div>
+    <div class="side-label"><span class="dash"></span>Summary</div>
+    <div style="height:70px"></div>
+    <div class="side-label"><span class="dash"></span>Experience</div>
+    <div style="height:70px"></div>
+    <div class="side-label"><span class="dash"></span>Projects</div>
+  </div>
+
+  <!-- right -->
+  <div>
+    <div class="contact">
+      <div class="who">Michael Watters</div>
+      <div class="links">
+        Mobile: [redacted]<br>
+        Email: mjwatters@outlook.com<br>
+        Website: https://michaeljohnwatters.github.io<br>
+        Github: https://github.com/MichaelJohnWatters<br>
+        LinkedIn: https://www.linkedin.com/in/michael-watters-b50437167
+      </div>
+    </div>
+
+    <div class="rule"></div>
+
+    <p>A Scala engineer with a background in data pipelines, custom reporting and
+    API development. Currently building regulatory reporting for an AI-powered
+    anti-money laundering (AML) compliance platform, submitting compliance data to
+    government authorities in the financial crime / RegTech domain.</p>
+
+    <p>Experienced across the full delivery lifecycle &mdash; from writing the
+    services in Scala and Go through Kubernetes-based deployments, GitHub Actions
+    CI/CD, and QA automation pipelines &mdash; with a background in large-scale
+    data processing.</p>
+
+    <div class="rule"></div>
+
+    <div class="entry">
+      <div class="title"><strong>Napier AI</strong> / Scala Engineer</div>
+      <div class="meta">January 2025 - Present, Belfast (Hybrid)</div>
+      <p>Scala engineer on Napier AI's financial crime compliance platform (AML /
+      RegTech). Building regulatory reporting that takes compliance data through to
+      submission to government authorities.</p>
+      <ul>
+        <li>Built regulatory reporting that takes compliance data end-to-end through to submission to government authorities.</li>
+        <li>Extensive Kubernetes work &mdash; deploying and operating services on k8s.</li>
+        <li>Built and maintained GitHub Actions CI/CD pipelines.</li>
+        <li>Developed QA / test automation pipelines to safeguard release quality.</li>
+      </ul>
+      <p class="stack"><strong>Stack</strong>: Scala, Go, Kubernetes, GitHub Actions, Kafka,
+      PostgreSQL, Elasticsearch, SQL. QA: mabl, TestRail.</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>Magnite</strong> / Software Engineer II</div>
+      <div class="meta">February 2022 - December 2025, Belfast</div>
+      <p>Data Pipeline Software Engineer building large-scale batch data pipelines to
+      onboard and normalize advertising data, for the purpose of building advertising
+      audiences and expanding associations using third-party identity graphs.</p>
+      <p class="stack"><strong>Stack</strong>: PySpark / Spark, Databricks, Python
+      (Luigi), Snowflake, SQL, Golang APIs, Grafana and AWS services
+      (S3, SQS, IAM, ECS, KMS, Lambda etc).</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>SpotX (Acquired by Magnite)</strong> / Software Engineer I</div>
+      <div class="meta">January 2021 - February 2022, Belfast</div>
+      <p>Software Engineer, working on various custom reporting Scala applications
+      for billing purposes and fee contracts, including a query wrapper Scala API
+      for Apache Druid.</p>
+      <p class="stack"><strong>Stack</strong>: Functional Scala, Druid, Apache Kafka,
+      Php, Jenkins, SQL, Openshift + Helm, Prometheus + Grafana. Developed with
+      extensive CI/CD pipelines via Jenkins.</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>SpotX</strong> / Trainee Software Developer</div>
+      <div class="meta">January 2019 - January 2021, Belfast</div>
+      <p>Same as Software Engineer I.</p>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="entry">
+      <div class="title"><strong>Programmatic Advertising Platform</strong> / Solo Project</div>
+      <div class="meta">Personal project &mdash; https://michaeljohnwatters.github.io</div>
+      <p>Designed and built a full programmatic advertising platform solo, mostly
+      with the help of AI: ~170K lines of Go across 18 microservices on
+      Kubernetes, spanning the SSP / exchange / DSP / ad-serving path, a first-party
+      data-onboarding + identity-resolution pipeline, and an exactly-once billing
+      ledger.</p>
+      <ul>
+        <li>Real-time bidding / OpenRTB auction path held at p95 ~73&nbsp;ms by keeping
+        network I/O out of the hot loop with warm in-process caches.</li>
+        <li>End-to-end request tracing (bid &rarr; win &rarr; serve &rarr; billing) with full
+        observability via Prometheus, Grafana, Loki and Jaeger.</li>
+      </ul>
+      <p class="stack"><strong>Stack</strong>: Go, Kubernetes, Helm, PostgreSQL,
+      ClickHouse, Redis, NATS JetStream, Kafka, S3/Parquet, Prometheus, Grafana.
+      Domain: programmatic advertising, RTB / OpenRTB, SSP, DSP, ad serving,
+      real-time auctions, identity resolution.</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>Other</strong></div>
+      <ul>
+        <li>Dart, Flutter, Flutterflow and Google Cloud Platform (Firebase etc).</li>
+        <li>Some experience, C++ with various microcontrollers / Raspberry Pi and
+        basic electronics, such as racing sim peripherals.</li>
+        <li>Some experience with Java, C#, R, React, Typescript, Javascript + HTML/CSS.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div>
+    <div class="side-label"><span class="dash"></span>Education</div>
+  </div>
+  <div>
+    <div class="rule"></div>
+
+    <div class="entry">
+      <div class="title"><strong>Ulster University</strong> / BSc Hons Computing Systems</div>
+      <div class="meta">September 2019 - August 2022, Belfast</div>
+      <p>Awarded 1st Degree with Honors, Bachelor of Science.</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>Belfast Metropolitan College</strong> / Foundation Degree, Software Engineering</div>
+      <div class="meta">September 2017 - June 2019, Belfast</div>
+      <p>Awarded 1st with distinction.</p>
+    </div>
+
+    <div class="entry">
+      <div class="title"><strong>Royal Belfast Academical Institution</strong> / A-level and GCSE</div>
+      <div class="meta">September 2005 - June 2012, Belfast</div>
+      <p>A-level, AAB (Biology, Geography and History). 8 GCSEs with Math B and English C.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

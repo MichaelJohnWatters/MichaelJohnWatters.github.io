@@ -180,12 +180,19 @@ body {
   overflow: hidden;
 }
 
-/* Desktop icons down the left */
+/* Desktop icons down the left — wrap into more columns when they overflow */
 .desk-icons {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  width: 84px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.55rem 8px;
+  height: 100%;
+  width: auto;
+  max-width: 180px;
+}
+.desk-icons .desk-icon {
+  width: 76px;
 }
 .desk-icon {
   display: flex;
@@ -217,14 +224,57 @@ body {
 /* A window with Motif-ish beveled chrome */
 .win {
   position: absolute;
-  top: 22%;
-  left: 120px;
-  width: 60%;
-  max-width: 380px;
+  display: flex;
+  flex-direction: column;
   background: #c3c7cb;
   border: 2px solid;
   border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+.win .win-body {
+  flex: 1;
+  overflow: hidden;
+}
+/* bottom-right resize grip (visible) */
+.win-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 3px,
+    #6a6d70 3px 5px
+  );
+}
+/* invisible edge/corner grab strips — resize from any side */
+.win-h {
+  position: absolute;
+}
+.win-h-l {
+  left: -2px;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+}
+.win-h-r {
+  right: -2px;
+  top: 8px;
+  bottom: 14px;
+  width: 8px;
+}
+.win-h-b {
+  bottom: -2px;
+  left: 8px;
+  right: 14px;
+  height: 8px;
+}
+.win-h-bl {
+  left: -2px;
+  bottom: -2px;
+  width: 12px;
+  height: 12px;
 }
 .win-title {
   display: flex;
@@ -239,6 +289,21 @@ body {
 .win-active .win-title {
   background: linear-gradient(90deg, #3a3f6b, #6b70a3); /* focused blue */
   color: #fff;
+}
+/* Maximized: fill the desktop area */
+.win-max {
+  left: 2px !important;
+  top: 2px !important;
+  right: 2px;
+  bottom: 2px;
+  width: auto;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+}
+.win-max .win-body {
+  flex: 1;
+  overflow: hidden;
 }
 .win-btns {
   display: flex;
@@ -267,6 +332,47 @@ body {
   margin-top: 0.6rem;
   color: #555;
   font-style: italic;
+}
+.win-body p {
+  margin-bottom: 0.45rem;
+}
+
+/* --- CV viewer window --- */
+.win-body-cv {
+  padding: 4px;
+  display: flex;
+}
+.cv-viewer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.cv-tools {
+  display: flex;
+  gap: 4px;
+  padding: 3px 2px;
+}
+.cv-tools button {
+  padding: 2px 8px;
+  background: #c3c7cb;
+  border: 2px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+  font-family: inherit;
+  font-size: 0.62rem;
+  color: #111;
+  cursor: inherit;
+}
+.cv-tools .cv-dl {
+  margin-left: auto;
+  font-weight: 700;
+}
+.cv-frame {
+  flex: 1;
+  overflow: hidden;
+  background: #888;
+  border: 1px solid #6a6d70;
+  min-height: 0;
 }
 
 .desk-hint {
@@ -330,14 +436,19 @@ body {
 .taskbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.4rem;
+  gap: 0.4rem;
+  padding: 0 0.4rem;
+  height: 30px; /* FIXED height — never grows with open windows */
+  flex: none;
+  flex-wrap: nowrap;
+  overflow: hidden;
   background: #c3c7cb;
   border-top: 2px solid #f4f4f4;
   font-size: 0.7rem;
   color: #111;
 }
 .start-btn {
+  flex: none;
   background: #c3c7cb;
   border: 2px solid;
   border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
@@ -349,16 +460,27 @@ body {
   cursor: inherit;
 }
 .task-open {
-  padding: 0.2rem 0.6rem;
-  background: #b3b7bb;
+  padding: 0.2rem 0.5rem;
+  background: #c3c7cb;
   border: 2px solid;
-  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70; /* pressed-in */
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4; /* raised */
   font-family: inherit;
   font-size: 0.7rem;
   color: #111;
   cursor: inherit;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-open.task-active {
+  background: #b3b7bb;
+  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70; /* pressed-in = focused */
 }
 .clock {
+  flex: none;
   margin-left: auto;
   padding: 0.2rem 0.5rem;
   border: 2px solid;
@@ -420,7 +542,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 999; /* above every in-screen element (menus are 200) */
   opacity: 0;
   pointer-events: none;
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5));

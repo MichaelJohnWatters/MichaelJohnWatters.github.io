@@ -5,16 +5,21 @@ import { IS_TOUCH } from './touch'
 
 // Retro browser: the search box is REAL — enter opens actual Google results
 // in a new tab (Google can't be embedded; new-tab is the honest version).
+// Bookmarks: embed = renders INSIDE the in-world browser (same-origin /
+// embed-friendly pages only — Google & co. forbid iframing, so external
+// links open real tabs instead).
 const BOOKMARKS = [
-  ['GitHub', 'https://github.com/MichaelJohnWatters'],
-  ['LinkedIn', 'https://www.linkedin.com/in/michael-watters-b50437167'],
-  ['CV.pdf', 'cv/Michael-Watters-CV.pdf'],
+  ['This site', './', 'embed'], // the garage, recursively 🤯
+  ['CV', 'cv/michael-watters-cv.html', 'embed'],
+  ['GitHub', 'https://github.com/MichaelJohnWatters', 'tab'],
+  ['LinkedIn', 'https://www.linkedin.com/in/michael-watters-b50437167', 'tab'],
 ]
 
 function WebBrowser({ focused }) {
   const [q, setQ] = useState('')
   const qRef = useRef('')
   const [status, setStatus] = useState('ready.')
+  const [page, setPage] = useState(null) // embedded page URL, or null = home
   const hidRef = useRef()
 
   const go = () => {
@@ -60,27 +65,52 @@ function WebBrowser({ focused }) {
   return (
     <div className="web">
       <div className="web-bar">
+        <button
+          className="web-nav"
+          data-click
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation()
+            setPage(null)
+            setStatus('ready.')
+          }}
+        >
+          ⌂
+        </button>
         <span className="web-nav">◀</span>
-        <span className="web-nav">▶</span>
         <span className="web-nav">⟳</span>
-        <span className="web-addr">http://www.noogle.com</span>
+        <span className="web-addr">{page ? page : 'http://www.noogle.com'}</span>
       </div>
       <div className="web-marks">
-        {BOOKMARKS.map(([label, url]) => (
+        {BOOKMARKS.map(([label, url, kind]) => (
           <button
             className="web-mark"
             key={label}
             data-click
             tabIndex={-1}
             onClick={() => {
-              window.open(url, '_blank', 'noopener')
-              setStatus(`→ opened ${label} in a new tab`)
+              if (kind === 'embed') {
+                setPage(url)
+                setStatus(`showing ${label} (view only)`)
+              } else {
+                window.open(url, '_blank', 'noopener')
+                setStatus(`→ opened ${label} in a new tab (blocks embedding)`)
+              }
             }}
           >
             ★ {label}
           </button>
         ))}
       </div>
+      {page ? (
+        <div className="web-embed">
+          <iframe
+            src={page}
+            title="embedded page"
+            style={{ width: '200%', height: '200%', border: 'none', pointerEvents: 'none', transform: 'scale(0.5)', transformOrigin: '0 0' }}
+          />
+        </div>
+      ) : (
       <div className="web-page">
         <div className="web-logo">
           <span style={{ color: '#4285f4' }}>N</span>
@@ -113,6 +143,7 @@ function WebBrowser({ focused }) {
         </button>
         <div className="web-status">{status}</div>
       </div>
+      )}
       <input
         ref={hidRef}
         className="hid-input"

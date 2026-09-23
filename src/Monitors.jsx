@@ -318,7 +318,7 @@ function LockClock() {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doorRefs, doors = [false, false], onDoorToggle }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -372,6 +372,12 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   onPhoneRef.current = onPhone
   const phoneMeshRef = useRef() // the prop on the couch armrest
   const postitRefs = useRef([]) // punch planes double as lean-in click targets
+  const doorRefsRef = useRef(doorRefs)
+  doorRefsRef.current = doorRefs
+  const doorsRef = useRef(doors)
+  doorsRef.current = doors
+  const onDoorToggleRef = useRef(onDoorToggle)
+  onDoorToggleRef.current = onDoorToggle
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -482,6 +488,15 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           onPhoneRef.current?.() // pick up the cast remote
           return
         }
+        const drs = (doorRefsRef.current?.current || []).filter(Boolean)
+        if (drs.length) {
+          const dh = raycaster.intersectObjects(drs, false)[0]
+          if (dh) {
+            // refs are [drum0, panel0, drum1, panel1] → door = idx / 2
+            onDoorToggleRef.current?.(Math.floor(doorRefsRef.current.current.indexOf(dh.object) / 2))
+            return
+          }
+        }
       }
 
       // Stepped away: no OS clicks (switches above still work).
@@ -585,7 +600,8 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     // ONE raycast against every interactive (nearest hit wins) instead of
     // four sequential passes.
     const sws = (switchesArrRef.current?.current || []).filter(Boolean)
-    const targets = [...sws]
+    const drs = (doorRefsRef.current?.current || []).filter(Boolean)
+    const targets = [...sws, ...drs]
     if (eraserRef.current) targets.push(eraserRef.current)
     if (tvRef.current) targets.push(tvRef.current)
     if (phoneMeshRef.current) targets.push(phoneMeshRef.current)
@@ -595,7 +611,10 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       if (hit === eraserRef.current) label = 'wipe the whiteboard'
       else if (hit === tvRef.current) label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
       else if (hit === phoneMeshRef.current) label = 'pick up the phone'
-      else label = 'flip the lights'
+      else if (drs.includes(hit)) {
+        const di = Math.floor(doorRefsRef.current.current.indexOf(hit) / 2)
+        label = doorsRef.current[di] ? 'close the garage door' : 'open the garage door'
+      } else label = 'flip the lights'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
     const el = document.getElementById('aim-label')

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GARAGE, COLLIDERS, SEAT, LIFT, SOFA_SEAT } from './layout'
+import { GARAGE, COLLIDERS, SEAT, LIFT, SOFA_SEAT, DOORS, YARD } from './layout'
 import { footstep } from './sfx'
 import { complete } from './tasks'
 import { IS_TOUCH } from './touch'
@@ -91,11 +91,19 @@ const WALL = 0.2 // keep-off distance from walls
 const SIT_DIST = 1.4 // how close to the chair before you can sit
 const clamp = THREE.MathUtils.clamp
 
-function blocked(x, z) {
+function blocked(x, z, doors) {
   for (const b of COLLIDERS) {
     if (x > b.minX - RADIUS && x < b.maxX + RADIUS && z > b.minZ - RADIUS && z < b.maxZ + RADIUS) {
       return true
     }
+  }
+  // Front wall: solid except an OPEN door's clear width.
+  if (z > GARAGE.maxZ - 0.1 - RADIUS && z < GARAGE.maxZ + 0.1 + RADIUS) {
+    for (let i = 0; i < DOORS.length; i++) {
+      const d = DOORS[i]
+      if (doors?.[i] && x > d.x - d.w / 2 + RADIUS && x < d.x + d.w / 2 - RADIUS) return false
+    }
+    return true
   }
   return false
 }
@@ -103,7 +111,7 @@ function blocked(x, z) {
 // First-person walker. Mounted in "explore" mode. Spawns beside the desk on
 // the open half of the garage. Desktop: pointer-lock mouse-look. Touch:
 // drag anywhere (off the joystick) to look.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false] }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -113,6 +121,8 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
   const sofaRef = useRef(sofa)
   sofaRef.current = sofa
   const prevSofa = useRef(false)
+  const doorsRef = useRef(doors)
+  doorsRef.current = doors
   const bob = useRef(0)
   // Camera yaw — the mouse/touch-drag drives it (starts facing the garage).
   const camYaw = useRef(Math.PI)
@@ -241,10 +251,12 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
       const len = Math.hypot(dx, dz)
       const step = (SPEED * delta) / len
       // Axis-separated moves: blocked on one axis still slides on the other.
+      // The far z bound is the YARD fence — the front wall itself blocks
+      // unless an open door is in the way (see blocked()).
       const nx = clamp(pos.current.x + dx * step, GARAGE.minX + WALL, GARAGE.maxX - WALL)
-      if (!blocked(nx, pos.current.z)) pos.current.x = nx
-      const nz = clamp(pos.current.z + dz * step, GARAGE.minZ + WALL, GARAGE.maxZ - WALL)
-      if (!blocked(pos.current.x, nz)) pos.current.z = nz
+      if (!blocked(nx, pos.current.z, doorsRef.current)) pos.current.x = nx
+      const nz = clamp(pos.current.z + dz * step, GARAGE.minZ + WALL, YARD.maxZ - WALL)
+      if (!blocked(pos.current.x, nz, doorsRef.current)) pos.current.z = nz
       group.current.rotation.y = Math.atan2(dx, dz)
       // Footstep on each bob trough (~2 steps/sec at walk speed).
       const prevPhase = Math.floor(bob.current / Math.PI)

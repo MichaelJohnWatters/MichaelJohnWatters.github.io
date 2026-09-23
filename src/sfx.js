@@ -91,6 +91,51 @@ export function taskDing() {
   })
 }
 
+// Roller-door motor: low mechanical rumble + slat rattle for ~2.2s.
+export function doorMotor() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  const DUR = 2.2
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0, t)
+  g.gain.linearRampToValueAtTime(0.11, t + 0.15)
+  g.gain.setValueAtTime(0.11, t + DUR - 0.3)
+  g.gain.linearRampToValueAtTime(0, t + DUR)
+  g.connect(master)
+  // motor hum — detuned saw pair through a lowpass
+  for (const f of [52, 57]) {
+    const o = ac.createOscillator()
+    o.type = 'sawtooth'
+    o.frequency.setValueAtTime(f, t)
+    o.frequency.linearRampToValueAtTime(f * 1.06, t + DUR)
+    const lp = ac.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 240
+    o.connect(lp)
+    lp.connect(g)
+    o.start(t)
+    o.stop(t + DUR)
+  }
+  // slat rattle — looped noise through a bandpass
+  const buf = ac.createBuffer(1, (ac.sampleRate * 0.5) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+  const n = ac.createBufferSource()
+  n.buffer = buf
+  n.loop = true
+  const bp = ac.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 900
+  bp.Q.value = 1.2
+  const ng = ac.createGain()
+  ng.gain.value = 0.035
+  n.connect(bp)
+  bp.connect(ng)
+  ng.connect(g)
+  n.start(t)
+  n.stop(t + DUR)
+}
+
 // Night-garage room tone: quiet brown-noise air + a faint mains hum.
 // Starts once (first user gesture) and loops forever; mute kills it.
 export function startRoomTone() {

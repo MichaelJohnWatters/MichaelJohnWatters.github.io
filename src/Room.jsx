@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useScroll } from '@react-three/drei'
+import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD } from './layout'
 import Monitors from './Monitors'
 
 // Low-poly MAN-CAVE WORKSHOP blockout — ALL DIMENSIONS IN METRES.
@@ -205,6 +205,40 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
   )
 }
 
+// A roller door that ROLLS UP: the slat panel hangs from the drum and its
+// y-scale shrinks toward the top — reads exactly like slats winding on.
+function RollerDoor({ d, open, refDrum, refPanel }) {
+  const panel = useRef()
+  useFrame((_, dt) => {
+    if (!panel.current) return
+    const target = open ? 0.07 : 1
+    const s = panel.current.scale.y
+    panel.current.scale.y = s + (target - s) * (1 - Math.pow(0.01, dt))
+  })
+  return (
+    <group position={[d.x, d.h, GARAGE.maxZ - 0.06]}>
+      {/* drum the door winds onto */}
+      <mesh ref={refDrum} position={[0, 0.06, -0.06]} rotation-z={Math.PI / 2}>
+        <cylinderGeometry args={[0.13, 0.13, d.w, 10]} />
+        <meshStandardMaterial color="#4a4e54" metalness={0.4} roughness={0.6} />
+      </mesh>
+      {/* slat panel, origin at the TOP so it shrinks upward */}
+      <group ref={panel}>
+        <mesh ref={refPanel} position={[0, -d.h / 2, 0]}>
+          <boxGeometry args={[d.w, d.h, 0.08]} />
+          <meshStandardMaterial color="#84898f" metalness={0.5} roughness={0.5} />
+        </mesh>
+        {[-0.8, -0.4, 0, 0.4, 0.8].map((f, j) => (
+          <mesh key={j} position={[0, -d.h / 2 + f * (d.h / 2.4), -0.05]}>
+            <boxGeometry args={[d.w - 0.1, 0.04, 0.02]} />
+            <meshStandardMaterial color="#5b5f65" />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
+
 // Man-cave corner: couch + rug + wall TV + mini fridge + neon.
 function CaveCorner() {
   return (
@@ -393,8 +427,9 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle }) {
   const switchesRef = useRef([])
+  const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
     <group>
       {/* --- Shell --- */}
@@ -446,21 +481,86 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           ),
         )
       })()}
-      {/* the two roller doors (with slats) */}
-      {DOORS.map((d, i) => (
-        <group key={i} position={[d.x, 0, maxZ - 0.06]}>
-          <mesh position={[0, d.h / 2, 0]}>
-            <boxGeometry args={[d.w, d.h, 0.08]} />
-            <meshStandardMaterial color="#84898f" metalness={0.5} roughness={0.5} />
+      {/* --- Roof + skylights (single-sided: invisible from the intro
+          spiral outside, solid overhead from within) --- */}
+      <mesh rotation-x={Math.PI / 2} position={[CX, ceiling, CZ]}>
+        <planeGeometry args={[W, D]} />
+        <meshStandardMaterial color="#46464e" />
+      </mesh>
+      {[[-3.2, -0.6], [-3.2, 3.6], [3.2, -0.6], [3.2, 3.6]].map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          {/* frame */}
+          <mesh rotation-x={Math.PI / 2} position={[0, ceiling - 0.015, 0]}>
+            <planeGeometry args={[2.7, 1.9]} />
+            <meshStandardMaterial color="#26262c" />
           </mesh>
-          {[-0.8, -0.4, 0, 0.4, 0.8].map((f, j) => (
-            <mesh key={j} position={[0, d.h / 2 + f * (d.h / 2.4), -0.05]}>
-              <boxGeometry args={[d.w - 0.1, 0.04, 0.02]} />
-              <meshStandardMaterial color="#5b5f65" />
-            </mesh>
-          ))}
+          {/* night-sky glass — glows moonlight-blue, brighter in the dark */}
+          <mesh rotation-x={Math.PI / 2} position={[0, ceiling - 0.03, 0]}>
+            <planeGeometry args={[2.4, 1.6]} />
+            <meshStandardMaterial
+              color="#0e1a2e"
+              emissive="#4a6a9e"
+              emissiveIntensity={lights ? 0.45 : 1.25}
+            />
+          </mesh>
         </group>
       ))}
+
+      {/* the two roller doors (with slats) — click to roll them up */}
+      {DOORS.map((d, i) => (
+        <RollerDoor
+          key={i}
+          d={d}
+          open={!!doors[i]}
+          refDrum={(el) => (doorRefs.current[i * 2] = el)}
+          refPanel={(el) => (doorRefs.current[i * 2 + 1] = el)}
+        />
+      ))}
+
+      {/* --- The yard outside the doors (visible when they're open) --- */}
+      <group>
+        {/* asphalt apron */}
+        <mesh rotation-x={-Math.PI / 2} position={[CX, -0.005, (maxZ + YARD.maxZ) / 2]}>
+          <planeGeometry args={[W, YARD.maxZ - maxZ]} />
+          <meshStandardMaterial color="#37373d" />
+        </mesh>
+        {/* perimeter fence: far end + sides */}
+        <mesh position={[CX, 0.55, YARD.maxZ]}>
+          <boxGeometry args={[W, 1.1, 0.08]} />
+          <meshStandardMaterial color="#42424a" />
+        </mesh>
+        {[minX, maxX].map((x, i) => (
+          <mesh key={i} position={[x, 0.55, (maxZ + YARD.maxZ) / 2]}>
+            <boxGeometry args={[0.08, 1.1, YARD.maxZ - maxZ]} />
+            <meshStandardMaterial color="#42424a" />
+          </mesh>
+        ))}
+        {/* street lamp — pool of warm light over the apron */}
+        <group position={[5.4, 0, 10.3]}>
+          <mesh position={[0, 1.6, 0]}>
+            <cylinderGeometry args={[0.05, 0.07, 3.2, 8]} />
+            <meshStandardMaterial color="#2e2e34" />
+          </mesh>
+          <mesh position={[0, 3.2, 0]}>
+            <boxGeometry args={[0.34, 0.12, 0.22]} />
+            <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={1.6} />
+          </mesh>
+          {/* the actual light only exists once a door is open (it's unseeable
+              before that, and dynamic lights are the expensive thing) */}
+          {(doors[0] || doors[1]) && (
+            <pointLight position={[0, 3.0, 0]} intensity={1.4} color="#ffd9a0" distance={9} decay={2} />
+          )}
+        </group>
+        {/* wheelie bins by the fence */}
+        {[[-5.6, 10.6], [-4.9, 10.7]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.55, z]}>
+            <boxGeometry args={[0.55, 1.1, 0.55]} />
+            <meshStandardMaterial color={i ? '#2c4a35' : '#33343c'} />
+          </mesh>
+        ))}
+        {/* night sky — points shader, ignores fog, basically free */}
+        <Stars radius={55} depth={25} count={1800} factor={3.2} fade speed={0.4} />
+      </group>
 
       {/* --- Ceiling fixtures: two LIT over the bays, husks elsewhere --- */}
       {[
@@ -472,6 +572,13 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         { p: [-4.8, 3.9, -0.8], lit: true, warm: true },
       ].map((f, i) => (
         <group key={i}>
+          {/* drop rods — the fixtures hang from the raised roof */}
+          {[-0.9, 0.9].map((dx, j) => (
+            <mesh key={j} position={[f.p[0] + dx, (f.p[1] + 0.04 + ceiling) / 2, f.p[2]]}>
+              <cylinderGeometry args={[0.018, 0.018, ceiling - f.p[1] - 0.04, 6]} />
+              <meshStandardMaterial color="#2a2a2e" />
+            </mesh>
+          ))}
           {/* dark housing — no glare when seen from above */}
           <mesh position={f.p}>
             <boxGeometry args={[2.2, 0.08, 0.32]} />
@@ -565,7 +672,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         </mesh>
       ))}
       {/* the phone prop itself lives in Monitors (it has a live lock screen) */}
-      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} />
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doorRefs={doorRefs} doors={doors} onDoorToggle={onDoorToggle} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

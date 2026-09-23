@@ -5,13 +5,16 @@
 // Interior of the garage shell (walls sit ON these lines).
 // Big double-bay workshop: 13 x 10m, 4m ceiling (lift headroom; a future
 // mezzanine floor could sit at ~2.6m). Desk corner unchanged at the back.
-export const GARAGE = { minX: -6.5, maxX: 6.5, minZ: -3, maxZ: 7, ceiling: 4 }
+export const GARAGE = { minX: -6.5, maxX: 6.5, minZ: -3, maxZ: 7, ceiling: 5.4 }
 
 // Two roller doors in the front wall (z = maxZ), one per bay.
 export const DOORS = [
   { x: -2.2, w: 2.7, h: 2.4 }, // lift bay door
   { x: 2.8, w: 2.7, h: 2.4 }, // parking bay door
 ]
+
+// The yard outside the roller doors (walkable once a door is open).
+export const YARD = { maxZ: 11.3 }
 
 // Two-post car lift (the MX-5 project car lives up here).
 export const LIFT = { x: -2.2, z: 2.0, postDX: 1.35, postH: 2.6, deckY: 1.45 }

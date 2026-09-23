@@ -992,6 +992,14 @@ body {
 }
 
 /* Post-it on the monitor bezel (rendered via Html transform) */
+/* Lights off: paper surfaces (whiteboard, post-its) are DOM, so the 3D
+   lighting can't dim them — do it here. Screens keep glowing; they're
+   screens. */
+html.lights-off .whiteboard,
+html.lights-off .postit {
+  filter: brightness(0.32) saturate(0.75);
+}
+
 /* Desk mode: native cursor hidden — the crosshair dot follows the mouse
    everywhere off the screens (the retro Windows cursor owns the glass). */
 html.desk-cursor,

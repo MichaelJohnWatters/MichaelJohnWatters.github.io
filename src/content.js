@@ -21,6 +21,13 @@ export const OS_WINDOWS = [
     body: [],
   },
   {
+    title: 'netscape.exe',
+    kind: 'web',
+    defW: 400,
+    defH: 250,
+    body: [],
+  },
+  {
     title: 'experience/',
     defW: 380,
     defH: 240,

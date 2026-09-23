@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES } from './layout'
 import Monitors from './Monitors'
 
 // Low-poly MAN-CAVE WORKSHOP blockout — ALL DIMENSIONS IN METRES.
@@ -397,7 +397,7 @@ const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
 export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights }) {
-  const switchRef = useRef()
+  const switchesRef = useRef([])
   return (
     <group>
       {/* --- Shell --- */}
@@ -515,18 +515,31 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         </mesh>
       ))}
 
-      {/* Wall switch on the pillar between the doors — click it (any mode) */}
-      <group position={[0.3, 1.25, maxZ - 0.08]}>
-        <mesh ref={switchRef}>
-          <boxGeometry args={[0.16, 0.24, 0.06]} />
-          <meshStandardMaterial color="#d8d4c8" />
-        </mesh>
-        {/* toggle nub flips with the state */}
-        <mesh position={[0, lights ? 0.04 : -0.04, -0.05]} rotation-x={lights ? 0.4 : -0.4}>
-          <boxGeometry args={[0.05, 0.1, 0.05]} />
-          <meshStandardMaterial color={lights ? '#e8b84a' : '#555a60'} />
-        </mesh>
-      </group>
+      {/* Wall light switches — clickable in any mode; the amber locator dot
+          glows brighter in the dark so you can always find one. */}
+      {SWITCHES.map((s, i) => (
+        <group key={i} position={s.pos} rotation-y={s.rotY}>
+          <mesh ref={(el) => (switchesRef.current[i] = el)}>
+            <boxGeometry args={[0.16, 0.24, 0.06]} />
+            <meshStandardMaterial color="#d8d4c8" />
+          </mesh>
+          {/* toggle nub flips with the state */}
+          <mesh position={[0, lights ? 0.045 : -0.045, 0.05]} rotation-x={lights ? -0.4 : 0.4}>
+            <boxGeometry args={[0.05, 0.1, 0.05]} />
+            <meshStandardMaterial color="#b8b4a8" />
+          </mesh>
+          {/* glow-in-the-dark locator dot */}
+          <mesh position={[0, -0.08, 0.036]}>
+            <circleGeometry args={[0.018, 12]} />
+            <meshStandardMaterial
+              color="#ffb84a"
+              emissive="#ffb84a"
+              emissiveIntensity={lights ? 0.5 : 3}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      ))}
 
       {/* LED bias strip above the monitors — washes the back wall (always on) */}
       <mesh position={[0, 2.35, -2.97]}>
@@ -551,7 +564,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           <meshStandardMaterial color="#5f4633" />
         </mesh>
       ))}
-      <Monitors mode={mode} onZoom={onZoom} switchRef={switchRef} onToggleLights={onToggleLights} />
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

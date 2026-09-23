@@ -16,6 +16,15 @@ export const DOORS = [
 // Two-post car lift (the MX-5 project car lives up here).
 export const LIFT = { x: -2.2, z: 2.0, postDX: 1.35, postH: 2.6, deckY: 1.45 }
 
+// Wall light switches (all toggle the same workshop lights). Each has a
+// glow-in-the-dark locator dot. rotY orients the plate off its wall.
+export const SWITCHES = [
+  { pos: [0.3, 1.25, 6.92], rotY: Math.PI }, // pillar between the doors
+  { pos: [1.7, 1.25, -2.94], rotY: 0 }, // back wall, beside the desk
+  { pos: [-6.44, 1.25, -0.4], rotY: Math.PI / 2 }, // left wall, by the workbench
+  { pos: [6.44, 1.25, -1.4], rotY: -Math.PI / 2 }, // right wall, cave corner
+]
+
 // Dual-monitor setup on the desk. Each: world position/rotation of the glass
 // centre, physical size (m), and framebuffer resolution (px). The DOM UI is
 // authored at pxW x pxH and mapped onto the glass via drei <Html transform>

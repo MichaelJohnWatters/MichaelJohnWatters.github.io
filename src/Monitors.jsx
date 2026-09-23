@@ -349,13 +349,15 @@ export default function Monitors({ mode = 'desk', onZoom }) {
       const root = p.screen === 'A' ? screenA.current : screenB.current
       const el = hitTest(root, p.x, p.y)
 
-      // Double-click on the screen BACKGROUND (not a button/window) leans the
-      // camera into that screen; double-click again to sit back.
+      // Double-click on the screen background OR a window body leans the
+      // camera into that screen; double-click again to sit back. Buttons,
+      // title bars and drag handles stay excluded (rapid clicks ≠ lean-in).
       const isBg =
         !el ||
         el.classList.contains('desktop') ||
         el.classList.contains('os-screen') ||
-        el.classList.contains('term')
+        el.classList.contains('term') ||
+        el.classList.contains('win')
       const now = performance.now()
       const last = lastDownRef.current
       if (isBg && last.bg && last.screen === p.screen && now - last.t < 450) {

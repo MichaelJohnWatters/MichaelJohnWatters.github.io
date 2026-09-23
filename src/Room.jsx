@@ -233,8 +233,8 @@ function CaveCorner() {
       </mesh>
       {/* wall TV bezel — the screen itself lives in Monitors (clickable,
           plays a live stream when powered on) */}
-      <mesh position={[CAVE.couch.x, 1.9, -2.96]}>
-        <boxGeometry args={[1.8, 1.05, 0.06]} />
+      <mesh position={[CAVE.couch.x, 1.55, -2.97]}>
+        <boxGeometry args={[2.2, 1.3, 0.06]} />
         <meshStandardMaterial color="#0c0c10" />
       </mesh>
       {/* mini fridge */}

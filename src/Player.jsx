@@ -188,7 +188,7 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       prevSofa.current = true
       group.current.visible = false
       camera.position.set(SOFA_SEAT.x, 1.08, SOFA_SEAT.z)
-      camera.lookAt(SOFA_SEAT.x, 1.8, -2.96)
+      camera.lookAt(SOFA_SEAT.x, 1.5, -2.96)
       camera.updateMatrixWorld()
       camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
       return

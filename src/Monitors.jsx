@@ -606,9 +606,9 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       {/* Man-cave TV screen. Off: dark glow. On: depth-punched glass with a
           live lofi stream (YouTube allows embedding) — muted, ambience only.
           The plane is also the click/aim target for the power toggle. */}
-      <group position={[CAVE.couch.x, 1.9, -2.92]}>
+      <group position={[CAVE.couch.x, 1.55, -2.935]}>
         <mesh ref={tvRef}>
-          <planeGeometry args={[1.7, 0.95]} />
+          <planeGeometry args={[2.1, 1.18]} />
           {tv ? (
             <meshStandardMaterial key="on" colorWrite={false} />
           ) : (
@@ -616,7 +616,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           )}
         </mesh>
         {tv && (
-          <Html {...common} distanceFactor={(400 * 1.7) / 480} position={[0, 0, 0.004]}>
+          <Html {...common} distanceFactor={(400 * 2.1) / 480} position={[0, 0, 0.004]}>
             <div className="cave-tv">
               {/* sound on: casting was a click, so the allow=autoplay iframe
                   may start unmuted (site 🔇 forces mute) */}
@@ -624,7 +624,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
                 src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
                 title="cave tv"
                 width={480}
-                height={268}
+                height={270}
                 frameBorder="0"
                 allow="autoplay; encrypted-media"
               />

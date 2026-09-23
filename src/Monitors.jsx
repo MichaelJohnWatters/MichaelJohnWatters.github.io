@@ -38,11 +38,12 @@ function Whiteboard({ portal }) {
         style={{ pointerEvents: 'none' }}
       >
         <div className="whiteboard">
-          <div className="wb-title">GARAGE TASKS</div>
           {TASKS.map((t) => (
             <div key={t.id} className={`wb-item${done[t.id] ? ' wb-done' : ''}`}>
-              <span className="wb-box">{done[t.id] ? '✔' : ''}</span>
-              <span className="wb-label">{t.label}</span>
+              <span className="wb-label">
+                {done[t.id] ? '✓ ' : ''}
+                {t.label}
+              </span>
             </div>
           ))}
         </div>

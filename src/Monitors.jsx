@@ -493,10 +493,13 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     }
   }, [camera])
 
-  // FP: refresh the centre-aim every frame (the view moves while walking,
-  // no pointermove needed) and flare the crosshair over interactives.
+  // FP: refresh the centre-aim (the view moves while walking, no pointermove
+  // needed) and flare the crosshair over interactives. Throttled to every
+  // 3rd frame — the full aim path does DOM hit-testing, too hot for 60Hz.
+  const aimTick = useRef(0)
   useFrame(() => {
     if (!fpRef.current) return
+    if (aimTick.current++ % 3 !== 0) return
     moveFnRef.current?.({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 })
     const sws = (switchesArrRef.current?.current || []).filter(Boolean)
     let hit = false

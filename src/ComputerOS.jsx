@@ -23,6 +23,7 @@ function WebBrowser({ focused }) {
   const [page, setPage] = useState(null) // embedded page URL, or null = home
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
   const [live, setLive] = useState(false) // true = real input INTO the page
+  const [results, setResults] = useState(null) // native in-OS search results
   const hidRef = useRef()
 
   const openPage = (url, label) => {
@@ -46,12 +47,30 @@ function WebBrowser({ focused }) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
       setStatus(`→ opened Google for “${s}” in your browser`)
     } else {
-      // Wikipedia: reliably embeddable AND its links navigate in-frame
-      // (Bing forces target=_blank on results; most engines forbid frames).
-      openPage(
-        'https://en.wikipedia.org/w/index.php?search=' + encodeURIComponent(s),
-        `wikipedia: “${s}”`,
+      // Native results page: Wikipedia's API allows CORS, so we render OUR
+      // OWN retro results list (clickable with the in-game cursor) and open
+      // picks in the embedded frame. (No web engine offers frameable results
+      // with same-tab links — Bing forces _blank, the rest forbid frames.)
+      setPage(null)
+      setResults({ q: s, loading: true, items: [] })
+      setStatus(`searching “${s}”…`)
+      fetch(
+        'https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=8&format=json&origin=*&srsearch=' +
+          encodeURIComponent(s),
       )
+        .then((r) => r.json())
+        .then((d) => {
+          const items = (d?.query?.search || []).map((it) => ({
+            title: it.title,
+            snippet: it.snippet.replace(/<[^>]+>/g, ''),
+          }))
+          setResults({ q: s, loading: false, items })
+          setStatus(items.length ? `${items.length} results for “${s}”` : `no results for “${s}”`)
+        })
+        .catch(() => {
+          setResults(null)
+          setStatus('search failed — shift+enter for your real browser')
+        })
     }
   }
 
@@ -93,10 +112,12 @@ function WebBrowser({ focused }) {
           tabIndex={-1}
           onClick={(e) => {
             e.stopPropagation()
-            setPage(null)
+            // from an article → back to results; from results → home
+            if (page) setPage(null)
+            else setResults(null)
             setLive(false)
             document.documentElement.classList.remove('over-embed')
-            setStatus('ready.')
+            setStatus(page && results ? `${results.items.length} results for “${results.q}”` : 'ready.')
           }}
         >
           ⌂
@@ -173,7 +194,36 @@ function WebBrowser({ focused }) {
           </button>
         ))}
       </div>
-      {page ? (
+      {results && !page ? (
+        <div className="web-results">
+          {results.loading && <div className="web-res-note">searching…</div>}
+          {!results.loading && !results.items.length && (
+            <div className="web-res-note">no results. shift+enter → Google in your browser</div>
+          )}
+          {results.items.map((it) => (
+            <button
+              className="web-result"
+              key={it.title}
+              data-click
+              tabIndex={-1}
+              onClick={(e) => {
+                if (e.shiftKey || e.metaKey) {
+                  window.open('https://en.wikipedia.org/wiki/' + encodeURIComponent(it.title), '_blank', 'noopener')
+                  setStatus(`→ ${it.title} in your browser`)
+                } else {
+                  openPage(
+                    'https://en.wikipedia.org/wiki/' + encodeURIComponent(it.title.replace(/ /g, '_')),
+                    it.title,
+                  )
+                }
+              }}
+            >
+              <span className="web-res-title">{it.title}</span>
+              <span className="web-res-snip">{it.snippet}…</span>
+            </button>
+          ))}
+        </div>
+      ) : page ? (
         <div className="web-embed">
           {/* pointerEvents AUTO: the browser natively hit-tests transformed
               elements, so real clicks/wheel/typing go INTO the page — live

@@ -287,6 +287,9 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
+  // Explore mode: the OS takes NO input (no typing, clicking, hovering).
+  const modeRef = useRef(mode)
+  modeRef.current = mode
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
@@ -330,6 +333,15 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
 
     const move = (e) => {
       if (!glassA.current || !glassB.current) return
+      // Stepped away: the OS takes no pointer interaction at all.
+      if (modeRef.current !== 'desk') {
+        posRef.current = { screen: null, x: 0, y: 0 }
+        if (curA.current) curA.current.style.opacity = '0'
+        if (curB.current) curB.current.style.opacity = '0'
+        setHover(null)
+        document.documentElement.classList.remove('on-glass')
+        return
+      }
       // FP crosshair: aim is always the screen centre.
       const cx = fpRef.current ? window.innerWidth / 2 : e.clientX
       const cy = fpRef.current ? window.innerHeight / 2 : e.clientY
@@ -368,6 +380,9 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           return
         }
       }
+
+      // Stepped away: no OS clicks (switches above still work).
+      if (modeRef.current !== 'desk') return
 
       const p = posRef.current
       if (!p.screen) return
@@ -550,7 +565,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
             <ComputerOS
               mon={MONITORS.primary}
               screenRef={screenA}
-              focusedWin={focused.startsWith('win:') ? focused.slice(4) : null}
+              focusedWin={mode === 'desk' && focused.startsWith('win:') ? focused.slice(4) : null}
               onFocus={setFocused}
             />
             <WinCursor refEl={curA} mon={MONITORS.primary} />

@@ -1,5 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
-import { OS_WINDOWS, downloadCV } from './content'
+import { OS_WINDOWS, downloadCV, SEARCH_PROXY } from './content'
+import { complete } from './tasks'
+
+// Web-wide search via the worker proxy when deployed; Wikipedia otherwise.
+// Both return uniform { title, url, snippet } items.
+async function searchWeb(s) {
+  if (SEARCH_PROXY) {
+    try {
+      const r = await fetch(`${SEARCH_PROXY}/?q=${encodeURIComponent(s)}`)
+      const d = await r.json()
+      if (d.items?.length) return d.items
+    } catch {
+      /* fall through to wikipedia */
+    }
+  }
+  const r = await fetch(
+    'https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=8&format=json&origin=*&srsearch=' +
+      encodeURIComponent(s),
+  )
+  const d = await r.json()
+  return (d?.query?.search || []).map((it) => ({
+    title: it.title,
+    url: 'https://en.wikipedia.org/wiki/' + encodeURIComponent(it.title.replace(/ /g, '_')),
+    snippet: it.snippet.replace(/<[^>]+>/g, ''),
+  }))
+}
 import { keyClack } from './sfx'
 import { IS_TOUCH } from './touch'
 
@@ -48,23 +73,15 @@ function WebBrowser({ focused }) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
       setStatus(`→ opened Google for “${s}” in your browser`)
     } else {
-      // Native results page: Wikipedia's API allows CORS, so we render OUR
-      // OWN retro results list (clickable with the in-game cursor) and open
-      // picks in the embedded frame. (No web engine offers frameable results
-      // with same-tab links — Bing forces _blank, the rest forbid frames.)
+      // Native results page rendered by the OS itself — clickable with the
+      // in-game cursor; picks open in the embedded frame.
+      complete('search') // whiteboard task
       setPage(null)
+      setNotice(null)
       setResults({ q: s, loading: true, items: [] })
       setStatus(`searching “${s}”…`)
-      fetch(
-        'https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=8&format=json&origin=*&srsearch=' +
-          encodeURIComponent(s),
-      )
-        .then((r) => r.json())
-        .then((d) => {
-          const items = (d?.query?.search || []).map((it) => ({
-            title: it.title,
-            snippet: it.snippet.replace(/<[^>]+>/g, ''),
-          }))
+      searchWeb(s)
+        .then((items) => {
           setResults({ q: s, loading: false, items })
           setStatus(items.length ? `${items.length} results for “${s}”` : `no results for “${s}”`)
         })
@@ -231,18 +248,15 @@ function WebBrowser({ focused }) {
           {results.items.map((it) => (
             <button
               className="web-result"
-              key={it.title}
+              key={it.url}
               data-click
               tabIndex={-1}
               onClick={(e) => {
                 if (e.shiftKey || e.metaKey) {
-                  window.open('https://en.wikipedia.org/wiki/' + encodeURIComponent(it.title), '_blank', 'noopener')
+                  window.open(it.url, '_blank', 'noopener')
                   setStatus(`→ ${it.title} in your browser`)
                 } else {
-                  openPage(
-                    'https://en.wikipedia.org/wiki/' + encodeURIComponent(it.title.replace(/ /g, '_')),
-                    it.title,
-                  )
+                  openPage(it.url, it.title)
                 }
               }}
             >

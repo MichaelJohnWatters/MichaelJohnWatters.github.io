@@ -8,6 +8,48 @@ import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
 import { clickDown, clickUp, keyClack } from './sfx'
 import { IS_TOUCH } from './touch'
+import { TASKS, complete, useTasks } from './tasks'
+
+// Whiteboard on the back wall, left of the desk — live task list.
+function Whiteboard({ portal }) {
+  const done = useTasks()
+  return (
+    <group position={[-2.05, 1.5, -2.96]}>
+      {/* frame + tray (recessed BEHIND the punch plane, or it covers it) */}
+      <mesh position={[0, 0, -0.025]}>
+        <boxGeometry args={[1.5, 1.06, 0.03]} />
+        <meshStandardMaterial color="#a8a8ae" />
+      </mesh>
+      <mesh position={[0, -0.56, 0.02]}>
+        <boxGeometry args={[0.6, 0.03, 0.07]} />
+        <meshStandardMaterial color="#8a8a90" />
+      </mesh>
+      {/* depth punch for the blending Html */}
+      <mesh>
+        <planeGeometry args={[1.42, 0.98]} />
+        <meshStandardMaterial colorWrite={false} />
+      </mesh>
+      <Html
+        transform
+        occlude="blending"
+        portal={portal}
+        distanceFactor={(400 * 1.4) / 300}
+        position={[0, 0, 0.004]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="whiteboard">
+          <div className="wb-title">GARAGE TASKS</div>
+          {TASKS.map((t) => (
+            <div key={t.id} className={`wb-item${done[t.id] ? ' wb-done' : ''}`}>
+              <span className="wb-box">{done[t.id] ? '✔' : ''}</span>
+              <span className="wb-label">{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </Html>
+    </group>
+  )
+}
 
 // Both monitors render their UI onto the glass permanently via drei
 // <Html transform occlude="blending">. One shared retro cursor travels between
@@ -112,6 +154,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
       )
       return
     }
+    complete('terminal') // whiteboard task
     const r = respond(q)
     setHistory((h) =>
       r === CLEAR
@@ -221,8 +264,14 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
           ))}
           <div className="term-line">
             <span className="claude-user">&gt; </span>
-            {input}
-            <span className="term-caret">▊</span>
+            {focused ? (
+              <>
+                {input}
+                <span className="term-caret">▊</span>
+              </>
+            ) : (
+              <span className="term-dim">· click this screen to type ·</span>
+            )}
           </div>
         </div>
       ) : (
@@ -499,6 +548,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     <>
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
+      <Whiteboard portal={portal} />
       {/* Post-it stuck on the primary monitor's bezel corner — teaches the
           lean-in controls. Needs its own depth-punch plane (blending mode). */}
       <group

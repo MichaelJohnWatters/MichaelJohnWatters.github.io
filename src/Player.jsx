@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GARAGE, COLLIDERS, SEAT } from './layout'
+import { GARAGE, COLLIDERS, SEAT, LIFT } from './layout'
 import { footstep } from './sfx'
+import { complete } from './tasks'
 import { IS_TOUCH } from './touch'
 
 // Minimal keyboard hook (no context — robust across the R3F boundary).
@@ -219,6 +220,9 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       Math.abs(Math.sin(bob.current)) * 0.04,
       pos.current.z,
     )
+
+    // Under the raised MX-5? Whiteboard task.
+    if (Math.abs(pos.current.x - LIFT.x) < 1.1 && Math.abs(pos.current.z - LIFT.z) < 1.2) complete('underlift')
 
     // Near the chair? Surface the "sit back down" prompt.
     const isNear = Math.hypot(pos.current.x - SEAT.x, pos.current.z - SEAT.z) < SIT_DIST

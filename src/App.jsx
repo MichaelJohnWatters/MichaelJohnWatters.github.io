@@ -7,6 +7,7 @@ import Player from './Player'
 import Joystick from './Joystick'
 import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
 import { IS_TOUCH } from './touch'
+import { complete, onComplete } from './tasks'
 
 // Global brightness: lights-on raises the tone-mapping exposure — the one
 // knob that brightens every surface uniformly.
@@ -58,9 +59,25 @@ export default function App() {
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
   const [muted, setMutedUI] = useState(false)
   const [lights, setLights] = useState(true) // workshop lights on by default
+  const [toast, setToast] = useState(null) // task-complete popup
+
+  // Task completions surface a toast alongside the ding.
+  useEffect(() => {
+    let timer
+    const off = onComplete((task) => {
+      setToast(task?.label || 'task')
+      clearTimeout(timer)
+      timer = setTimeout(() => setToast(null), 3200)
+    })
+    return () => {
+      off()
+      clearTimeout(timer)
+    }
+  }, [])
 
   const toggleLights = () => {
     clickDown() // satisfying switch clack
+    complete('lights') // whiteboard task
     setLights((l) => !l)
   }
 
@@ -130,7 +147,11 @@ export default function App() {
     setZoomScreen(null)
     // Desktop: first person. Touch: third person (auto-cam, no mouse-look).
     setView(IS_TOUCH ? 'third' : 'first')
+    complete('stepaway') // whiteboard task
     setMode('explore')
+    // Capture the mouse NOW — we're inside the click's user activation,
+    // which is the only time Chrome allows pointer lock.
+    if (!IS_TOUCH) document.querySelector('canvas')?.requestPointerLock?.()
   }
   // Double-clicking a screen's background (bridged from Monitors) toggles the lean-in.
   const zoomToggle = (which) => setZoomScreen((z) => (z === which ? null : which))
@@ -166,6 +187,7 @@ export default function App() {
       </Canvas>
 
       {/* DOM overlays */}
+      {toast && <div className="toast">✔ task complete — {toast}</div>}
       <button className="ctl ctl-mute" onClick={toggleMute} title="toggle sound">
         {muted ? '🔇' : '🔊'}
       </button>
@@ -199,7 +221,14 @@ export default function App() {
           </button>
           <button
             className="ctl ctl-view"
-            onClick={() => setView((v) => (v === 'third' ? 'first' : 'third'))}
+            onClick={() => {
+              setView((v) => {
+                const nv = v === 'third' ? 'first' : 'third'
+                if (nv === 'first' && !IS_TOUCH)
+                  document.querySelector('canvas')?.requestPointerLock?.()
+                return nv
+              })
+            }}
           >
             👁 {view === 'third' ? 'first person' : 'third person'} (V)
           </button>
@@ -211,7 +240,9 @@ export default function App() {
             <div className="explore-hint">
               {IS_TOUCH
                 ? 'drag the stick to walk'
-                : `WASD to walk · V toggles view${view === 'first' ? ' · mouse to look' : ''}`}
+                : view === 'first'
+                  ? 'WASD to walk · click to capture the mouse · esc frees it · V view'
+                  : 'WASD to walk · V toggles view'}
             </div>
           )}
           {IS_TOUCH && <Joystick vecRef={joyRef} />}

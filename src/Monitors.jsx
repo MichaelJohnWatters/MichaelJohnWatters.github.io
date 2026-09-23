@@ -300,6 +300,11 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
+// How close (metres) you must be to use each physical prop — you shouldn't
+// be able to poke the TV from the other side of the garage. The sofa sits
+// ~1.9m from the TV; the desk chair ~1.5m from the whiteboard.
+const RANGE = { switch: 3.5, eraser: 3, tv: 4.5, phone: 2.5, door: 6 }
+
 // Live clock for the phone prop's lock screen.
 function LockClock() {
   const [now, setNow] = useState(() => new Date())
@@ -469,29 +474,43 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
         const cy = fpRef.current ? window.innerHeight / 2 : e.clientY
         ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1)
         raycaster.setFromCamera(ndc, camera)
+        // Every prop has a REACH — no toggling the TV from across the room.
+        // (In desk mode the switches/eraser stay clickable at any distance:
+        // you're pinned to the chair, reach limits would just kill them.)
+        const fpNow = fpRef.current
+        const inReach = (h, r) => h && (!fpNow || h.distance <= r)
         const sws = (switchesArrRef.current?.current || []).filter(Boolean)
-        if (sws.length && raycaster.intersectObjects(sws, false).length) {
+        if (sws.length && inReach(raycaster.intersectObjects(sws, false)[0], RANGE.switch)) {
           onToggleLightsRef.current?.()
           return
         }
-        if (eraserRef.current && raycaster.intersectObject(eraserRef.current, false).length) {
+        if (
+          eraserRef.current &&
+          inReach(raycaster.intersectObject(eraserRef.current, false)[0], RANGE.eraser)
+        ) {
           clickDown()
           resetTasks() // wipe the whiteboard
           return
         }
-        if (tvRef.current && raycaster.intersectObject(tvRef.current, false).length) {
-          onTvToggleRef.current?.()
-          return
+        if (tvRef.current) {
+          const h = raycaster.intersectObject(tvRef.current, false)[0]
+          if (h && h.distance <= RANGE.tv) {
+            onTvToggleRef.current?.()
+            return
+          }
         }
-        if (phoneMeshRef.current && raycaster.intersectObject(phoneMeshRef.current, false).length) {
-          clickDown()
-          onPhoneRef.current?.() // pick up the cast remote
-          return
+        if (phoneMeshRef.current) {
+          const h = raycaster.intersectObject(phoneMeshRef.current, false)[0]
+          if (h && h.distance <= RANGE.phone) {
+            clickDown()
+            onPhoneRef.current?.() // pick up the cast remote
+            return
+          }
         }
         const drs = (doorRefsRef.current?.current || []).filter(Boolean)
         if (drs.length) {
           const dh = raycaster.intersectObjects(drs, false)[0]
-          if (dh) {
+          if (dh && dh.distance <= RANGE.door) {
             // refs are [drum0, panel0, drum1, panel1] → door = idx / 2
             onDoorToggleRef.current?.(Math.floor(doorRefsRef.current.current.indexOf(dh.object) / 2))
             return
@@ -605,16 +624,21 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     if (eraserRef.current) targets.push(eraserRef.current)
     if (tvRef.current) targets.push(tvRef.current)
     if (phoneMeshRef.current) targets.push(phoneMeshRef.current)
-    const hit = targets.length ? r.rc.intersectObjects(targets, false)[0]?.object : null
+    const inter = targets.length ? r.rc.intersectObjects(targets, false)[0] : null
+    const hit = inter?.object || null
+    const dist = inter?.distance ?? Infinity
     let label = ''
     if (hit) {
-      if (hit === eraserRef.current) label = 'wipe the whiteboard'
-      else if (hit === tvRef.current) label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
-      else if (hit === phoneMeshRef.current) label = 'pick up the phone'
+      if (hit === eraserRef.current && dist <= RANGE.eraser) label = 'wipe the whiteboard'
+      else if (hit === tvRef.current && dist <= RANGE.tv)
+        label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
+      else if (hit === phoneMeshRef.current && dist <= RANGE.phone) label = 'pick up the phone'
       else if (drs.includes(hit)) {
-        const di = Math.floor(doorRefsRef.current.current.indexOf(hit) / 2)
-        label = doorsRef.current[di] ? 'close the garage door' : 'open the garage door'
-      } else label = 'flip the lights'
+        if (dist <= RANGE.door) {
+          const di = Math.floor(doorRefsRef.current.current.indexOf(hit) / 2)
+          label = doorsRef.current[di] ? 'close the garage door' : 'open the garage door'
+        }
+      } else if (sws.includes(hit) && dist <= RANGE.switch) label = 'flip the lights'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
     const el = document.getElementById('aim-label')

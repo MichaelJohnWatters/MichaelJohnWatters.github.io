@@ -410,7 +410,7 @@ export default function Monitors({ mode = 'desk', onZoom }) {
             <br />
             or press 1 / 2
             <br />
-            esc → sit back
+            3 → sit back
           </div>
         </Html>
       </group>

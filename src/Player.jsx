@@ -141,15 +141,18 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     if (view !== 'first' || IS_TOUCH) return
     const canvas = document.querySelector('canvas')
     const mm = (e) => {
-      if (!document.pointerLockElement) return
-      camYaw.current -= e.movementX * 0.0032
-      lockPitch.current = clamp(lockPitch.current - e.movementY * 0.0032, -0.9, 0.9)
+      // movementX/Y deliver deltas with OR without pointer lock — unlocked
+      // they just stop at the screen edge (the edge-turn in useFrame takes
+      // over there), so turning is infinite either way.
+      if (e.target.closest?.('.joystick')) return
+      camYaw.current -= (e.movementX || 0) * 0.0032
+      lockPitch.current = clamp(lockPitch.current - (e.movementY || 0) * 0.0032, -0.9, 0.9)
     }
     const relock = () => {
-      if (!document.pointerLockElement) canvas?.requestPointerLock?.()
+      if (!document.pointerLockElement) canvas?.requestPointerLock?.()?.catch?.(() => {})
     }
     lockPitch.current = 0
-    canvas?.requestPointerLock?.() // works when entering FP via a click/key gesture
+    canvas?.requestPointerLock?.()?.catch?.(() => {}) // works when entering FP via a click/key gesture
     window.addEventListener('pointermove', mm)
     window.addEventListener('pointerdown', relock)
     return () => {
@@ -172,17 +175,15 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     const k = keys.current
     const first = view === 'first'
 
-    // First person look: pointer-locked = infinite delta turning; otherwise
-    // fall back to absolute mouse position (limited sweep).
+    // First person look: mouse deltas drive yaw/pitch (locked or not). When
+    // the lock is off the cursor pins at the screen edge and deltas die —
+    // edge-turn keeps rotating while it's parked there.
     const locked = typeof document !== 'undefined' && !!document.pointerLockElement
-    if (first && !locked) {
-      camYaw.current = Math.PI + (0.5 - mouse.current.x) * Math.PI * 2
+    if (first && !locked && !IS_TOUCH) {
+      if (mouse.current.x <= 0.01) camYaw.current += 2.4 * delta
+      else if (mouse.current.x >= 0.99) camYaw.current -= 2.4 * delta
     }
-    const pitch = first
-      ? locked
-        ? lockPitch.current
-        : THREE.MathUtils.clamp((0.5 - mouse.current.y) * 1.1, -0.55, 0.55)
-      : 0
+    const pitch = first ? lockPitch.current : 0
 
     // Camera-relative input: W walks away from the camera (or forward in FP),
     // A/D strafe — stays intuitive as the view turns. The virtual joystick

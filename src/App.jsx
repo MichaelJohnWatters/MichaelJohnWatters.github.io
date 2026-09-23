@@ -155,7 +155,7 @@ export default function App() {
     setMode('explore')
     // Capture the mouse NOW — we're inside the click's user activation,
     // which is the only time Chrome allows pointer lock.
-    if (!IS_TOUCH) document.querySelector('canvas')?.requestPointerLock?.()
+    if (!IS_TOUCH) document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
   }
   // Double-clicking a screen's background (bridged from Monitors) toggles the lean-in.
   const zoomToggle = (which) => setZoomScreen((z) => (z === which ? null : which))
@@ -229,7 +229,7 @@ export default function App() {
               setView((v) => {
                 const nv = v === 'third' ? 'first' : 'third'
                 if (nv === 'first' && !IS_TOUCH)
-                  document.querySelector('canvas')?.requestPointerLock?.()
+                  document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
                 return nv
               })
             }}

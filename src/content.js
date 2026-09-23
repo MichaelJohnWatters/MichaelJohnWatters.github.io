@@ -75,10 +75,10 @@ export const OS_WINDOWS = [
   },
 ]
 
-// Optional web-search proxy (Cloudflare Worker — see worker/README.md).
-// When set, Noogle searches the REAL web through it; empty string falls
-// back to Wikipedia's free CORS API.
-export const SEARCH_PROXY = ''
+// Web-search proxy (Cloudflare Worker — see worker/README.md). Noogle
+// searches the REAL web through it; empty string would fall back to
+// Wikipedia's free CORS API.
+export const SEARCH_PROXY = 'https://noogle-search.michaeljohnwatters.workers.dev'
 
 // Trigger a browser download of the rendered PDF.
 export function downloadCV() {

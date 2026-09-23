@@ -451,7 +451,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         <planeGeometry args={[D, ceiling]} />
         <meshStandardMaterial color="#5b5b63" />
       </mesh>
-      {/* front wall segments around the two doors */}
+      {/* front wall segments around the two doors — inner faces always;
+          OUTER faces only in explore mode (they'd block the intro spiral's
+          view in, and you can only be outside while exploring) */}
       {(() => {
         const segs = []
         let cursor = minX
@@ -463,24 +465,52 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           cursor = d.x + d.w / 2
         }
         if (cursor < maxX) segs.push([cursor, maxX])
-        return segs.map((s, i) =>
-          Array.isArray(s) ? (
-            <mesh key={i} position={[(s[0] + s[1]) / 2, ceiling / 2, maxZ]} rotation-y={Math.PI}>
+        const face = (s, i, out) => {
+          const key = `${i}-${out ? 'o' : 'i'}`
+          const z = out ? maxZ + 0.015 : maxZ
+          const col = out ? '#43434b' : '#5b5b63'
+          return Array.isArray(s) ? (
+            <mesh key={key} position={[(s[0] + s[1]) / 2, ceiling / 2, z]} rotation-y={out ? 0 : Math.PI}>
               <planeGeometry args={[s[1] - s[0], ceiling]} />
-              <meshStandardMaterial color="#5b5b63" />
+              <meshStandardMaterial color={col} />
             </mesh>
           ) : (
             <mesh
-              key={i}
-              position={[s.header.x, (ceiling + s.header.h) / 2, maxZ]}
-              rotation-y={Math.PI}
+              key={key}
+              position={[s.header.x, (ceiling + s.header.h) / 2, z]}
+              rotation-y={out ? 0 : Math.PI}
             >
               <planeGeometry args={[s.header.w, ceiling - s.header.h]} />
-              <meshStandardMaterial color="#5b5b63" />
+              <meshStandardMaterial color={col} />
             </mesh>
-          ),
-        )
+          )
+        }
+        return [
+          ...segs.map((s, i) => face(s, i, false)),
+          ...(mode === 'explore' ? segs.map((s, i) => face(s, i, true)) : []),
+        ]
       })()}
+      {/* exterior skin for the other walls + roof top (explore only) */}
+      {mode === 'explore' && (
+        <group>
+          <mesh position={[CX, ceiling / 2, minZ - 0.015]} rotation-y={Math.PI}>
+            <planeGeometry args={[W, ceiling]} />
+            <meshStandardMaterial color="#43434b" />
+          </mesh>
+          <mesh position={[minX - 0.015, ceiling / 2, CZ]} rotation-y={-Math.PI / 2}>
+            <planeGeometry args={[D, ceiling]} />
+            <meshStandardMaterial color="#3f3f47" />
+          </mesh>
+          <mesh position={[maxX + 0.015, ceiling / 2, CZ]} rotation-y={Math.PI / 2}>
+            <planeGeometry args={[D, ceiling]} />
+            <meshStandardMaterial color="#3f3f47" />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position={[CX, ceiling + 0.015, CZ]}>
+            <planeGeometry args={[W, D]} />
+            <meshStandardMaterial color="#38383f" />
+          </mesh>
+        </group>
+      )}
       {/* --- Roof + skylights (single-sided: invisible from the intro
           spiral outside, solid overhead from within) --- */}
       <mesh rotation-x={Math.PI / 2} position={[CX, ceiling, CZ]}>

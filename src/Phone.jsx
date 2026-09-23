@@ -7,7 +7,7 @@ const CODE = '1234' // it's on a post-it by the pc. peak security.
 // The "remote": a phone you pick up in the man-cave to cast YouTube to the
 // garage TV. Every pickup starts LOCKED — passcode 1234 (it's on a post-it
 // by the pc). Plain DOM overlay so typing/scrolling are native.
-export default function Phone({ open, tv, onCast, onStop, onClose }) {
+export default function Phone({ open, tv, vol = 70, onVol, onCast, onStop, onClose }) {
   const [q, setQ] = useState('')
   const [items, setItems] = useState([])
   const [busy, setBusy] = useState(false)
@@ -166,6 +166,19 @@ export default function Phone({ open, tv, onCast, onStop, onClose }) {
                 </button>
               ))}
             </div>
+            {tv && (
+              <div className="yt-vol">
+                <span>🔈</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={vol}
+                  onChange={(e) => onVol?.(+e.target.value)}
+                />
+                <span>🔊</span>
+              </div>
+            )}
             <div className="phone-foot">
               {tv && (
                 <button className="phone-stop" onClick={onStop}>

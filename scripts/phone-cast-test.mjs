@@ -1,4 +1,4 @@
-// step away → P opens the phone → search → cast → TV iframe renders
+// step away → P → unlock 1234 → search → cast → TV iframe + volume slider
 import puppeteer from 'puppeteer-core'
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new' })
 const page = await b.newPage()
@@ -13,28 +13,39 @@ await new Promise((r) => setTimeout(r, 2500))
 await page.evaluate(() => document.querySelector('.ctl-step')?.click())
 await new Promise((r) => setTimeout(r, 800))
 await page.keyboard.press('KeyP')
-await new Promise((r) => setTimeout(r, 500))
+await new Promise((r) => setTimeout(r, 600))
 console.log('overlay:', await page.evaluate(() => !!document.querySelector('.phone')))
+for (const k of '1234') await page.keyboard.press(k)
+await new Promise((r) => setTimeout(r, 700))
 await page.type('.phone-input', 'lofi hip hop radio', { delay: 15 })
 await page.keyboard.press('Enter')
 await new Promise((r) => setTimeout(r, 6000))
-const items = await page.evaluate(() => document.querySelectorAll('.phone-item').length)
-console.log('results:', items)
+console.log('results:', await page.evaluate(() => document.querySelectorAll('.phone-item').length))
 await page.evaluate(() => document.querySelector('.phone-item')?.click())
 await new Promise((r) => setTimeout(r, 4000))
 const tv = await page.evaluate(() => {
   const f = document.querySelector('.cave-tv iframe')
-  return { iframe: !!f, src: f?.src?.slice(0, 60), stop: !!document.querySelector('.phone-stop') }
+  return {
+    iframe: !!f,
+    jsapi: f?.src?.includes('enablejsapi=1'),
+    volSlider: !!document.querySelector('.yt-vol input'),
+    stop: !!document.querySelector('.phone-stop'),
+  }
 })
 console.log('tv:', JSON.stringify(tv))
-// preset quick-cast + stop
+// set the volume slider
+await page.evaluate(() => {
+  const s = document.querySelector('.yt-vol input')
+  if (s) {
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    set.call(s, '25')
+    s.dispatchEvent(new Event('input', { bubbles: true }))
+    s.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+})
+await new Promise((r) => setTimeout(r, 400))
+console.log('vol after set:', await page.evaluate(() => document.querySelector('.yt-vol input')?.value))
 await page.evaluate(() => document.querySelector('.phone-stop')?.click())
 await new Promise((r) => setTimeout(r, 500))
 console.log('after stop:', await page.evaluate(() => !!document.querySelector('.cave-tv iframe')))
-await page.evaluate(() => { const d = document.getElementById('phone-dot'); return true })
-await page.mouse.move(900, 400)
-await new Promise((r) => setTimeout(r, 300))
-const dot = await page.evaluate(() => { const d = document.getElementById('phone-dot'); return d ? d.style.left + ',' + d.style.top : null })
-console.log('dot follows:', dot)
-await page.screenshot({ path: '/tmp/shots/phone.png' })
 await b.close()

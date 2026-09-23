@@ -714,7 +714,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
               {/* sound on: casting was a click, so the allow=autoplay iframe
                   may start unmuted (site 🔇 forces mute) */}
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
+                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
                 title="cave tv"
                 width={400}
                 height={225}

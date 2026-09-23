@@ -51,6 +51,22 @@ function WebBrowser({ focused }) {
   const [results, setResults] = useState(null) // native in-OS search results
   const [notice, setNotice] = useState(null) // { label, url } for frame-blockers
   const hidRef = useRef()
+  const rootRef = useRef()
+
+  // Draggable scrollbar thumb for embedded pages (same bridge pattern as the
+  // CV viewer: os-drag events carry framebuffer-px deltas).
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const onDrag = (e) => {
+      if (!e.target.classList?.contains('web-thumb')) return
+      const track = e.target.parentElement
+      const range = Math.max(1, track.offsetHeight - e.target.offsetHeight)
+      setScrollY((s) => Math.max(0, Math.min(1600, s + e.detail.dy * (1600 / range))))
+    }
+    root.addEventListener('os-drag', onDrag)
+    return () => root.removeEventListener('os-drag', onDrag)
+  }, [])
 
   const openPage = (url, label) => {
     setPage(url)
@@ -122,7 +138,7 @@ function WebBrowser({ focused }) {
   }, [focused])
 
   return (
-    <div className="web">
+    <div className="web" ref={rootRef}>
       <div className="web-bar">
         <button
           className="web-nav"
@@ -163,28 +179,6 @@ function WebBrowser({ focused }) {
               }}
             >
               {live ? '🔒' : '🖱'}
-            </button>
-            <button
-              className="web-nav"
-              data-click
-              tabIndex={-1}
-              onClick={(e) => {
-                e.stopPropagation()
-                setScrollY((s) => Math.max(0, s - 220))
-              }}
-            >
-              ▲
-            </button>
-            <button
-              className="web-nav"
-              data-click
-              tabIndex={-1}
-              onClick={(e) => {
-                e.stopPropagation()
-                setScrollY((s) => Math.min(1600, s + 220))
-              }}
-            >
-              ▼
             </button>
           </>
         )}
@@ -266,6 +260,7 @@ function WebBrowser({ focused }) {
           ))}
         </div>
       ) : page ? (
+        <div className="cv-row">
         <div className="web-embed">
           {/* pointerEvents AUTO: the browser natively hit-tests transformed
               elements, so real clicks/wheel/typing go INTO the page — live
@@ -292,6 +287,39 @@ function WebBrowser({ focused }) {
               transformOrigin: '0 0',
             }}
           />
+        </div>
+        {/* right-side scrollbar with draggable thumb (like the CV viewer) */}
+        <div className="cv-scroll">
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              setScrollY((s) => Math.max(0, s - 220))
+            }}
+          >
+            ▲
+          </button>
+          <div className="cv-track">
+            <div
+              className="cv-thumb web-thumb"
+              data-drag="web-thumb"
+              style={{ top: `${(scrollY / 1600) * 72}%`, height: '28%' }}
+            />
+          </div>
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              setScrollY((s) => Math.min(1600, s + 220))
+            }}
+          >
+            ▼
+          </button>
+        </div>
         </div>
       ) : (
       <div className="web-page">
@@ -624,6 +652,17 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
               }}
               style={s.max ? undefined : { left: s.x, top: s.y, width: s.w, height: s.h }}
             >
+              {/* resize handles FIRST: last-wins hit-testing lets real
+                  content (scrollbars etc.) beat them where they overlap */}
+              {!s.max && (
+                <>
+                  <div className="win-h win-h-l" data-drag="resize-l" data-win-key={key} />
+                  <div className="win-h win-h-r" data-drag="resize-r" data-win-key={key} />
+                  <div className="win-h win-h-b" data-drag="resize-b" data-win-key={key} />
+                  <div className="win-h win-h-bl" data-drag="resize-bl" data-win-key={key} />
+                  <div className="win-resize" data-drag="resize-br" data-win-key={key} />
+                </>
+              )}
               <div className="win-title" data-drag="move" data-win-key={key}>
                 <span>{key} — File Viewer</span>
                 <span className="win-btns">
@@ -670,15 +709,6 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
                   w.body.map((line, i) => <p key={i}>{line}</p>)
                 )}
               </div>
-              {!s.max && (
-                <>
-                  <div className="win-h win-h-l" data-drag="resize-l" data-win-key={key} />
-                  <div className="win-h win-h-r" data-drag="resize-r" data-win-key={key} />
-                  <div className="win-h win-h-b" data-drag="resize-b" data-win-key={key} />
-                  <div className="win-h win-h-bl" data-drag="resize-bl" data-win-key={key} />
-                  <div className="win-resize" data-drag="resize-br" data-win-key={key} />
-                </>
-              )}
             </div>
           )
         })}

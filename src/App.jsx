@@ -14,7 +14,7 @@ import { complete, onComplete } from './tasks'
 function Exposure({ lights }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
-    gl.toneMappingExposure = lights ? 1.45 : 1.0
+    gl.toneMappingExposure = lights ? 1.75 : 1.0
   }, [gl, lights])
   return null
 }
@@ -30,13 +30,17 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
 
       {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
           "lights on" and moody night mode (monitors + neon only). */}
-      <hemisphereLight intensity={lights ? 1.1 : 0.2} color="#4a5570" groundColor="#26262e" />
+      <hemisphereLight intensity={lights ? 1.4 : 0.2} color="#4a5570" groundColor="#26262e" />
       <directionalLight position={[4, 7, 2]} intensity={lights ? 0.9 : 0.14} color="#8a94b0" />
-      {lights && <ambientLight intensity={0.18} color="#5a627a" />}
-      {/* primary monitor glow (cool) */}
-      <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
-      {/* terminal glow (warm terracotta) */}
-      <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
+      {lights && <ambientLight intensity={0.3} color="#5a627a" />}
+      {/* Monitor glow pools — only in night mode (with the workshop lights on
+          they wash out anyway; skipping them halves the dynamic light count) */}
+      {!lights && (
+        <>
+          <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
+          <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
+        </>
+      )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
       <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} />
       {mode === 'desk' && (

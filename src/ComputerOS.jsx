@@ -54,6 +54,16 @@ function WebBrowser({ focused }) {
   const [notice, setNotice] = useState(null) // { label, url } for frame-blockers
   const hidRef = useRef()
   const rootRef = useRef()
+  const resRef = useRef() // results list (programmatic scroll)
+  const [resPct, setResPct] = useState(0) // results scrollbar thumb position
+
+  const scrollRes = (dy) => {
+    const el = resRef.current
+    if (!el) return
+    const max = Math.max(0, el.scrollHeight - el.clientHeight)
+    el.scrollTop = Math.max(0, Math.min(max, el.scrollTop + dy))
+    setResPct(max ? el.scrollTop / max : 0)
+  }
 
   // Draggable scrollbar thumb for embedded pages (same bridge pattern as the
   // CV viewer: os-drag events carry framebuffer-px deltas).
@@ -61,6 +71,13 @@ function WebBrowser({ focused }) {
     const root = rootRef.current
     if (!root) return
     const onDrag = (e) => {
+      if (e.target.classList?.contains('res-thumb')) {
+        const track = e.target.parentElement
+        const range = Math.max(1, track.offsetHeight - e.target.offsetHeight)
+        const el = resRef.current
+        if (el) scrollRes(e.detail.dy * ((el.scrollHeight - el.clientHeight) / range))
+        return
+      }
       if (!e.target.classList?.contains('web-thumb')) return
       const track = e.target.parentElement
       const range = Math.max(1, track.offsetHeight - e.target.offsetHeight)
@@ -130,6 +147,8 @@ function WebBrowser({ focused }) {
         // Worker deployed: native results page, fully in-world clickable.
         setPage(null)
         setResults({ q: s, loading: true, items: [] })
+        if (resRef.current) resRef.current.scrollTop = 0
+        setResPct(0)
         setStatus(`searching “${s}”…`)
         searchWeb(s)
           .then((items) => {
@@ -279,7 +298,8 @@ function WebBrowser({ focused }) {
           <div className="web-res-note">tip: ⇧shift+click any link does this directly</div>
         </div>
       ) : results && !page ? (
-        <div className="web-results">
+        <div className="cv-row">
+        <div className="web-results" ref={resRef}>
           {results.loading && <div className="web-res-note">searching…</div>}
           {!results.loading && !results.items.length && (
             <div className="web-res-note">no results. shift+enter → Google in your browser</div>
@@ -303,6 +323,39 @@ function WebBrowser({ focused }) {
               <span className="web-res-snip">{it.snippet}…</span>
             </button>
           ))}
+        </div>
+        {/* results scrollbar — same pattern as the CV / page views */}
+        <div className="cv-scroll">
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              scrollRes(-140)
+            }}
+          >
+            ▲
+          </button>
+          <div className="cv-track">
+            <div
+              className="cv-thumb res-thumb"
+              data-drag="res-thumb"
+              style={{ top: `${resPct * 72}%`, height: '28%' }}
+            />
+          </div>
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              scrollRes(140)
+            }}
+          >
+            ▼
+          </button>
+        </div>
         </div>
       ) : page ? (
         <div className="cv-row">

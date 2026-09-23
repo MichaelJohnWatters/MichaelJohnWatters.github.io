@@ -35,7 +35,7 @@ export const OS_WINDOWS = [
     defH: 240,
     body: [
       'Napier AI — Scala Engineer · Jan 2025–present, Belfast. Regulatory reporting end-to-end to government authorities. Scala, Go, Kubernetes, GitHub Actions, Kafka, PostgreSQL, Elasticsearch.',
-      'Magnite — Software Engineer II · 2022–2025, Belfast. Large-scale batch pipelines onboarding advertising data; audience building via identity graphs. PySpark, Databricks, Snowflake, Go APIs, AWS.',
+      'Magnite — Software Engineer II · 2022–2024, Belfast. Large-scale batch pipelines onboarding advertising data; audience building via identity graphs. PySpark, Databricks, Snowflake, Go APIs, AWS.',
       'SpotX (acquired by Magnite) — SE I / Trainee · 2019–2022, Belfast. Custom reporting in functional Scala for billing + fee contracts; Scala query API for Apache Druid.',
     ],
   },

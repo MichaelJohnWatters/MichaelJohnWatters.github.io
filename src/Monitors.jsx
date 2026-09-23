@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { Html, useScroll } from '@react-three/drei'
 import * as THREE from 'three'
-import { MONITORS } from './layout'
+import { MONITORS, CAVE } from './layout'
 import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
@@ -344,6 +344,11 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   const eraserRef = useRef()
   const onToggleLightsRef = useRef(onToggleLights)
   onToggleLightsRef.current = onToggleLights
+  // Man-cave TV: click to power on/off — live stream on the glass when on.
+  const [tvOn, setTvOn] = useState(false)
+  const tvRef = useRef()
+  const tvOnRef = useRef(false)
+  tvOnRef.current = tvOn
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -445,6 +450,14 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           resetTasks() // wipe the whiteboard
           return
         }
+        if (tvRef.current && raycaster.intersectObject(tvRef.current, false).length) {
+          clickDown()
+          setTvOn((v) => {
+            if (!v) complete('tv') // whiteboard task
+            return !v
+          })
+          return
+        }
       }
 
       // Stepped away: no OS clicks (switches above still work).
@@ -526,6 +539,8 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       label = 'flip the lights'
     } else if (eraserRef.current && r.rc.intersectObject(eraserRef.current, false).length) {
       label = 'wipe the whiteboard'
+    } else if (tvRef.current && r.rc.intersectObject(tvRef.current, false).length) {
+      label = tvOnRef.current ? 'turn the TV off' : 'turn the TV on'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
     const el = document.getElementById('aim-label')
@@ -576,6 +591,33 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
       <Whiteboard portal={portal} eraserRef={eraserRef} />
+      {/* Man-cave TV screen. Off: dark glow. On: depth-punched glass with a
+          live lofi stream (YouTube allows embedding) — muted, ambience only.
+          The plane is also the click/aim target for the power toggle. */}
+      <group position={[CAVE.couch.x, 1.9, -2.92]}>
+        <mesh ref={tvRef}>
+          <planeGeometry args={[1.2, 0.65]} />
+          {tvOn ? (
+            <meshStandardMaterial key="on" colorWrite={false} />
+          ) : (
+            <meshStandardMaterial key="off" color="#0a1420" emissive="#1e3a5a" emissiveIntensity={0.7} />
+          )}
+        </mesh>
+        {tvOn && (
+          <Html {...common} distanceFactor={(400 * 1.2) / 480} position={[0, 0, 0.004]}>
+            <div className="cave-tv">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/jfKfPfyJRdk?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1"
+                title="cave tv"
+                width={480}
+                height={260}
+                frameBorder="0"
+                allow="autoplay; encrypted-media"
+              />
+            </div>
+          </Html>
+        )}
+      </group>
       {/* Post-it stuck on the primary monitor's bezel corner — teaches the
           lean-in controls. Needs its own depth-punch plane (blending mode). */}
       <group

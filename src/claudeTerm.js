@@ -39,7 +39,7 @@ const RULES = [
     match: /experience|job|career/,
     reply: [
       'Napier AI (Scala Engineer, 2025–now) ← Magnite (SE II,',
-      '2022–25, data pipelines) ← SpotX (Scala reporting, 2019–22).',
+      '2022–24, data pipelines) ← SpotX (Scala reporting, 2019–22).',
       'Full detail in experience/ or type `cv` for the PDF.',
     ],
   },

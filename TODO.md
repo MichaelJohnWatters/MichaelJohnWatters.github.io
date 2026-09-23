@@ -61,6 +61,9 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       .glbs piece by piece, TV playing something
 
 ## 🔊 Tier 3 — ambience & polish
+- [ ] **Cave TV plays a live YouTube stream** (youtube embeds allow iframing —
+      lofi radio / motorsport; click the TV to power on, muted by default;
+      keep it off-by-default for perf)
 - [ ] Bloom/vignette post-processing (verify blending-canvas interplay)
 - [ ] More sound: engine, joystick footstep pacing, neon buzz
 - [ ] Loading screen / intro state

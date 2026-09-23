@@ -250,7 +250,12 @@ export default function App() {
             </div>
           )}
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
-          {isFp && <div className="crosshair" />}
+          {isFp && (
+            <>
+              <div className="crosshair" />
+              <div id="aim-label" className="aim-label" />
+            </>
+          )}
         </>
       )}
     </>

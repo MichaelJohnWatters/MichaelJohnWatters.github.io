@@ -547,11 +547,25 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     }
 
     moveFnRef.current = move
-    window.addEventListener('pointermove', move)
+    // Coalesce pointermove (fires up to ~120Hz on gaming mice) to one
+    // raycast + DOM hit-test per FRAME — the eye can't see more anyway.
+    let pendingMove = null
+    const onMove = (e) => {
+      if (!pendingMove) {
+        requestAnimationFrame(() => {
+          const ev = pendingMove
+          pendingMove = null
+          if (ev) move(ev)
+        })
+      }
+      pendingMove = e
+    }
+    window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointerup', up)
     return () => {
-      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointermove', onMove)
+      pendingMove = null
       window.removeEventListener('pointerdown', down)
       window.removeEventListener('pointerup', up)
       document.documentElement.classList.remove('on-glass')
@@ -568,16 +582,20 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     moveFnRef.current?.({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 })
     const r = aimRay.current
     r.rc.setFromCamera(r.v.set(0, 0), camera)
-    let label = ''
+    // ONE raycast against every interactive (nearest hit wins) instead of
+    // four sequential passes.
     const sws = (switchesArrRef.current?.current || []).filter(Boolean)
-    if (sws.length && r.rc.intersectObjects(sws, false).length) {
-      label = 'flip the lights'
-    } else if (eraserRef.current && r.rc.intersectObject(eraserRef.current, false).length) {
-      label = 'wipe the whiteboard'
-    } else if (tvRef.current && r.rc.intersectObject(tvRef.current, false).length) {
-      label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
-    } else if (phoneMeshRef.current && r.rc.intersectObject(phoneMeshRef.current, false).length) {
-      label = 'pick up the phone'
+    const targets = [...sws]
+    if (eraserRef.current) targets.push(eraserRef.current)
+    if (tvRef.current) targets.push(tvRef.current)
+    if (phoneMeshRef.current) targets.push(phoneMeshRef.current)
+    const hit = targets.length ? r.rc.intersectObjects(targets, false)[0]?.object : null
+    let label = ''
+    if (hit) {
+      if (hit === eraserRef.current) label = 'wipe the whiteboard'
+      else if (hit === tvRef.current) label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
+      else if (hit === phoneMeshRef.current) label = 'pick up the phone'
+      else label = 'flip the lights'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
     const el = document.getElementById('aim-label')
@@ -672,15 +690,15 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           )}
         </mesh>
         {tv && (
-          <Html {...common} distanceFactor={(400 * 2.1) / 480} position={[0, 0, 0.004]}>
+          <Html {...common} distanceFactor={(400 * 2.1) / 400} position={[0, 0, 0.004]}>
             <div className="cave-tv">
               {/* sound on: casting was a click, so the allow=autoplay iframe
                   may start unmuted (site 🔇 forces mute) */}
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
                 title="cave tv"
-                width={480}
-                height={270}
+                width={400}
+                height={225}
                 frameBorder="0"
                 allow="autoplay; encrypted-media"
               />

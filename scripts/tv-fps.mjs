@@ -1,0 +1,37 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--window-size=1280,800', '--enable-gpu', '--autoplay-policy=no-user-gesture-required'] })
+const page = await b.newPage()
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise((r) => setTimeout(r, 3500))
+const fps = () => page.evaluate(() => new Promise((res) => {
+  let n = 0
+  const t0 = performance.now()
+  const tick = () => (performance.now() - t0 < 2500 ? (n++, requestAnimationFrame(tick)) : res(Math.round(n / 2.5)))
+  requestAnimationFrame(tick)
+}))
+await page.evaluate(() => {
+  const el = [...document.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto')
+  el.scrollTop = el.scrollHeight
+})
+await new Promise((r) => setTimeout(r, 2500))
+await page.evaluate(() => document.querySelector('.ctl-step')?.click())
+await new Promise((r) => setTimeout(r, 700))
+// walk to couch and sit (faces the TV)
+await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 1000)); await page.keyboard.up('KeyW')
+await page.keyboard.down('KeyD'); await new Promise((r) => setTimeout(r, 1500)); await page.keyboard.up('KeyD')
+await page.keyboard.press('KeyE')
+await new Promise((r) => setTimeout(r, 600))
+console.log('sofa, TV OFF fps:', await fps())
+// cast: phone → 1234 → first chip
+await page.keyboard.press('KeyP')
+await new Promise((r) => setTimeout(r, 600))
+for (const k of '1234') await page.keyboard.press(k)
+await new Promise((r) => setTimeout(r, 700))
+await page.evaluate(() => [...document.querySelectorAll('.yt-chips button')][0]?.click())
+await new Promise((r) => setTimeout(r, 7000))
+await page.evaluate(() => document.querySelector('.phone-close')?.click())
+await new Promise((r) => setTimeout(r, 800))
+console.log('tv iframe:', await page.evaluate(() => !!document.querySelector('.cave-tv iframe')))
+console.log('sofa, TV CASTING fps:', await fps())
+await b.close()

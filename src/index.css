@@ -231,10 +231,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.3rem 0.5rem;
-  background: linear-gradient(90deg, #3a3f6b, #6b70a3);
-  color: #fff;
+  background: linear-gradient(90deg, #55565e, #75767e); /* unfocused grey */
+  color: #e8e8e8;
   font-size: 0.72rem;
   font-weight: 700;
+}
+.win-active .win-title {
+  background: linear-gradient(90deg, #3a3f6b, #6b70a3); /* focused blue */
+  color: #fff;
 }
 .win-btns {
   display: flex;
@@ -274,6 +278,54 @@ body {
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
 }
 
+/* Applications menu (opens from the taskbar 🐧 button) */
+.apps-menu {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  background: #c3c7cb;
+  border: 2px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+.apps-item {
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.7rem;
+  color: #111;
+  cursor: inherit;
+}
+.apps-item.ui-hover {
+  background: #3a3f6b;
+  color: #fff;
+  filter: none;
+}
+
+/* Hover feedback driven by the raycast bridge */
+.ui-hover {
+  filter: brightness(1.2);
+}
+
+/* Terminal focus state */
+.term-unfocused {
+  filter: brightness(0.78);
+}
+.term-unfocused .term-caret {
+  animation: none;
+  opacity: 0;
+}
+.term-body.status {
+  padding: 10px 14px;
+  font-size: 12px;
+}
+
 /* Bottom taskbar / panel */
 .taskbar {
   display: flex;
@@ -301,6 +353,10 @@ body {
   background: #b3b7bb;
   border: 2px solid;
   border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70; /* pressed-in */
+  font-family: inherit;
+  font-size: 0.7rem;
+  color: #111;
+  cursor: inherit;
 }
 .clock {
   margin-left: auto;
@@ -340,6 +396,10 @@ body {
 .ctl-back {
   top: 2rem;
   left: 2rem;
+}
+.ctl-view {
+  top: 2rem;
+  right: 2rem;
 }
 .explore-hint {
   position: fixed;

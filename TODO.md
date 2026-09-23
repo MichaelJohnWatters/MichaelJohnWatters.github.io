@@ -29,9 +29,13 @@ Two modes:
 - [x] Two car bays: a complete (drivable-later) car + an MX-5 in pieces
 - [ ] Tune spiral: number of turns, speed, start position
 - [ ] Tune seated distance / monitor framing
-- [ ] Lock the retro-OS era/look (CDE vs early GNOME/KDE vs green-phosphor terminal)
+- [x] Lock the retro-OS era/look (CDE desktop + claude/status terminal, night theme)
+- [x] Desktop icons open windows: open/focus/close, cascade, taskbar, 🐧 menu,
+      live clock, terminal tab switching — all via the raycast click bridge
+- [x] Window FOCUS system: click to select, typing routes to focused surface
+      (terminal); focused window gets the blue title bar
+- [x] First/third person toggle in explore mode (V key or button; mouse-look in FP)
 - [ ] Make the OS windows show **real content** (see below)
-- [ ] Make desktop icons open their window (click → window content)
 
 ## 🎯 Content (fill the computer with real info)
 - [ ] About — who you are, what you build, what you want

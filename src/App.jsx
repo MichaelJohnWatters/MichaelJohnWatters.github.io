@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { ScrollControls } from '@react-three/drei'
 import Room from './Room'
@@ -6,7 +6,7 @@ import CameraRig from './CameraRig'
 import Player from './Player'
 import { clickDown } from './sfx'
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -26,7 +26,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit }) {
       {/* No Environment IBL — it floods the night scene with daylight. */}
       <Room mode={mode} />
       {mode === 'desk' && <CameraRig hintRef={hintRef} onSeated={onSeated} />}
-      {mode === 'explore' && <Player onNearSeat={onNearSeat} onSit={onSit} />}
+      {mode === 'explore' && <Player onNearSeat={onNearSeat} onSit={onSit} view={view} />}
     </>
   )
 }
@@ -36,6 +36,17 @@ export default function App() {
   const [mode, setMode] = useState('desk') // 'desk' | 'explore'
   const [seated, setSeated] = useState(false)
   const [nearSeat, setNearSeat] = useState(false)
+  const [view, setView] = useState('third') // 'third' | 'first' (explore camera)
+
+  // V toggles first/third person while exploring.
+  useEffect(() => {
+    if (mode !== 'explore') return
+    const onKey = (e) => {
+      if (e.code === 'KeyV') setView((v) => (v === 'third' ? 'first' : 'third'))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode])
 
   const sitDown = () => {
     clickDown()
@@ -59,6 +70,7 @@ export default function App() {
             onSeated={setSeated}
             onNearSeat={setNearSeat}
             onSit={sitDown}
+            view={view}
           />
         </ScrollControls>
       </Canvas>
@@ -88,12 +100,20 @@ export default function App() {
           <button className="ctl ctl-back" onClick={sitDown}>
             ↩ back to desk
           </button>
+          <button
+            className="ctl ctl-view"
+            onClick={() => setView((v) => (v === 'third' ? 'first' : 'third'))}
+          >
+            👁 {view === 'third' ? 'first person' : 'third person'} (V)
+          </button>
           {nearSeat ? (
             <button className="ctl ctl-sit" onClick={sitDown}>
               ⏎ press E to sit back down
             </button>
           ) : (
-            <div className="explore-hint">WASD / arrow keys to walk around the garage</div>
+            <div className="explore-hint">
+              WASD to walk · V toggles view{view === 'first' ? ' · mouse to look' : ''}
+            </div>
           )}
         </>
       )}

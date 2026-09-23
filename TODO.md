@@ -42,9 +42,14 @@ meta; redacted 2-page CV pipeline (private full version in ~/Downloads).
 readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
 
 ## 🔜 Immediate
-- [ ] **Deploy the search worker** (user action: `npx wrangler login`, then
-      deploy + set SEARCH_PROXY in src/content.js) → real web-wide Noogle
-      results instead of the Wikipedia fallback
+- [x] **Search worker DEPLOYED** — live at
+      `https://noogle-search.michaeljohnwatters.workers.dev` (account
+      michaeldoescodeandstuff@gmail.com, free tier). Redeploy after edits:
+      `npx wrangler deploy worker/search-worker.js --name noogle-search
+      --compatibility-date 2025-01-01`. Noogle now returns real web results
+      in-world (Bing w/ junk-retry; empty → client Wikipedia fallback; DDG
+      unusable — 522s all Cloudflare Worker requests). `?debug=1` shows
+      per-attempt diagnostics.
 - [ ] Perf watch: if still laggy → shared geometries/materials, shadow map
       tuning, fewer Html surfaces on low-end
 - [ ] Fix Magnite dates in the CV source (Dec 2025 overlaps Napier Jan 2025)

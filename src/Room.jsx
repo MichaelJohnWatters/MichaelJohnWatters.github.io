@@ -393,7 +393,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false }) {
   const switchesRef = useRef([])
   return (
     <group>
@@ -565,7 +565,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         </mesh>
       ))}
       {/* the phone prop itself lives in Monitors (it has a live lock screen) */}
-      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

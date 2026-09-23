@@ -21,7 +21,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, sofa, onSofaToggle, onNearSofa }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -44,7 +44,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -97,6 +97,9 @@ export default function App() {
   useEffect(() => {
     window.__phoneOpen = phone
     if (phone && document.pointerLockElement) document.exitPointerLock()
+    // the input can unmount while focused — its onBlur never fires, so the
+    // typing flag would stay stuck and eat the P/L keys
+    if (!phone) window.__termTyping = false
     return () => {
       window.__phoneOpen = false
     }
@@ -212,9 +215,28 @@ export default function App() {
     return () => document.documentElement.classList.remove('fp-cursor')
   }, [isFp])
 
+  // At the desk the native cursor never shows either: off the screens it's
+  // the same dot as everywhere else (on-glass, the retro cursor takes over).
+  useEffect(() => {
+    if (mode !== 'desk' || IS_TOUCH) return
+    document.documentElement.classList.add('desk-cursor')
+    const mm = (e) => {
+      const d = document.getElementById('desk-dot')
+      if (d) {
+        d.style.left = e.clientX + 'px'
+        d.style.top = e.clientY + 'px'
+      }
+    }
+    window.addEventListener('pointermove', mm)
+    return () => {
+      document.documentElement.classList.remove('desk-cursor')
+      window.removeEventListener('pointermove', mm)
+    }
+  }, [mode])
+
   return (
     <>
-      <Canvas dpr={[1, 1.35]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
+      <Canvas dpr={[1, 1.25]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene
@@ -233,6 +255,7 @@ export default function App() {
             tvMuted={muted}
             onTvToggle={tvToggle}
             onPhone={() => setPhone(true)}
+            phoneHeld={phone}
             sofa={sofa}
             onSofaToggle={sofaToggle}
             onNearSofa={setNearSofa}
@@ -255,6 +278,7 @@ export default function App() {
       <button className="ctl ctl-lights" onClick={toggleLights} title="toggle lights (L)">
         {lights ? '💡' : '🌙'}
       </button>
+      {mode === 'desk' && !IS_TOUCH && <div id="desk-dot" className="crosshair desk-dot" />}
       {mode === 'desk' && (
         <>
           <div className="title">

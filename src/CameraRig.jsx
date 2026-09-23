@@ -36,6 +36,21 @@ const zoomPose = (m, d) => ({
 const ZOOM_DIST = { A: 0.57, B: 0.53 }
 const BASE_ASPECT = 1.6
 
+// Post-it lean-ins: world centre of each note (bezel-corner local offsets
+// rotated by its monitor's angle), camera hovers just off the paper.
+const postitPose = (m, lx, y) => ({
+  x: m.x + Math.cos(m.rotY) * lx,
+  y,
+  z: m.z - Math.sin(m.rotY) * lx,
+  rotY: m.rotY,
+})
+const POSTITS = {
+  P1: postitPose(MONITORS.primary, 0.31, 0.9),
+  P2: postitPose(MONITORS.primary, -0.31, 0.9),
+  P3: postitPose(MONITORS.secondary, 0.28, 0.9),
+}
+const POSTIT_DIST = 0.24
+
 const smoothstep = (x) => x * x * (3 - 2 * x)
 const lerp = THREE.MathUtils.lerp
 
@@ -71,16 +86,15 @@ export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
     let lookY = lerp(LOOK_START[1], LOOK_END[1], u)
     let lookZ = lerp(LOOK_START[2], LOOK_END[2], u)
 
-    // Leaned-in on a screen: override the seated pose. Scrolling back out
-    // cancels the zoom so the dive stays in charge.
-    if (zoom && ZOOM_DIST[zoom]) {
+    // Leaned-in on a screen or post-it: override the seated pose. Scrolling
+    // back out cancels the zoom so the dive stays in charge.
+    if (zoom && (ZOOM_DIST[zoom] || POSTITS[zoom])) {
       if (t < 0.85) {
         onZoomExit?.()
       } else {
-        const zp = zoomPose(
-          zoom === 'A' ? MONITORS.primary : MONITORS.secondary,
-          ZOOM_DIST[zoom] * wide,
-        )
+        const zp = ZOOM_DIST[zoom]
+          ? zoomPose(zoom === 'A' ? MONITORS.primary : MONITORS.secondary, ZOOM_DIST[zoom] * wide)
+          : zoomPose(POSTITS[zoom], POSTIT_DIST * wide)
         px = zp.pos[0]
         py = zp.pos[1]
         pz = zp.pos[2]

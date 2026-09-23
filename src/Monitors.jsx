@@ -318,7 +318,7 @@ function LockClock() {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -371,6 +371,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   const onPhoneRef = useRef(onPhone)
   onPhoneRef.current = onPhone
   const phoneMeshRef = useRef() // the prop on the couch armrest
+  const postitRefs = useRef([]) // punch planes double as lean-in click targets
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -485,6 +486,17 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
 
       // Stepped away: no OS clicks (switches above still work).
       if (modeRef.current !== 'desk') return
+
+      // Post-its: click to lean in and read (click again / Esc backs out).
+      {
+        const pr = postitRefs.current.filter(Boolean)
+        const hit = pr.length ? raycaster.intersectObjects(pr, false)[0] : null
+        if (hit) {
+          clickDown()
+          onZoomRef.current?.('P' + (postitRefs.current.indexOf(hit.object) + 1))
+          return
+        }
+      }
 
       const p = posRef.current
       if (!p.screen) return
@@ -617,7 +629,9 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       {hardware(MONITORS.secondary, glassB)}
       <Whiteboard portal={portal} eraserRef={eraserRef} />
       {/* The cast-remote phone on the couch armrest — always-on lock screen
-          (live clock) rendered with the same blending-Html trick. */}
+          (live clock). Hidden while "held" (the DOM overlay is up) so it
+          really feels picked up. */}
+      {!phoneHeld && (
       <group position={[CAVE.couch.x - 0.85, 0.69, CAVE.couch.z]} rotation-y={-0.5}>
         <mesh ref={phoneMeshRef}>
           <boxGeometry args={[0.075, 0.014, 0.15]} />
@@ -626,16 +640,25 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
         <group position={[0, 0.008, 0]} rotation-x={-Math.PI / 2}>
           <mesh>
             <planeGeometry args={[0.062, 0.135]} />
-            <meshStandardMaterial colorWrite={false} />
+            {/* the live lock screen only exists while exploring — from the
+                desk it's a 6cm glow, not worth an Html surface */}
+            {mode === 'explore' ? (
+              <meshStandardMaterial key="punch" colorWrite={false} />
+            ) : (
+              <meshStandardMaterial key="glow" color="#0c1420" emissive="#2a6a8a" emissiveIntensity={1.1} />
+            )}
           </mesh>
-          <Html {...common} distanceFactor={(400 * 0.062) / 62} position={[0, 0, 0.002]}>
-            <div className="phone-lock">
-              <LockClock />
-              <em>tap to cast 📺</em>
-            </div>
-          </Html>
+          {mode === 'explore' && (
+            <Html {...common} distanceFactor={(400 * 0.062) / 62} position={[0, 0, 0.002]}>
+              <div className="phone-lock">
+                <LockClock />
+                <em>tap to pick up 📺</em>
+              </div>
+            </Html>
+          )}
         </group>
       </group>
+      )}
       {/* Man-cave TV screen. Off: dark glow. On: depth-punched glass with a
           live lofi stream (YouTube allows embedding) — muted, ambience only.
           The plane is also the click/aim target for the power toggle. */}
@@ -671,10 +694,17 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
         position={[MONITORS.primary.x, 0, MONITORS.primary.z]}
         rotation-y={MONITORS.primary.rotY}
       >
-        <mesh position={[0.31, 0.9, 0.012]}>
+        <mesh position={[0.31, 0.9, 0.012]} ref={(el) => (postitRefs.current[0] = el)}>
           <planeGeometry args={[0.085, 0.085]} />
-          <meshStandardMaterial colorWrite={false} />
+          {/* away from the desk the DOM is unreadable anyway — a coloured
+              square is free, a transformed Html surface is not */}
+          {mode === 'desk' ? (
+            <meshStandardMaterial key="punch" colorWrite={false} />
+          ) : (
+            <meshStandardMaterial key="paper" color="#f7e96b" />
+          )}
         </mesh>
+        {mode === 'desk' && (
         <Html
           transform
           occlude="blending"
@@ -693,16 +723,22 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
             {IS_TOUCH ? 'double-tap → back' : '3 → sit back'}
           </div>
         </Html>
+        )}
       </group>
       {/* second post-it: the browser click convention */}
       <group
         position={[MONITORS.primary.x, 0, MONITORS.primary.z]}
         rotation-y={MONITORS.primary.rotY}
       >
-        <mesh position={[-0.31, 0.9, 0.012]}>
+        <mesh position={[-0.31, 0.9, 0.012]} ref={(el) => (postitRefs.current[1] = el)}>
           <planeGeometry args={[0.085, 0.085]} />
-          <meshStandardMaterial colorWrite={false} />
+          {mode === 'desk' ? (
+            <meshStandardMaterial key="punch" colorWrite={false} />
+          ) : (
+            <meshStandardMaterial key="paper" color="#b8e6f7" />
+          )}
         </mesh>
+        {mode === 'desk' && (
         <Html
           transform
           occlude="blending"
@@ -721,6 +757,42 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
             → your real browser
           </div>
         </Html>
+        )}
+      </group>
+      {/* third post-it: the phone passcode, stuck on the SECOND monitor —
+          world-class security practice */}
+      <group
+        position={[MONITORS.secondary.x, 0, MONITORS.secondary.z]}
+        rotation-y={MONITORS.secondary.rotY}
+      >
+        <mesh position={[0.28, 0.9, 0.012]} ref={(el) => (postitRefs.current[2] = el)}>
+          <planeGeometry args={[0.085, 0.085]} />
+          {mode === 'desk' ? (
+            <meshStandardMaterial key="punch" colorWrite={false} />
+          ) : (
+            <meshStandardMaterial key="paper" color="#ffb3c8" />
+          )}
+        </mesh>
+        {mode === 'desk' && (
+        <Html
+          transform
+          occlude="blending"
+          portal={portal}
+          distanceFactor={(400 * 0.078) / 120}
+          position={[0.28, 0.9, 0.014]}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="postit postit-code">
+            <b>DON'T FORGET</b>
+            <br />
+            phone code:
+            <br />
+            <b>1 2 3 4</b>
+            <br />
+            (don't tell anyone)
+          </div>
+        </Html>
+        )}
       </group>
       <group
         position={[MONITORS.primary.x, MONITORS.primary.y, MONITORS.primary.z + 0.004]}

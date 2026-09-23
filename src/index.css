@@ -992,6 +992,20 @@ body {
 }
 
 /* Post-it on the monitor bezel (rendered via Html transform) */
+/* Desk mode: native cursor hidden — the crosshair dot follows the mouse
+   everywhere off the screens (the retro Windows cursor owns the glass). */
+html.desk-cursor,
+html.desk-cursor * {
+  cursor: none !important;
+}
+.desk-dot {
+  top: -40px;
+  left: -40px; /* offscreen until the first move */
+}
+html.on-glass .desk-dot {
+  display: none;
+}
+
 /* The cast-remote phone — an iPhone held up from the bottom-right, FPS-prop
    style. The native cursor is hidden; a crosshair-dot follows the mouse. */
 .phone-wrap {
@@ -1036,6 +1050,180 @@ body {
   .phone {
     transform: rotate(-5deg) scale(0.82);
   }
+}
+/* picked up: rises into the hand */
+@keyframes phone-pickup {
+  from {
+    transform: rotate(-14deg) translateY(115%);
+  }
+  to {
+    transform: rotate(-5deg) translateY(0);
+  }
+}
+.phone {
+  animation: phone-pickup 0.38s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+/* wrong passcode */
+@keyframes phone-shake {
+  0%, 100% { transform: rotate(-5deg) translateX(0); }
+  20%, 60% { transform: rotate(-5deg) translateX(-9px); }
+  40%, 80% { transform: rotate(-5deg) translateX(9px); }
+}
+.phone.shake {
+  animation: phone-shake 0.4s;
+}
+
+/* MikeTube — the phone's YouTube-flavoured cast app */
+.yt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 10px;
+}
+.yt-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, -apple-system, 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
+.yt-logo i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 18px;
+  border-radius: 5px;
+  background: #ff0000;
+  color: #fff;
+  font-style: normal;
+  font-size: 9px;
+}
+.yt-live {
+  font-size: 10px;
+  color: #ff4e45;
+}
+.yt-search {
+  border-radius: 18px !important;
+  background: #212121 !important;
+  border-color: #303030 !important;
+  font-family: system-ui, -apple-system, 'Roboto', sans-serif !important;
+}
+.yt-chips {
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.yt-chips::-webkit-scrollbar {
+  display: none;
+}
+.yt-chips button {
+  flex: none !important;
+  border-radius: 14px !important;
+  background: #272727 !important;
+  border-color: transparent !important;
+  color: #f1f1f1 !important;
+  font-family: system-ui, -apple-system, 'Roboto', sans-serif !important;
+  padding: 6px 11px !important;
+  white-space: nowrap;
+}
+.yt-chips button:hover {
+  background: #3f3f3f !important;
+}
+.yt-item {
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 0 10px !important;
+  font-family: system-ui, -apple-system, 'Roboto', sans-serif !important;
+}
+.yt-thumb {
+  width: 100% !important;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px !important;
+}
+.yt-item.casting .yt-thumb {
+  outline: 2px solid #ff0000;
+}
+.yt-title {
+  font-size: 12px !important;
+  line-height: 1.35;
+  color: #f1f1f1;
+  -webkit-line-clamp: 2 !important;
+}
+.yt-now {
+  font-size: 10px;
+  color: #ff4e45;
+}
+
+/* lock screen */
+.phone-lockscreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.phone-lock-clock {
+  font-size: 44px;
+  font-weight: 200;
+  color: #fff;
+}
+.phone-lock-sub {
+  font-size: 12px;
+  color: #aab0c0;
+}
+.phone-dots {
+  display: flex;
+  gap: 14px;
+  margin: 8px 0 4px;
+}
+.phone-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid #8a8a96;
+}
+.phone-dots span.full {
+  background: #fff;
+  border-color: #fff;
+}
+.phone-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 58px);
+  gap: 10px;
+  justify-content: center;
+}
+.phone-pad button {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 20px;
+}
+.phone-pad button:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.phone-lock-hint {
+  font-size: 9px;
+  color: #6a7086;
+  margin-top: 6px;
+}
+.postit-code {
+  background: #ffb3c8; /* pink variant — the classic password post-it */
+  color: #4a1e2c;
+  transform: rotate(6deg);
 }
 .phone-status {
   display: flex;

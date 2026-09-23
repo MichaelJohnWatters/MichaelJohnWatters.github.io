@@ -57,14 +57,14 @@ export default function App() {
   useEffect(() => {
     if (mode !== 'desk') return
     const onKey = (e) => {
-      if (e.key === 'Escape' || e.key === '0') {
+      if (e.key === 'Escape') {
         setZoomScreen(null)
         return
       }
-      if ((e.key === '1' || e.key === '2') && !window.__termTyping) {
+      if ((e.key === '1' || e.key === '2' || e.key === '3' || e.key === '0') && !window.__termTyping) {
         e.preventDefault()
         e.stopPropagation()
-        setZoomScreen(e.key === '1' ? 'A' : 'B')
+        setZoomScreen(e.key === '1' ? 'A' : e.key === '2' ? 'B' : null) // 3/0 = sit back
       }
     }
     window.addEventListener('keydown', onKey, true)
@@ -122,7 +122,7 @@ export default function App() {
               ⎋ step away from desk
             </button>
           )}
-          {zoomScreen && <div className="zoom-hint">esc · scroll · double-click → sit back</div>}
+          {zoomScreen && <div className="zoom-hint">3 · esc · scroll · double-click → sit back</div>}
         </>
       )}
 

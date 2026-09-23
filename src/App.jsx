@@ -4,9 +4,11 @@ import { ScrollControls } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
+import Joystick from './Joystick'
 import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
+import { IS_TOUCH } from './touch'
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -28,13 +30,16 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
-      {mode === 'explore' && <Player onNearSeat={onNearSeat} onSit={onSit} view={view} />}
+      {mode === 'explore' && (
+        <Player onNearSeat={onNearSeat} onSit={onSit} view={view} joyRef={joyRef} />
+      )}
     </>
   )
 }
 
 export default function App() {
   const hintRef = useRef()
+  const joyRef = useRef({ x: 0, y: 0 }) // virtual joystick vector (touch)
   const [mode, setMode] = useState('desk') // 'desk' | 'explore'
   const [seated, setSeated] = useState(false)
   const [nearSeat, setNearSeat] = useState(false)
@@ -97,7 +102,8 @@ export default function App() {
     clickDown()
     setSeated(false)
     setZoomScreen(null)
-    setView('first') // stepping away always starts in first person
+    // Desktop: first person. Touch: third person (auto-cam, no mouse-look).
+    setView(IS_TOUCH ? 'third' : 'first')
     setMode('explore')
   }
   // Double-clicking a screen's background (bridged from Monitors) toggles the lean-in.
@@ -105,7 +111,7 @@ export default function App() {
 
   return (
     <>
-      <Canvas shadows camera={{ position: [5.63, 4.0, 0.42], fov: 45 }}>
+      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [5.63, 4.0, 0.42], fov: 45 }}>
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene
@@ -118,6 +124,7 @@ export default function App() {
             zoom={zoomScreen}
             onZoom={zoomToggle}
             onZoomExit={() => setZoomScreen(null)}
+            joyRef={joyRef}
           />
         </ScrollControls>
       </Canvas>
@@ -159,13 +166,16 @@ export default function App() {
           </button>
           {nearSeat ? (
             <button className="ctl ctl-sit" onClick={sitDown}>
-              ⏎ press E to sit back down
+              {IS_TOUCH ? '⏎ tap to sit back down' : '⏎ press E to sit back down'}
             </button>
           ) : (
             <div className="explore-hint">
-              WASD to walk · V toggles view{view === 'first' ? ' · mouse to look' : ''}
+              {IS_TOUCH
+                ? 'drag the stick to walk'
+                : `WASD to walk · V toggles view${view === 'first' ? ' · mouse to look' : ''}`}
             </div>
           )}
+          {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>
       )}
     </>

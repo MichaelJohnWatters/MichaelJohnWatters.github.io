@@ -7,6 +7,7 @@ import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
 import { clickDown, clickUp, keyClack } from './sfx'
+import { IS_TOUCH } from './touch'
 
 // Both monitors render their UI onto the glass permanently via drei
 // <Html transform occlude="blending">. One shared retro cursor travels between
@@ -94,32 +95,39 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   ])
   const [input, setInput] = useState('')
   const inputRef = useRef('') // authoritative value; state is just for render
+  const hidRef = useRef() // hidden <input> that summons the mobile keyboard
+
+  const submit = () => {
+    const q = inputRef.current.trim()
+    inputRef.current = ''
+    setInput('')
+    if (hidRef.current) hidRef.current.value = ''
+    window.__termTyping = false
+    if (!q) return
+    setTab('claude')
+    if (/^(cv|download( cv)?|resume)$/i.test(q)) {
+      downloadCV()
+      setHistory((h) =>
+        [...h, { who: 'user', text: q }, { who: 'claude', text: 'downloading Michael Watters — CV.pdf ⬇' }].slice(-40),
+      )
+      return
+    }
+    const r = respond(q)
+    setHistory((h) =>
+      r === CLEAR
+        ? []
+        : [...h, { who: 'user', text: q }, ...r.map((t) => ({ who: 'claude', text: t }))].slice(-40),
+    )
+  }
 
   useEffect(() => {
     if (!active) return
     const onKey = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      // The hidden mobile input handles its own keystrokes.
+      if (document.activeElement === hidRef.current) return
       if (e.key === 'Enter') {
-        const q = inputRef.current.trim()
-        inputRef.current = ''
-        setInput('')
-        window.__termTyping = false
-        if (!q) return
-        if (/^(cv|download( cv)?|resume)$/i.test(q)) {
-          downloadCV()
-          setHistory((h) =>
-            [...h, { who: 'user', text: q }, { who: 'claude', text: 'downloading Michael Watters — CV.pdf ⬇' }].slice(-40),
-          )
-          setTab('claude')
-          e.preventDefault()
-          return
-        }
-        const r = respond(q)
-        setHistory((h) =>
-          r === CLEAR
-            ? []
-            : [...h, { who: 'user', text: q }, ...r.map((t) => ({ who: 'claude', text: t }))].slice(-40),
-        )
+        submit()
       } else if (e.key === 'Backspace') {
         inputRef.current = inputRef.current.slice(0, -1)
         setInput(inputRef.current)
@@ -149,7 +157,11 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
       className={`os-screen term${focused ? '' : ' term-unfocused'}`}
       style={{ width: mon.pxW, height: mon.pxH }}
       data-click
-      onClick={onFocusClick}
+      onClick={() => {
+        onFocusClick()
+        // Touch devices: focusing the hidden input summons the keyboard.
+        if (IS_TOUCH) hidRef.current?.focus()
+      }}
     >
       <div className="term-tabs">
         <span
@@ -169,6 +181,22 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
         <span className="term-tab-fill" />
       </div>
 
+      {/* invisible input: receives mobile keyboard text, mirrors into the terminal */}
+      <input
+        ref={hidRef}
+        className="hid-input"
+        autoCapitalize="none"
+        autoCorrect="off"
+        onInput={(e) => {
+          inputRef.current = e.target.value.slice(0, 44)
+          setInput(inputRef.current)
+          window.__termTyping = inputRef.current.length > 0
+          keyClack()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submit()
+        }}
+      />
       {tab === 'claude' ? (
         <div className="term-body claude">
           <div className="term-line">
@@ -232,6 +260,13 @@ export default function Monitors({ mode = 'desk', onZoom }) {
   useEffect(() => {
     scrollState.el?.classList.add('no-scrollbar')
   }, [scrollState])
+
+  // In explore mode the scroller must not eat touch drags (walk/look).
+  useEffect(() => {
+    const el = scrollState.el
+    if (!el) return
+    el.style.overflowY = mode === 'desk' ? 'auto' : 'hidden'
+  }, [mode, scrollState])
 
   // Cursor + click bridge via OUR OWN raycast (R3F mesh events silently die in
   // the ScrollControls + blending-occlusion setup): window pointermove → ray →
@@ -304,7 +339,10 @@ export default function Monitors({ mode = 'desk', onZoom }) {
       }
     }
 
-    const down = () => {
+    const down = (e) => {
+      // Refresh the hit from THIS event's coordinates — on touch there's no
+      // hover history, the tap itself carries the position.
+      move(e)
       const p = posRef.current
       if (!p.screen) return
       clickDown()
@@ -320,7 +358,7 @@ export default function Monitors({ mode = 'desk', onZoom }) {
         el.classList.contains('term')
       const now = performance.now()
       const last = lastDownRef.current
-      if (isBg && last.bg && last.screen === p.screen && now - last.t < 350) {
+      if (isBg && last.bg && last.screen === p.screen && now - last.t < 450) {
         lastDownRef.current = { screen: null, t: 0, bg: false }
         onZoomRef.current?.(p.screen)
         return
@@ -413,11 +451,11 @@ export default function Monitors({ mode = 'desk', onZoom }) {
           <div className="postit">
             <b>lean in:</b>
             <br />
-            dbl-click a screen
+            {IS_TOUCH ? 'double-tap a screen' : 'dbl-click a screen'}
             <br />
-            or press 1 / 2
+            {IS_TOUCH ? 'scroll down/up' : 'or press 1 / 2'}
             <br />
-            3 → sit back
+            {IS_TOUCH ? 'double-tap → back' : '3 → sit back'}
           </div>
         </Html>
       </group>

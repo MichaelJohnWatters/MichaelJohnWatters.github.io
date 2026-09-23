@@ -75,8 +75,14 @@ export const OS_WINDOWS = [
   },
 ]
 
+// Optional web-search proxy (Cloudflare Worker — see worker/README.md).
+// When set, Noogle searches the REAL web through it; empty string falls
+// back to Wikipedia's free CORS API.
+export const SEARCH_PROXY = ''
+
 // Trigger a browser download of the rendered PDF.
 export function downloadCV() {
+  import('./tasks').then((m) => m.complete?.('cv')).catch(() => {})
   const a = document.createElement('a')
   a.href = 'cv/Michael-Watters-CV.pdf'
   a.download = 'Michael Watters - CV.pdf'

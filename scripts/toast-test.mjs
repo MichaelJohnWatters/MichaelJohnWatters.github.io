@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--window-size=1280,800'] })
+const page = await b.newPage()
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise((r) => setTimeout(r, 3500))
+await page.keyboard.press('KeyL')
+await new Promise((r) => setTimeout(r, 300))
+console.log('toast:', await page.evaluate(() => document.querySelector('.toast')?.textContent))
+await b.close()

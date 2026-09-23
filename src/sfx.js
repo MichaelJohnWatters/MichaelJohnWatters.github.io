@@ -69,6 +69,28 @@ export function footstep() {
   tick(stepFlip ? 240 : 210, 0.35, 0.055, 'lowpass')
 }
 
+// Cheerful two-tone ding for completing a whiteboard task.
+export function taskDing() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  ;[
+    [660, 0],
+    [990, 0.09],
+  ].forEach(([f, d]) => {
+    const o = ac.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = f
+    const g = ac.createGain()
+    g.gain.setValueAtTime(0.0001, t + d)
+    g.gain.exponentialRampToValueAtTime(0.18, t + d + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.25)
+    o.connect(g)
+    g.connect(master)
+    o.start(t + d)
+    o.stop(t + d + 0.3)
+  })
+}
+
 // Night-garage room tone: quiet brown-noise air + a faint mains hum.
 // Starts once (first user gesture) and loops forever; mute kills it.
 export function startRoomTone() {

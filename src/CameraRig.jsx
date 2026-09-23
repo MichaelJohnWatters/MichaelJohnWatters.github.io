@@ -30,10 +30,10 @@ const zoomPose = (m, d) => ({
   pos: [m.x + Math.sin(m.rotY) * d, m.y, m.z + Math.cos(m.rotY) * d],
   look: [m.x, m.y, m.z],
 })
-const ZOOMS = {
-  A: zoomPose(MONITORS.primary, 0.57),
-  B: zoomPose(MONITORS.secondary, 0.53),
-}
+// Base distances tuned for a ~1.6 viewport aspect; scaled up for narrower
+// windows so screens always FIT horizontally (vfov is fixed, hfov shrinks).
+const ZOOM_DIST = { A: 0.57, B: 0.53 }
+const BASE_ASPECT = 1.6
 
 const smoothstep = (x) => x * x * (3 - 2 * x)
 const lerp = THREE.MathUtils.lerp
@@ -44,8 +44,11 @@ const tmpLook = new THREE.Vector3()
 export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
   const scroll = useScroll()
   const { camera } = useThree()
+  const size = useThree((s) => s.size)
   const smoothLook = useRef(new THREE.Vector3(...LOOK_START))
   const wasSeated = useRef(false)
+  // Narrow windows: sit further back so the desk fits the shrunken hfov.
+  const wide = Math.max(1, BASE_ASPECT / (size.width / size.height))
 
   // Priority -1: move the camera BEFORE drei <Html> computes its CSS matrix,
   // and refresh matrixWorldInverse ourselves (the renderer only does it at
@@ -55,7 +58,7 @@ export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
     const u = smoothstep(t) // ease in/out along the spiral
 
     const theta = lerp(THETA_START, THETA_END, u)
-    const r = lerp(R_START, R_END, u)
+    const r = lerp(R_START, R_END * wide, u)
     const y = lerp(Y_START, Y_END, u)
     const x = Math.sin(theta) * r
     const z = PIVOT_Z + Math.cos(theta) * r
@@ -69,11 +72,14 @@ export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
 
     // Leaned-in on a screen: override the seated pose. Scrolling back out
     // cancels the zoom so the dive stays in charge.
-    if (zoom && ZOOMS[zoom]) {
+    if (zoom && ZOOM_DIST[zoom]) {
       if (t < 0.85) {
         onZoomExit?.()
       } else {
-        const zp = ZOOMS[zoom]
+        const zp = zoomPose(
+          zoom === 'A' ? MONITORS.primary : MONITORS.secondary,
+          ZOOM_DIST[zoom] * wide,
+        )
         px = zp.pos[0]
         py = zp.pos[1]
         pz = zp.pos[2]
@@ -98,6 +104,7 @@ export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
 
     // Seated = scroll at the end AND the (smoothed) camera actually settled,
     // so the "step away" button can't appear mid-glide.
+    SEAT_POS.set(0, Y_END, PIVOT_Z + R_END * wide)
     const seated = t > 0.92 && camera.position.distanceTo(SEAT_POS) < 0.25
     if (seated !== wasSeated.current) {
       wasSeated.current = seated

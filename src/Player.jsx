@@ -108,7 +108,7 @@ function blocked(x, z) {
 
 // Walkable character, third- OR first-person (view prop). Mounted in
 // "explore" mode. Spawns beside the desk on the open half of the garage.
-export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, view = 'third' }) {
+export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, view = 'third', joyRef }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -122,6 +122,8 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, vie
 
   useEffect(() => {
     const mm = (e) => {
+      // Joystick drags steer the FEET, not the eyes.
+      if (e.target.closest?.('.joystick')) return
       mouse.current.x = e.clientX / window.innerWidth
       mouse.current.y = e.clientY / window.innerHeight
     }
@@ -150,9 +152,11 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, vie
     const pitch = first ? THREE.MathUtils.clamp((0.5 - mouse.current.y) * 1.1, -0.55, 0.55) : 0
 
     // Camera-relative input: W walks away from the camera (or forward in FP),
-    // A/D strafe — stays intuitive as the view turns.
-    const fwdAmt = (k.forward ? 1 : 0) - (k.back ? 1 : 0)
-    const rightAmt = (k.right ? 1 : 0) - (k.left ? 1 : 0)
+    // A/D strafe — stays intuitive as the view turns. The virtual joystick
+    // (touch) adds its analog vector on top.
+    const joy = joyRef?.current || { x: 0, y: 0 }
+    const fwdAmt = (k.forward ? 1 : 0) - (k.back ? 1 : 0) - joy.y
+    const rightAmt = (k.right ? 1 : 0) - (k.left ? 1 : 0) + joy.x
     const fx = Math.sin(camYaw.current)
     const fz = Math.cos(camYaw.current)
     const dx = fwdAmt * fx + rightAmt * -fz

@@ -585,6 +585,45 @@ body {
   padding: 0.5rem 0.7rem;
 }
 
+/* Virtual joystick (touch explore mode) */
+.joystick {
+  position: fixed;
+  z-index: 8388646;
+  left: 1.6rem;
+  bottom: 5.5rem;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background: rgba(120, 190, 180, 0.08);
+  border: 1px solid rgba(120, 190, 180, 0.35);
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+.joy-knob {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(120, 190, 180, 0.3);
+  border: 1px solid rgba(120, 190, 180, 0.6);
+  pointer-events: none;
+}
+
+/* Hidden input that summons the mobile keyboard for the terminal.
+   16px font prevents iOS auto-zoom; kept technically visible for focus. */
+.hid-input {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0.01;
+  border: none;
+  background: none;
+  font-size: 16px;
+  pointer-events: none;
+}
+
 /* drei ScrollControls scroller — hide the scrollbar on classic platforms */
 .no-scrollbar {
   scrollbar-width: none;

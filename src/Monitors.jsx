@@ -300,7 +300,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, onTvToggle, onPhone, phoneRef }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneRef }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -608,7 +608,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           The plane is also the click/aim target for the power toggle. */}
       <group position={[CAVE.couch.x, 1.9, -2.92]}>
         <mesh ref={tvRef}>
-          <planeGeometry args={[1.2, 0.65]} />
+          <planeGeometry args={[1.7, 0.95]} />
           {tv ? (
             <meshStandardMaterial key="on" colorWrite={false} />
           ) : (
@@ -616,13 +616,15 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           )}
         </mesh>
         {tv && (
-          <Html {...common} distanceFactor={(400 * 1.2) / 480} position={[0, 0, 0.004]}>
+          <Html {...common} distanceFactor={(400 * 1.7) / 480} position={[0, 0, 0.004]}>
             <div className="cave-tv">
+              {/* sound on: casting was a click, so the allow=autoplay iframe
+                  may start unmuted (site 🔇 forces mute) */}
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
+                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1`}
                 title="cave tv"
                 width={480}
-                height={260}
+                height={268}
                 frameBorder="0"
                 allow="autoplay; encrypted-media"
               />

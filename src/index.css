@@ -1171,7 +1171,7 @@ body {
 /* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
 .cave-tv {
   width: 480px;
-  height: 260px;
+  height: 268px;
   background: #000;
   overflow: hidden;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GARAGE, COLLIDERS, SEAT, LIFT } from './layout'
+import { GARAGE, COLLIDERS, SEAT, LIFT, SOFA_SEAT } from './layout'
 import { footstep } from './sfx'
 import { complete } from './tasks'
 import { IS_TOUCH } from './touch'
@@ -111,12 +111,16 @@ function blocked(x, z) {
 
 // Walkable character, third- OR first-person (view prop). Mounted in
 // "explore" mode. Spawns beside the desk on the open half of the garage.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view = 'third', joyRef }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view = 'third', joyRef, sofa = false, onSofaToggle, onNearSofa }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
   const { camera } = useThree()
   const near = useRef(false)
+  const nearSofaRef = useRef(false)
+  const sofaRef = useRef(sofa)
+  sofaRef.current = sofa
+  const prevSofa = useRef(false)
   const bob = useRef(0)
   // Camera yaw: in third person it chases the walking heading; in first
   // person the mouse drives it directly (starts facing the garage).
@@ -165,16 +169,35 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     }
   }, [view])
 
-  // E to sit back down at the desk (only when close to the chair).
+  // E sits: at the desk chair when near it, on the sofa when near that
+  // (or stands back up from the sofa).
   useEffect(() => {
     const sit = (e) => {
-      if (e.code === 'KeyE' && near.current && !window.__phoneOpen) onSit?.()
+      if (e.code !== 'KeyE' || window.__phoneOpen) return
+      if (near.current) onSit?.()
+      else if (sofaRef.current || nearSofaRef.current) onSofaToggle?.()
     }
     window.addEventListener('keydown', sit)
     return () => window.removeEventListener('keydown', sit)
-  }, [onSit])
+  }, [onSit, onSofaToggle])
 
   useFrame((_, delta) => {
+    // Sitting on the sofa: parked camera facing the TV, no walking. On
+    // standing, step out in front of the couch facing the room.
+    if (sofaRef.current) {
+      prevSofa.current = true
+      group.current.visible = false
+      camera.position.set(SOFA_SEAT.x, 1.08, SOFA_SEAT.z)
+      camera.lookAt(SOFA_SEAT.x, 1.8, -2.96)
+      camera.updateMatrixWorld()
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
+      return
+    }
+    if (prevSofa.current) {
+      prevSofa.current = false
+      pos.current.set(SOFA_SEAT.x, 0, SOFA_SEAT.standZ)
+      camYaw.current = 0 // stood up facing the room, back to the TV
+    }
     const k = keys.current
     const first = view === 'first'
 
@@ -233,6 +256,12 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     if (isNear !== near.current) {
       near.current = isNear
       onNearSeat?.(isNear)
+    }
+    // Near the sofa? Surface the "sit on the sofa" prompt.
+    const isNearSofa = Math.hypot(pos.current.x - SOFA_SEAT.x, pos.current.z - (SOFA_SEAT.z - 0.7)) < 1.5
+    if (isNearSofa !== nearSofaRef.current) {
+      nearSofaRef.current = isNearSofa
+      onNearSofa?.(isNearSofa)
     }
 
     if (first) {

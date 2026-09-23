@@ -46,10 +46,12 @@ export const BIKES = [
   { pos: [5.7, 0, 3.4], rotY: -0.35 },
 ]
 export const CAVE = {
-  couch: { x: 4.9, z: -1.8 }, // against the back-right corner
-  fridge: { x: 6.1, z: -0.6 },
+  couch: { x: 4.9, z: -1.2 }, // back-right corner, pushed back from the TV
+  fridge: { x: 6.1, z: 6.2 }, // front-right corner, out of the lounge
   neon: { x: 6.49, y: 2.2, z: 1.5 }, // on the right wall
 }
+// Where the player's eyes go when sitting on the couch (facing the TV).
+export const SOFA_SEAT = { x: 4.9, z: -1.1, standZ: -2.45 }
 
 // Axis-aligned collision boxes for solid stuff (world coords).
 // Player radius is added at test time.
@@ -72,7 +74,7 @@ export const COLLIDERS = [
   { minX: 6.0, maxX: 6.5, minZ: 0.4, maxZ: 2.6 },
   // motorbikes
   { minX: 4.9, maxX: 6.3, minZ: 2.9, maxZ: 5.2 },
-  // man-cave corner: couch + fridge
-  { minX: 3.9, maxX: 5.9, minZ: -2.4, maxZ: -1.3 },
-  { minX: 5.75, maxX: 6.5, minZ: -1.0, maxZ: -0.2 },
+  // man-cave corner: couch (fridge now in the front-right corner)
+  { minX: 3.9, maxX: 5.9, minZ: -1.8, maxZ: -0.7 },
+  { minX: 5.75, maxX: 6.5, minZ: 5.8, maxZ: 6.6 },
 ]

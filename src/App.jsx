@@ -21,7 +21,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, onTvToggle, onPhone }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, sofa, onSofaToggle, onNearSofa }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -44,12 +44,12 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} tv={tv} onTvToggle={onTvToggle} onPhone={onPhone} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player onNearSeat={onNearSeat} onSit={onSit} view={view} joyRef={joyRef} />
+        <Player onNearSeat={onNearSeat} onSit={onSit} view={view} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} />
       )}
     </>
   )
@@ -68,6 +68,13 @@ export default function App() {
   const [toast, setToast] = useState(null) // task-complete popup
   const [tv, setTv] = useState(null) // cave TV: casting videoId, or null = off
   const [phone, setPhone] = useState(false) // the cast-remote phone overlay
+  const [nearSofa, setNearSofa] = useState(false)
+  const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
+
+  const sofaToggle = () => {
+    clickDown()
+    setSofa((s) => !s)
+  }
 
   const cast = (id) => {
     clickDown()
@@ -182,6 +189,8 @@ export default function App() {
   const sitDown = () => {
     clickDown()
     setNearSeat(false)
+    setSofa(false)
+    setNearSofa(false)
     setMode('desk')
   }
   const stepAway = () => {
@@ -226,8 +235,12 @@ export default function App() {
             lights={lights}
             onToggleLights={toggleLights}
             tv={tv}
+            tvMuted={muted}
             onTvToggle={tvToggle}
             onPhone={() => setPhone(true)}
+            sofa={sofa}
+            onSofaToggle={sofaToggle}
+            onNearSofa={setNearSofa}
           />
         </ScrollControls>
       </Canvas>
@@ -285,7 +298,11 @@ export default function App() {
           >
             👁 {view === 'third' ? 'first person' : 'third person'} (V)
           </button>
-          {nearSeat ? (
+          {sofa ? (
+            <div className="aim-label show sit-label" onClick={sofaToggle}>
+              {IS_TOUCH ? 'tap to stand up' : 'press E to stand up'}
+            </div>
+          ) : nearSeat ? (
             IS_TOUCH ? (
               <button className="ctl ctl-sit" onClick={sitDown}>
                 ⏎ tap to sit back down
@@ -296,6 +313,10 @@ export default function App() {
                 press E to sit back down
               </div>
             )
+          ) : nearSofa ? (
+            <div className="aim-label show sit-label" onClick={sofaToggle}>
+              {IS_TOUCH ? 'tap to sit on the sofa' : 'press E to sit on the sofa'}
+            </div>
           ) : (
             <div className="explore-hint">
               {IS_TOUCH

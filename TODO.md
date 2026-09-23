@@ -52,7 +52,10 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       per-attempt diagnostics.
 - [ ] Perf watch: if still laggy → shared geometries/materials, shadow map
       tuning, fewer Html surfaces on low-end
-- [ ] Fix Magnite dates in the CV source (Dec 2025 overlaps Napier Jan 2025)
+- [x] Magnite dates fixed (Feb 2022 – Dec 2024) in CV html + PDF + OS +
+      terminal
+- [ ] Maybe: "more results" button on Noogle (worker supports Bing's &first=
+      paging) — 8 + scrollbar feels enough for now
 
 ## 🎮 Tier 2 — payoff features
 - [ ] **MX-5 build minigame**: crosshair-interact with scattered parts →
@@ -66,9 +69,9 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       .glbs piece by piece, TV playing something
 
 ## 🔊 Tier 3 — ambience & polish
-- [ ] **Cave TV plays a live YouTube stream** (youtube embeds allow iframing —
-      lofi radio / motorsport; click the TV to power on, muted by default;
-      keep it off-by-default for perf)
+- [x] **Cave TV plays a live YouTube stream** — click the TV (crosshair-aim in
+      FP) to power on lofi radio, muted, off by default; 7th whiteboard task
+      "watch some telly"
 - [ ] Bloom/vignette post-processing (verify blending-canvas interplay)
 - [ ] More sound: engine, joystick footstep pacing, neon buzz
 - [ ] Loading screen / intro state

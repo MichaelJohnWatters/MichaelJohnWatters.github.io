@@ -231,14 +231,11 @@ function CaveCorner() {
         <circleGeometry args={[1.1, 24]} />
         <meshStandardMaterial color="#4a2f2f" />
       </mesh>
-      {/* wall TV (faint glow) */}
+      {/* wall TV bezel — the screen itself lives in Monitors (clickable,
+          plays a live stream when powered on) */}
       <mesh position={[CAVE.couch.x, 1.9, -2.96]}>
         <boxGeometry args={[1.3, 0.75, 0.06]} />
         <meshStandardMaterial color="#0c0c10" />
-      </mesh>
-      <mesh position={[CAVE.couch.x, 1.9, -2.92]}>
-        <planeGeometry args={[1.2, 0.65]} />
-        <meshStandardMaterial color="#0a1420" emissive="#1e3a5a" emissiveIntensity={0.7} />
       </mesh>
       {/* mini fridge */}
       <group position={[CAVE.fridge.x, 0, CAVE.fridge.z]}>

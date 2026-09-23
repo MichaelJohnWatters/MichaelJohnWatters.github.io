@@ -992,6 +992,18 @@ body {
 }
 
 /* Post-it on the monitor bezel (rendered via Html transform) */
+/* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
+.cave-tv {
+  width: 480px;
+  height: 260px;
+  background: #000;
+  overflow: hidden;
+}
+.cave-tv iframe {
+  display: block;
+  pointer-events: none;
+}
+
 .postit {
   width: 120px;
   padding: 10px 8px 12px;

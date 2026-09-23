@@ -350,29 +350,85 @@ body {
 }
 .cv-tools {
   display: flex;
+  align-items: center;
   gap: 4px;
-  padding: 3px 2px;
+  padding: 2px 2px 4px;
 }
-.cv-tools button {
-  padding: 2px 8px;
+.cv-name {
+  font-size: 0.6rem;
+  color: #444;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cv-dl {
+  margin-left: auto;
+  flex: none;
+  padding: 3px 10px;
+  background: #2d6a4f;
+  border: 2px solid;
+  border-color: #58a27f #17402e #17402e #58a27f;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #eafff3;
+  cursor: inherit;
+}
+.cv-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.cv-frame {
+  flex: 1;
+  position: relative; /* iframe is absolutely positioned so its huge unscaled
+                         layout size (794px) can't push the window wider */
+  overflow: hidden;
+  background: #888;
+  border: 1px solid #6a6d70;
+  min-width: 0;
+}
+.cv-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* classic full-height scrollbar on the right */
+.cv-scroll {
+  width: 16px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: #b3b7bb;
+  border: 1px solid #6a6d70;
+  border-left: none;
+}
+.cv-btn {
+  height: 15px;
+  padding: 0;
   background: #c3c7cb;
   border: 2px solid;
   border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
   font-family: inherit;
-  font-size: 0.62rem;
+  font-size: 0.5rem;
   color: #111;
   cursor: inherit;
+  line-height: 1;
 }
-.cv-tools .cv-dl {
-  margin-left: auto;
-  font-weight: 700;
-}
-.cv-frame {
+.cv-track {
   flex: 1;
-  overflow: hidden;
-  background: #888;
-  border: 1px solid #6a6d70;
-  min-height: 0;
+  position: relative;
+  background: #a4a8ac;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.25);
+}
+.cv-thumb {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  min-height: 18px;
+  background: #c3c7cb;
+  border: 2px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
 }
 
 .desk-hint {
@@ -534,6 +590,34 @@ body {
   font-size: 0.85rem;
   letter-spacing: 0.05em;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.zoom-hint {
+  position: fixed;
+  z-index: 8388645;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  color: #8a93a8;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* Post-it on the monitor bezel (rendered via Html transform) */
+.postit {
+  width: 120px;
+  padding: 10px 8px 12px;
+  background: #f7e96b;
+  color: #3a3418;
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe Print', cursive;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  transform: rotate(-4deg);
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.35);
+}
+.postit b {
+  font-size: 13px;
 }
 
 /* Fake retro cursor — absolute inside a screen's framebuffer; the dual-display

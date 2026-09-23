@@ -24,13 +24,24 @@ const LOOK_END = [0.06, 1.13, -2.8]
 // Where the camera ends up when fully seated.
 const SEAT_POS = new THREE.Vector3(0, Y_END, PIVOT_Z + R_END)
 
+// Lean-in poses: hover right in front of a screen so it fills the view.
+// Position = screen centre + its normal * d (respects each monitor's angle).
+const zoomPose = (m, d) => ({
+  pos: [m.x + Math.sin(m.rotY) * d, m.y, m.z + Math.cos(m.rotY) * d],
+  look: [m.x, m.y, m.z],
+})
+const ZOOMS = {
+  A: zoomPose(MONITORS.primary, 0.57),
+  B: zoomPose(MONITORS.secondary, 0.53),
+}
+
 const smoothstep = (x) => x * x * (3 - 2 * x)
 const lerp = THREE.MathUtils.lerp
 
 const tmpPos = new THREE.Vector3()
 const tmpLook = new THREE.Vector3()
 
-export default function CameraRig({ hintRef, onSeated }) {
+export default function CameraRig({ hintRef, onSeated, zoom, onZoomExit }) {
   const scroll = useScroll()
   const { camera } = useThree()
   const smoothLook = useRef(new THREE.Vector3(...LOOK_START))
@@ -49,13 +60,32 @@ export default function CameraRig({ hintRef, onSeated }) {
     const x = Math.sin(theta) * r
     const z = PIVOT_Z + Math.cos(theta) * r
 
-    const lookX = lerp(LOOK_START[0], LOOK_END[0], u)
-    const lookY = lerp(LOOK_START[1], LOOK_END[1], u)
-    const lookZ = lerp(LOOK_START[2], LOOK_END[2], u)
+    let px = x
+    let py = y
+    let pz = z
+    let lookX = lerp(LOOK_START[0], LOOK_END[0], u)
+    let lookY = lerp(LOOK_START[1], LOOK_END[1], u)
+    let lookZ = lerp(LOOK_START[2], LOOK_END[2], u)
+
+    // Leaned-in on a screen: override the seated pose. Scrolling back out
+    // cancels the zoom so the dive stays in charge.
+    if (zoom && ZOOMS[zoom]) {
+      if (t < 0.85) {
+        onZoomExit?.()
+      } else {
+        const zp = ZOOMS[zoom]
+        px = zp.pos[0]
+        py = zp.pos[1]
+        pz = zp.pos[2]
+        lookX = zp.look[0]
+        lookY = zp.look[1]
+        lookZ = zp.look[2]
+      }
+    }
 
     // Frame-rate-independent smoothing so the spiral feels fluid, not snappy.
     const a = 1 - Math.pow(0.0018, delta)
-    camera.position.lerp(tmpPos.set(x, y, z), a)
+    camera.position.lerp(tmpPos.set(px, py, pz), a)
     smoothLook.current.lerp(tmpLook.set(lookX, lookY, lookZ), a)
     camera.lookAt(smoothLook.current)
     camera.updateMatrixWorld()

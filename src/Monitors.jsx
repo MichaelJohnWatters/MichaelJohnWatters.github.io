@@ -8,10 +8,10 @@ import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
 import { clickDown, clickUp, keyClack } from './sfx'
 import { IS_TOUCH } from './touch'
-import { TASKS, complete, useTasks } from './tasks'
+import { TASKS, complete, useTasks, resetTasks } from './tasks'
 
 // Whiteboard on the back wall, left of the desk — live task list.
-function Whiteboard({ portal }) {
+function Whiteboard({ portal, eraserRef }) {
   const done = useTasks()
   return (
     <group position={[-2.05, 1.5, -2.96]}>
@@ -24,6 +24,17 @@ function Whiteboard({ portal }) {
         <boxGeometry args={[0.6, 0.03, 0.07]} />
         <meshStandardMaterial color="#8a8a90" />
       </mesh>
+      {/* the ERASER — click it to wipe every tick off the board */}
+      <group position={[0.18, -0.525, 0.045]}>
+        <mesh ref={eraserRef}>
+          <boxGeometry args={[0.16, 0.05, 0.07]} />
+          <meshStandardMaterial color="#3a4a7a" />
+        </mesh>
+        <mesh position={[0, 0.028, 0]}>
+          <boxGeometry args={[0.16, 0.012, 0.07]} />
+          <meshStandardMaterial color="#d8d4c8" />
+        </mesh>
+      </group>
       {/* depth punch for the blending Html */}
       <mesh>
         <planeGeometry args={[1.42, 0.98]} />
@@ -332,6 +343,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   onZoomRef.current = onZoom
   const switchesArrRef = useRef(switchesRef)
   switchesArrRef.current = switchesRef
+  const eraserRef = useRef()
   const onToggleLightsRef = useRef(onToggleLights)
   onToggleLightsRef.current = onToggleLights
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
@@ -418,15 +430,21 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       // hover history, the tap itself carries the position.
       move(e)
 
-      // Wall light switches are clickable in ANY mode (centre-aimed in FP).
-      const sws = (switchesArrRef.current?.current || []).filter(Boolean)
-      if (sws.length) {
+      // Wall switches + whiteboard eraser are clickable in ANY mode
+      // (centre-aimed in FP).
+      {
         const cx = fpRef.current ? window.innerWidth / 2 : e.clientX
         const cy = fpRef.current ? window.innerHeight / 2 : e.clientY
         ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1)
         raycaster.setFromCamera(ndc, camera)
-        if (raycaster.intersectObjects(sws, false).length) {
+        const sws = (switchesArrRef.current?.current || []).filter(Boolean)
+        if (sws.length && raycaster.intersectObjects(sws, false).length) {
           onToggleLightsRef.current?.()
+          return
+        }
+        if (eraserRef.current && raycaster.intersectObject(eraserRef.current, false).length) {
+          clickDown()
+          resetTasks() // wipe the whiteboard
           return
         }
       }
@@ -552,7 +570,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     <>
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
-      <Whiteboard portal={portal} />
+      <Whiteboard portal={portal} eraserRef={eraserRef} />
       {/* Post-it stuck on the primary monitor's bezel corner — teaches the
           lean-in controls. Needs its own depth-punch plane (blending mode). */}
       <group

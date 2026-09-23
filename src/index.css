@@ -898,7 +898,7 @@ body {
 .whiteboard {
   width: 300px;
   height: 210px;
-  padding: 16px 22px;
+  padding: 12px 20px;
   background: #fbfbf8;
   color: #2a3b52;
   font-family: 'Caveat', 'Comic Sans MS', cursive;
@@ -934,9 +934,10 @@ body {
   }
 }
 .wb-item {
-  font-size: 25px;
+  font-size: 20px;
   line-height: 1.15;
   font-weight: 600;
+  white-space: nowrap;
 }
 /* slight per-line wobble = handwritten feel */
 .wb-item:nth-child(odd) {

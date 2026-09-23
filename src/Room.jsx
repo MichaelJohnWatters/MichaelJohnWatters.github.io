@@ -126,11 +126,19 @@ function Mx5InPieces({ position = [0, 0, 0], color = '#c0392b' }) {
         <boxGeometry args={[1.3, 1.2, 0.04]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      {/* four wheels stacked in pairs nearby */}
-      <Wheel position={[-2.5, 0.19, -0.9]} {...wheel} />
-      <Wheel position={[-2.5, 0.48, -0.9]} {...wheel} />
-      <Wheel position={[-1.9, 0.19, -1.1]} {...wheel} />
-      <Wheel position={[-1.9, 0.48, -1.1]} {...wheel} />
+      {/* four wheels FLAT on the floor, stacked in two piles (cylinder axis
+          vertical = laid flat; y = half-width, then + one width) */}
+      {[
+        [-2.5, 0.0925, -0.9],
+        [-2.5, 0.2775, -0.9],
+        [-1.9, 0.0925, -1.1],
+        [-1.9, 0.2775, -1.1],
+      ].map((p, i) => (
+        <mesh key={i} position={p} castShadow>
+          <cylinderGeometry args={[wheel.radius, wheel.radius, wheel.width, 20]} />
+          <meshStandardMaterial color="#1b1b1f" />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -294,13 +302,15 @@ export default function Room({ mode = 'desk', onZoom }) {
       <CompleteCar position={CIVIC_POS} />
       <Mx5InPieces position={MX5_POS} />
 
-      {/* Chair — fades with the dive, but REAPPEARS in explore mode (you got up) */}
+      {/* Chair — fades with the dive, but REAPPEARS in explore mode (you got
+          up). No castShadow: shadow maps ignore opacity, so a fading chair
+          would leave a crisp shadow that pops off at the end. */}
       <FadeAway mode={mode} exploreTarget={1}>
-        <mesh position={[0, 0.45, -1.85]} castShadow>
+        <mesh position={[0, 0.45, -1.85]}>
           <boxGeometry args={[0.5, 0.06, 0.5]} />
           <meshStandardMaterial color="#404052" />
         </mesh>
-        <mesh position={[0, 0.78, -1.62]} castShadow>
+        <mesh position={[0, 0.78, -1.62]}>
           <boxGeometry args={[0.5, 0.6, 0.06]} />
           <meshStandardMaterial color="#404052" />
         </mesh>

@@ -579,6 +579,20 @@ body {
   top: 2rem;
   right: 2rem;
 }
+.ctl-mute {
+  bottom: 2rem;
+  right: 2rem;
+  padding: 0.5rem 0.7rem;
+}
+
+/* drei ScrollControls scroller — hide the scrollbar on classic platforms */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 .explore-hint {
   position: fixed;
   z-index: 8388645; /* above the blending-mode canvas */

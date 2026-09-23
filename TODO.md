@@ -58,6 +58,12 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       paging) — 8 + scrollbar feels enough for now
 
 ## 🎮 Tier 2 — payoff features
+- [ ] **Go outside**: aim at a roller door → it rolls up (animated) → walk
+      out to a night driveway. Needs: door-open animation + sound, ground/
+      sky outside (drei Stars + moonlight + a street lamp), swap the hard
+      GARAGE position clamp in Player for collider-based bounds (fence =
+      outer boundary), a few props (bins, lamp post, gravel). Phase 2 of
+      this = drive the Civic out (the driving feature's finale).
 - [ ] **MX-5 build minigame**: crosshair-interact with scattered parts →
       progress on status.sh + new whiteboard tasks → car assembles on the
       lift → lower it. (The crosshair + tasks systems are ready for this.)

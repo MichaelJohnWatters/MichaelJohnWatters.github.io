@@ -11,6 +11,7 @@ export const TASKS = [
   { id: 'search', label: 'noogle something' },
   { id: 'cv', label: 'grab the CV' },
   { id: 'tv', label: 'watch some telly' },
+  { id: 'garage', label: 'open the garage door' },
 ]
 
 const KEY = 'garage-tasks-v1'

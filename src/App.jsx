@@ -6,7 +6,7 @@ import CameraRig from './CameraRig'
 import Player from './Player'
 import Joystick from './Joystick'
 import Phone from './Phone'
-import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
+import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
 import { TV_PRESETS, ytSearch } from './content'
@@ -21,7 +21,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -44,12 +44,12 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} />
+        <Player onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} />
       )}
     </>
   )
@@ -69,6 +69,17 @@ export default function App() {
   const [phone, setPhone] = useState(false) // the cast-remote phone overlay
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
+  const [doors, setDoors] = useState([false, false]) // roller doors open?
+
+  const toggleDoor = (i) => {
+    doorMotor()
+    setDoors((d) => {
+      const next = [...d]
+      next[i] = !next[i]
+      if (next[i]) complete('garage') // whiteboard task
+      return next
+    })
+  }
 
   const sofaToggle = () => {
     clickDown()
@@ -130,6 +141,12 @@ export default function App() {
     complete('lights') // whiteboard task
     setLights((l) => !l)
   }
+
+  // DOM surfaces that are PAPER (whiteboard, post-its) must not glow in the
+  // dark — they're not screens. CSS dims them via this class.
+  useEffect(() => {
+    document.documentElement.classList.toggle('lights-off', !lights)
+  }, [lights])
 
   // L toggles the workshop lights from anywhere.
   useEffect(() => {
@@ -259,6 +276,8 @@ export default function App() {
             sofa={sofa}
             onSofaToggle={sofaToggle}
             onNearSofa={setNearSofa}
+            doors={doors}
+            onDoorToggle={toggleDoor}
           />
         </ScrollControls>
       </Canvas>

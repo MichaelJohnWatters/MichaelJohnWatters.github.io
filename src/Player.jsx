@@ -86,19 +86,10 @@ function StandingFigure() {
 }
 
 const SPEED = 2.5 // brisk walk, m/s
-const RADIUS = 0.35 // player body radius for collisions
-const WALL = 0.3 // keep-off distance from walls
+const RADIUS = 0.22 // player body radius — slim enough for tight gaps
+const WALL = 0.2 // keep-off distance from walls
 const SIT_DIST = 1.4 // how close to the chair before you can sit
-const CAM_DIST = 3.4 // follow distance behind the character
-const CAM_HEIGHT = 2.0
 const clamp = THREE.MathUtils.clamp
-const tmpCam = new THREE.Vector3()
-
-// Smoothly chase an angle, always around the short way.
-function dampAngle(cur, target, lambda, dt) {
-  const diff = ((target - cur + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI
-  return cur + diff * (1 - Math.pow(lambda, dt))
-}
 
 function blocked(x, z) {
   for (const b of COLLIDERS) {
@@ -109,9 +100,10 @@ function blocked(x, z) {
   return false
 }
 
-// Walkable character, third- OR first-person (view prop). Mounted in
-// "explore" mode. Spawns beside the desk on the open half of the garage.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view = 'third', joyRef, sofa = false, onSofaToggle, onNearSofa }) {
+// First-person walker. Mounted in "explore" mode. Spawns beside the desk on
+// the open half of the garage. Desktop: pointer-lock mouse-look. Touch:
+// drag anywhere (off the joystick) to look.
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -122,8 +114,7 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
   sofaRef.current = sofa
   const prevSofa = useRef(false)
   const bob = useRef(0)
-  // Camera yaw: in third person it chases the walking heading; in first
-  // person the mouse drives it directly (starts facing the garage).
+  // Camera yaw — the mouse/touch-drag drives it (starts facing the garage).
   const camYaw = useRef(Math.PI)
   const mouse = useRef({ x: 0.5, y: 0.5 })
 
@@ -138,12 +129,36 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     return () => window.removeEventListener('pointermove', mm)
   }, [])
 
-  // First person on desktop: POINTER LOCK for infinite turning (the absolute
-  // mouse-position fallback stops at the screen edge). Click captures the
-  // mouse; Esc releases; deltas drive yaw/pitch.
+  // Desktop: POINTER LOCK for infinite turning. Click captures the mouse;
+  // Esc releases; deltas drive yaw/pitch. Touch: drag-to-look below.
   const lockPitch = useRef(0)
   useEffect(() => {
-    if (view !== 'first' || IS_TOUCH) return
+    if (IS_TOUCH) {
+      let last = null
+      const pd = (e) => {
+        if (e.target.closest?.('.joystick') || window.__phoneOpen) return
+        last = { id: e.pointerId, x: e.clientX, y: e.clientY }
+      }
+      const pm = (e) => {
+        if (!last || e.pointerId !== last.id || window.__phoneOpen) return
+        camYaw.current -= (e.clientX - last.x) * 0.006
+        lockPitch.current = clamp(lockPitch.current - (e.clientY - last.y) * 0.006, -0.9, 0.9)
+        last = { id: e.pointerId, x: e.clientX, y: e.clientY }
+      }
+      const pu = (e) => {
+        if (last && e.pointerId === last.id) last = null
+      }
+      window.addEventListener('pointerdown', pd)
+      window.addEventListener('pointermove', pm)
+      window.addEventListener('pointerup', pu)
+      window.addEventListener('pointercancel', pu)
+      return () => {
+        window.removeEventListener('pointerdown', pd)
+        window.removeEventListener('pointermove', pm)
+        window.removeEventListener('pointerup', pu)
+        window.removeEventListener('pointercancel', pu)
+      }
+    }
     const canvas = document.querySelector('canvas')
     const mm = (e) => {
       // movementX/Y deliver deltas with OR without pointer lock — unlocked
@@ -167,7 +182,7 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       window.removeEventListener('pointerdown', relock)
       if (document.pointerLockElement) document.exitPointerLock()
     }
-  }, [view])
+  }, [])
 
   // E sits: at the desk chair when near it, on the sofa when near that
   // (or stands back up from the sofa).
@@ -199,17 +214,16 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       camYaw.current = 0 // stood up facing the room, back to the TV
     }
     const k = keys.current
-    const first = view === 'first'
 
-    // First person look: mouse deltas drive yaw/pitch (locked or not). When
-    // the lock is off the cursor pins at the screen edge and deltas die —
-    // edge-turn keeps rotating while it's parked there.
+    // Look: mouse deltas drive yaw/pitch (locked or not). When the lock is
+    // off the cursor pins at the screen edge and deltas die — edge-turn
+    // keeps rotating while it's parked there.
     const locked = typeof document !== 'undefined' && !!document.pointerLockElement
-    if (first && !locked && !IS_TOUCH && !window.__phoneOpen) {
+    if (!locked && !IS_TOUCH && !window.__phoneOpen) {
       if (mouse.current.x <= 0.01) camYaw.current += 2.4 * delta
       else if (mouse.current.x >= 0.99) camYaw.current -= 2.4 * delta
     }
-    const pitch = first ? lockPitch.current : 0
+    const pitch = lockPitch.current
 
     // Camera-relative input: W walks away from the camera (or forward in FP),
     // A/D strafe — stays intuitive as the view turns. The virtual joystick
@@ -231,17 +245,14 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       if (!blocked(nx, pos.current.z)) pos.current.x = nx
       const nz = clamp(pos.current.z + dz * step, GARAGE.minZ + WALL, GARAGE.maxZ - WALL)
       if (!blocked(pos.current.x, nz)) pos.current.z = nz
-      const heading = Math.atan2(dx, dz)
-      group.current.rotation.y = heading
-      // Third person: swing the camera around behind the new heading.
-      if (!first) camYaw.current = dampAngle(camYaw.current, heading, 0.08, delta)
+      group.current.rotation.y = Math.atan2(dx, dz)
       // Footstep on each bob trough (~2 steps/sec at walk speed).
       const prevPhase = Math.floor(bob.current / Math.PI)
       bob.current += delta * 10
       if (Math.floor(bob.current / Math.PI) !== prevPhase) footstep()
     }
 
-    group.current.visible = !first // hide the body in first person
+    group.current.visible = false // first person: the body is the camera
     group.current.position.set(
       pos.current.x,
       Math.abs(Math.sin(bob.current)) * 0.04,
@@ -264,29 +275,14 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
       onNearSofa?.(isNearSofa)
     }
 
-    if (first) {
-      // First person: eyes at head height, walk-bob, look along yaw+pitch.
-      const eyeY = 1.6 + Math.abs(Math.sin(bob.current)) * 0.035
-      camera.position.set(pos.current.x, eyeY, pos.current.z)
-      camera.lookAt(
-        pos.current.x + Math.sin(camYaw.current) * Math.cos(pitch),
-        eyeY + Math.sin(pitch),
-        pos.current.z + Math.cos(camYaw.current) * Math.cos(pitch),
-      )
-    } else {
-      // Follow camera: orbits to sit BEHIND the current heading, above the
-      // character, clamped INSIDE the garage so walls never block the view.
-      const a = 1 - Math.pow(0.0025, delta)
-      camera.position.lerp(
-        tmpCam.set(
-          clamp(pos.current.x - Math.sin(camYaw.current) * CAM_DIST, GARAGE.minX + 0.4, GARAGE.maxX - 0.4),
-          CAM_HEIGHT,
-          clamp(pos.current.z - Math.cos(camYaw.current) * CAM_DIST, GARAGE.minZ + 0.4, GARAGE.maxZ - 0.3),
-        ),
-        a,
-      )
-      camera.lookAt(pos.current.x, 1.2, pos.current.z)
-    }
+    // Eyes at head height, walk-bob, look along yaw+pitch.
+    const eyeY = 1.6 + Math.abs(Math.sin(bob.current)) * 0.035
+    camera.position.set(pos.current.x, eyeY, pos.current.z)
+    camera.lookAt(
+      pos.current.x + Math.sin(camYaw.current) * Math.cos(pitch),
+      eyeY + Math.sin(pitch),
+      pos.current.z + Math.cos(camYaw.current) * Math.cos(pitch),
+    )
     // Keep the on-glass screens glued: refresh matrices BEFORE drei <Html>
     // computes its CSS transform this frame (see CameraRig, same trick).
     camera.updateMatrixWorld()
@@ -295,7 +291,10 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
 
   return (
     <group ref={group}>
-      <StandingFigure />
+      {/* slightly slimmed to match the tighter collision radius */}
+      <group scale={[0.88, 1, 0.88]}>
+        <StandingFigure />
+      </group>
     </group>
   )
 }

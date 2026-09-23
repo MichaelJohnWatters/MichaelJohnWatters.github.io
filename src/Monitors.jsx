@@ -300,7 +300,25 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneRef }) {
+// Live clock for the phone prop's lock screen.
+function LockClock() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(t)
+  }, [])
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  const date = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  return (
+    <>
+      <b>{hh}:{mm}</b>
+      <span>{date.toLowerCase()}</span>
+    </>
+  )
+}
+
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -352,8 +370,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   onTvToggleRef.current = onTvToggle
   const onPhoneRef = useRef(onPhone)
   onPhoneRef.current = onPhone
-  const phonePropRef = useRef(phoneRef)
-  phonePropRef.current = phoneRef
+  const phoneMeshRef = useRef() // the prop on the couch armrest
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -459,8 +476,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           onTvToggleRef.current?.()
           return
         }
-        const ph = phonePropRef.current?.current
-        if (ph && raycaster.intersectObject(ph, false).length) {
+        if (phoneMeshRef.current && raycaster.intersectObject(phoneMeshRef.current, false).length) {
           clickDown()
           onPhoneRef.current?.() // pick up the cast remote
           return
@@ -548,10 +564,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       label = 'wipe the whiteboard'
     } else if (tvRef.current && r.rc.intersectObject(tvRef.current, false).length) {
       label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
-    } else if (
-      phonePropRef.current?.current &&
-      r.rc.intersectObject(phonePropRef.current.current, false).length
-    ) {
+    } else if (phoneMeshRef.current && r.rc.intersectObject(phoneMeshRef.current, false).length) {
       label = 'pick up the phone'
     }
     document.documentElement.classList.toggle('aim-hit', !!label)
@@ -603,6 +616,26 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
       <Whiteboard portal={portal} eraserRef={eraserRef} />
+      {/* The cast-remote phone on the couch armrest — always-on lock screen
+          (live clock) rendered with the same blending-Html trick. */}
+      <group position={[CAVE.couch.x - 0.85, 0.69, CAVE.couch.z]} rotation-y={-0.5}>
+        <mesh ref={phoneMeshRef}>
+          <boxGeometry args={[0.075, 0.014, 0.15]} />
+          <meshStandardMaterial color="#101014" />
+        </mesh>
+        <group position={[0, 0.008, 0]} rotation-x={-Math.PI / 2}>
+          <mesh>
+            <planeGeometry args={[0.062, 0.135]} />
+            <meshStandardMaterial colorWrite={false} />
+          </mesh>
+          <Html {...common} distanceFactor={(400 * 0.062) / 62} position={[0, 0, 0.002]}>
+            <div className="phone-lock">
+              <LockClock />
+              <em>tap to cast 📺</em>
+            </div>
+          </Html>
+        </group>
+      </group>
       {/* Man-cave TV screen. Off: dark glow. On: depth-punched glass with a
           live lofi stream (YouTube allows embedding) — muted, ambience only.
           The plane is also the click/aim target for the power toggle. */}

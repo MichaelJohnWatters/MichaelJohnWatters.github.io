@@ -21,7 +21,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, sofa, onSofaToggle, onNearSofa }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, sofa, onSofaToggle, onNearSofa }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -44,12 +44,12 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player onNearSeat={onNearSeat} onSit={onSit} view={view} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} />
+        <Player onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} />
       )}
     </>
   )
@@ -61,7 +61,6 @@ export default function App() {
   const [mode, setMode] = useState('desk') // 'desk' | 'explore'
   const [seated, setSeated] = useState(false)
   const [nearSeat, setNearSeat] = useState(false)
-  const [view, setView] = useState('first') // 'first' | 'third' (explore camera)
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
   const [muted, setMutedUI] = useState(false)
   const [lights, setLights] = useState(true) // workshop lights on by default
@@ -105,7 +104,7 @@ export default function App() {
   const closePhone = () => {
     setPhone(false)
     // back to FP mouse-look — we're inside the click's user activation
-    if (mode === 'explore' && view === 'first' && !IS_TOUCH)
+    if (mode === 'explore' && !IS_TOUCH)
       document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
   }
 
@@ -154,12 +153,11 @@ export default function App() {
     setMutedUI(isMuted())
   }
 
-  // V toggles first/third person while exploring; P picks up the cast phone.
+  // P picks up the cast phone while exploring.
   useEffect(() => {
     if (mode !== 'explore') return
     const onKey = (e) => {
       if (window.__termTyping) return
-      if (e.code === 'KeyV') setView((v) => (v === 'third' ? 'first' : 'third'))
       if (e.code === 'KeyP') setPhone(true)
     }
     window.addEventListener('keydown', onKey)
@@ -197,8 +195,6 @@ export default function App() {
     clickDown()
     setSeated(false)
     setZoomScreen(null)
-    // Desktop: first person. Touch: third person (auto-cam, no mouse-look).
-    setView(IS_TOUCH ? 'third' : 'first')
     complete('stepaway') // whiteboard task
     setMode('explore')
     // Capture the mouse NOW — we're inside the click's user activation,
@@ -209,7 +205,7 @@ export default function App() {
   const zoomToggle = (which) => setZoomScreen((z) => (z === which ? null : which))
 
   // First person: hide the native cursor — the centre crosshair is the pointer.
-  const isFp = mode === 'explore' && view === 'first'
+  const isFp = mode === 'explore' && !IS_TOUCH
   useEffect(() => {
     document.documentElement.classList.toggle('fp-cursor', isFp)
     if (!isFp) document.documentElement.classList.remove('aim-hit')
@@ -227,7 +223,6 @@ export default function App() {
             onSeated={setSeated}
             onNearSeat={setNearSeat}
             onSit={sitDown}
-            view={view}
             zoom={zoomScreen}
             onZoom={zoomToggle}
             onZoomExit={() => setZoomScreen(null)}
@@ -285,19 +280,6 @@ export default function App() {
           <button className="ctl ctl-back" onClick={sitDown}>
             ↩ back to desk
           </button>
-          <button
-            className="ctl ctl-view"
-            onClick={() => {
-              setView((v) => {
-                const nv = v === 'third' ? 'first' : 'third'
-                if (nv === 'first' && !IS_TOUCH)
-                  document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
-                return nv
-              })
-            }}
-          >
-            👁 {view === 'third' ? 'first person' : 'third person'} (V)
-          </button>
           {sofa ? (
             <div className="aim-label show sit-label" onClick={sofaToggle}>
               {IS_TOUCH ? 'tap to stand up' : 'press E to stand up'}
@@ -320,10 +302,8 @@ export default function App() {
           ) : (
             <div className="explore-hint">
               {IS_TOUCH
-                ? 'drag the stick to walk'
-                : view === 'first'
-                  ? 'WASD to walk · click to capture the mouse · esc frees it · V view'
-                  : 'WASD to walk · V toggles view'}
+                ? 'stick walks · drag the screen to look'
+                : 'WASD to walk · click to capture the mouse · esc frees it'}
             </div>
           )}
           {IS_TOUCH && <Joystick vecRef={joyRef} />}

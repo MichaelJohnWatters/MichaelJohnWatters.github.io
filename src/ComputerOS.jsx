@@ -11,6 +11,7 @@ import { IS_TOUCH } from './touch'
 const BOOKMARKS = [
   ['This site', './', 'embed'], // the garage, recursively 🤯
   ['CV', 'cv/michael-watters-cv.html', 'embed'],
+  ['MX-5 wiki', 'https://en.wikipedia.org/wiki/Mazda_MX-5', 'embed'],
   ['GitHub', 'https://github.com/MichaelJohnWatters', 'tab'],
   ['LinkedIn', 'https://www.linkedin.com/in/michael-watters-b50437167', 'tab'],
 ]
@@ -18,19 +19,32 @@ const BOOKMARKS = [
 function WebBrowser({ focused }) {
   const [q, setQ] = useState('')
   const qRef = useRef('')
-  const [status, setStatus] = useState('ready.')
+  const [status, setStatus] = useState('enter = search in-window · shift+enter = your real browser')
   const [page, setPage] = useState(null) // embedded page URL, or null = home
+  const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
   const hidRef = useRef()
 
-  const go = () => {
+  const openPage = (url, label) => {
+    setPage(url)
+    setScrollY(0)
+    setStatus(`${label} · view-only · ⌂ = home`)
+  }
+
+  // external=true (shift) → the visitor's real browser; else in-window Bing
+  // (one of the few engines that still allows being embedded).
+  const go = (external) => {
     const s = qRef.current.trim()
     qRef.current = ''
     setQ('')
     if (hidRef.current) hidRef.current.value = ''
     window.__termTyping = false
     if (!s) return
-    window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
-    setStatus(`→ opened results for “${s}” in a new tab`)
+    if (external) {
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
+      setStatus(`→ opened Google for “${s}” in your browser`)
+    } else {
+      openPage('https://www.bing.com/search?q=' + encodeURIComponent(s), `results for “${s}”`)
+    }
   }
 
   useEffect(() => {
@@ -39,7 +53,7 @@ function WebBrowser({ focused }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (document.activeElement === hidRef.current) return
       if (e.key === 'Enter') {
-        go()
+        go(e.shiftKey)
       } else if (e.key === 'Backspace') {
         qRef.current = qRef.current.slice(0, -1)
         setQ(qRef.current)
@@ -77,8 +91,32 @@ function WebBrowser({ focused }) {
         >
           ⌂
         </button>
-        <span className="web-nav">◀</span>
-        <span className="web-nav">⟳</span>
+        {page && (
+          <>
+            <button
+              className="web-nav"
+              data-click
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation()
+                setScrollY((s) => Math.max(0, s - 220))
+              }}
+            >
+              ▲
+            </button>
+            <button
+              className="web-nav"
+              data-click
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation()
+                setScrollY((s) => Math.min(1600, s + 220))
+              }}
+            >
+              ▼
+            </button>
+          </>
+        )}
         <span className="web-addr">{page ? page : 'http://www.noogle.com'}</span>
       </div>
       <div className="web-marks">
@@ -88,13 +126,17 @@ function WebBrowser({ focused }) {
             key={label}
             data-click
             tabIndex={-1}
-            onClick={() => {
-              if (kind === 'embed') {
-                setPage(url)
-                setStatus(`showing ${label} (view only)`)
+            onClick={(e) => {
+              const external = e.shiftKey || e.metaKey
+              if (kind === 'embed' && !external) {
+                openPage(url, label)
               } else {
                 window.open(url, '_blank', 'noopener')
-                setStatus(`→ opened ${label} in a new tab (blocks embedding)`)
+                setStatus(
+                  kind === 'embed'
+                    ? `→ opened ${label} in your browser`
+                    : `→ ${label} in your browser (that site blocks embedding)`,
+                )
               }
             }}
           >
@@ -107,7 +149,14 @@ function WebBrowser({ focused }) {
           <iframe
             src={page}
             title="embedded page"
-            style={{ width: '200%', height: '200%', border: 'none', pointerEvents: 'none', transform: 'scale(0.5)', transformOrigin: '0 0' }}
+            style={{
+              width: '200%',
+              height: 4200,
+              border: 'none',
+              pointerEvents: 'none',
+              transform: `scale(0.5) translateY(${-scrollY * 2}px)`,
+              transformOrigin: '0 0',
+            }}
           />
         </div>
       ) : (
@@ -136,7 +185,7 @@ function WebBrowser({ focused }) {
           tabIndex={-1}
           onClick={(e) => {
             e.stopPropagation()
-            go()
+            go(e.shiftKey || e.metaKey)
           }}
         >
           Noogle Search
@@ -156,7 +205,7 @@ function WebBrowser({ focused }) {
           keyClack()
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') go()
+          if (e.key === 'Enter') go(e.shiftKey)
         }}
       />
     </div>

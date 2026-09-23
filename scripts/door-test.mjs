@@ -18,6 +18,8 @@ await page.mouse.move(1082, 400, { steps: 1 })
 await new Promise((r) => setTimeout(r, 400))
 // strafe A (moves +x when facing +z) to line up with the parking-bay door
 await page.keyboard.down('KeyD'); await new Promise((r) => setTimeout(r, 1250)); await page.keyboard.up('KeyD')
+// step into reach (doors have a 6m interaction range now)
+await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 500)); await page.keyboard.up('KeyW')
 await new Promise((r) => setTimeout(r, 400))
 console.log('aim:', await page.evaluate(() => document.getElementById('aim-label')?.textContent))
 await page.mouse.down(); await page.mouse.up()

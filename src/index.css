@@ -1388,8 +1388,8 @@ html.on-glass .desk-dot {
 
 /* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
 .cave-tv {
-  width: 480px;
-  height: 270px;
+  width: 400px;
+  height: 225px;
   background: #000;
   overflow: hidden;
 }

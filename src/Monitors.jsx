@@ -399,7 +399,17 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
         dragRef.current = { el, screen: p.screen, lastX: p.x, lastY: p.y }
         el.dispatchEvent(new CustomEvent('os-dragstart', { bubbles: true }))
       } else {
-        el.click()
+        // Forward modifier keys (shift-click = open in the real browser).
+        el.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+            ctrlKey: e.ctrlKey,
+          }),
+        )
       }
     }
     const up = () => {

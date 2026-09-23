@@ -49,6 +49,7 @@ function WebBrowser({ focused }) {
   const [pageHtml, setPageHtml] = useState(null) // proxied page html (worker mode)
   const [pageLoading, setPageLoading] = useState(false) // proxy fetch in flight
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
+  const [zoom, setZoom] = useState(50) // embed zoom % (pages render scaled)
   const [live, setLive] = useState(false) // true = real input INTO the page
   const [results, setResults] = useState(null) // native in-OS search results
   const [notice, setNotice] = useState(null) // { label, url } for frame-blockers
@@ -242,6 +243,38 @@ function WebBrowser({ focused }) {
             >
               {live ? '🔒' : '🖱'}
             </button>
+            <button
+              className="web-nav"
+              data-click
+              tabIndex={-1}
+              title="zoom out"
+              onClick={(e) => {
+                e.stopPropagation()
+                setZoom((z) => {
+                  const nz = Math.max(40, z - 15)
+                  setStatus(`zoom ${nz}%`)
+                  return nz
+                })
+              }}
+            >
+              −
+            </button>
+            <button
+              className="web-nav"
+              data-click
+              tabIndex={-1}
+              title="zoom in"
+              onClick={(e) => {
+                e.stopPropagation()
+                setZoom((z) => {
+                  const nz = Math.min(100, z + 15)
+                  setStatus(`zoom ${nz}%`)
+                  return nz
+                })
+              }}
+            >
+              +
+            </button>
           </>
         )}
         <span className="web-addr">{page ? page : 'http://www.noogle.com'}</span>
@@ -381,11 +414,11 @@ function WebBrowser({ focused }) {
             onPointerEnter={() => live && document.documentElement.classList.add('over-embed')}
             onPointerLeave={() => document.documentElement.classList.remove('over-embed')}
             style={{
-              width: '200%',
+              width: `${Math.round(10000 / zoom)}%`,
               height: 3600, // tall canvas = real content to ▲▼ through
               border: 'none',
               pointerEvents: live ? 'auto' : 'none',
-              transform: `scale(0.5) translateY(${-scrollY * 2}px)`,
+              transform: `scale(${zoom / 100}) translateY(${(-scrollY * 100) / zoom}px)`,
               transformOrigin: '0 0',
             }}
           />

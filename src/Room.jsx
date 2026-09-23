@@ -234,7 +234,7 @@ function CaveCorner() {
       {/* wall TV bezel — the screen itself lives in Monitors (clickable,
           plays a live stream when powered on) */}
       <mesh position={[CAVE.couch.x, 1.9, -2.96]}>
-        <boxGeometry args={[1.3, 0.75, 0.06]} />
+        <boxGeometry args={[1.8, 1.05, 0.06]} />
         <meshStandardMaterial color="#0c0c10" />
       </mesh>
       {/* mini fridge */}
@@ -393,7 +393,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, onTvToggle, onPhone }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone }) {
   const switchesRef = useRef([])
   const phoneRef = useRef() // the cast-remote phone on the couch armrest
   return (
@@ -576,7 +576,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           <meshStandardMaterial color="#0c1420" emissive="#2a6a8a" emissiveIntensity={1.1} />
         </mesh>
       </group>
-      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} onTvToggle={onTvToggle} onPhone={onPhone} phoneRef={phoneRef} />
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneRef={phoneRef} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

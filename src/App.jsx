@@ -14,12 +14,11 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
-      <fog attach="fog" args={['#0a0a0f', 8, 18]} />
+      <fog attach="fog" args={['#0a0a0f', 12, 30]} />
 
-      {/* NIGHT GARAGE — coding in the dark. The monitors are the key lights:
-          cool blue wash from the desktop, warm Claude-orange from the
-          terminal. Everything else is just enough fill to navigate by. */}
-      <hemisphereLight intensity={0.18} color="#2e3a55" groundColor="#14141a" />
+      {/* NIGHT WORKSHOP — monitors light the desk, work lights over the bays,
+          neon in the cave corner. Fill raised a touch for the bigger room. */}
+      <hemisphereLight intensity={0.24} color="#2e3a55" groundColor="#14141a" />
       <directionalLight position={[6, 2.5, 3]} intensity={0.15} color="#5a6a9a" />
       {/* primary monitor glow (cool) */}
       <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
@@ -111,7 +110,7 @@ export default function App() {
 
   return (
     <>
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [5.63, 4.0, 0.42], fov: 45 }}>
+      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene

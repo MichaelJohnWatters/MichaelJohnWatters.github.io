@@ -593,6 +593,116 @@ body {
   padding: 0.5rem 0.7rem;
 }
 
+/* --- Retro browser window --- */
+.win-body-web {
+  padding: 0;
+  display: flex;
+}
+.web {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #d9dadd;
+}
+.web-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #c3c7cb;
+  border-bottom: 1px solid #8a8d90;
+}
+.web-nav {
+  width: 18px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 0.55rem;
+  color: #555;
+  background: #c3c7cb;
+  border: 1px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+}
+.web-addr {
+  flex: 1;
+  padding: 2px 8px;
+  font-size: 0.62rem;
+  color: #333;
+  background: #fff;
+  border: 1px solid;
+  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.web-marks {
+  display: flex;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #cfd2d6;
+  border-bottom: 1px solid #9a9da0;
+}
+.web-mark {
+  padding: 1px 8px;
+  font-size: 0.6rem;
+  color: #234;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: inherit;
+}
+.web-mark.ui-hover {
+  text-decoration: underline;
+  color: #1a5bc4;
+  filter: none;
+}
+.web-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fff;
+  min-height: 0;
+}
+.web-logo {
+  font-family: 'Times New Roman', serif;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.web-search {
+  width: 70%;
+  min-height: 22px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  color: #111;
+  background: #fff;
+  border: 1px solid;
+  border-color: #6a6d70 #f4f4f4 #f4f4f4 #6a6d70;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.15);
+}
+.web-go {
+  padding: 3px 12px;
+  font-size: 0.62rem;
+  color: #111;
+  background: #e8e8e8;
+  border: 1px solid;
+  border-color: #f4f4f4 #6a6d70 #6a6d70 #f4f4f4;
+  font-family: inherit;
+  cursor: inherit;
+}
+.web-status {
+  font-size: 0.55rem;
+  color: #777;
+  padding-top: 2px;
+  max-width: 90%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Virtual joystick (touch explore mode) */
 .joystick {
   position: fixed;

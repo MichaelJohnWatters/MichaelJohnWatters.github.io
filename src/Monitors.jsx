@@ -241,7 +241,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchRef, onToggleLights }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -278,8 +278,8 @@ export default function Monitors({ mode = 'desk', onZoom, switchRef, onToggleLig
   const lastDownRef = useRef({ screen: null, t: 0, bg: false }) // dbl-click detect
   const onZoomRef = useRef(onZoom)
   onZoomRef.current = onZoom
-  const switchMeshRef = useRef(null)
-  switchMeshRef.current = switchRef?.current || null
+  const switchesArrRef = useRef(switchesRef)
+  switchesArrRef.current = switchesRef
   const onToggleLightsRef = useRef(onToggleLights)
   onToggleLightsRef.current = onToggleLights
 
@@ -348,12 +348,12 @@ export default function Monitors({ mode = 'desk', onZoom, switchRef, onToggleLig
       // hover history, the tap itself carries the position.
       move(e)
 
-      // The wall light switch is clickable in ANY mode.
-      const sw = switchMeshRef.current
-      if (sw) {
+      // Wall light switches are clickable in ANY mode.
+      const sws = (switchesArrRef.current?.current || []).filter(Boolean)
+      if (sws.length) {
         ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1)
         raycaster.setFromCamera(ndc, camera)
-        if (raycaster.intersectObject(sw, false).length) {
+        if (raycaster.intersectObjects(sws, false).length) {
           onToggleLightsRef.current?.()
           return
         }

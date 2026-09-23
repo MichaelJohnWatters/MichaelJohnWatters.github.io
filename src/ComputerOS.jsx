@@ -1,5 +1,136 @@
 import { useEffect, useRef, useState } from 'react'
 import { OS_WINDOWS, downloadCV } from './content'
+import { keyClack } from './sfx'
+import { IS_TOUCH } from './touch'
+
+// Retro browser: the search box is REAL — enter opens actual Google results
+// in a new tab (Google can't be embedded; new-tab is the honest version).
+const BOOKMARKS = [
+  ['GitHub', 'https://github.com/MichaelJohnWatters'],
+  ['LinkedIn', 'https://www.linkedin.com/in/michael-watters-b50437167'],
+  ['CV.pdf', 'cv/Michael-Watters-CV.pdf'],
+]
+
+function WebBrowser({ focused }) {
+  const [q, setQ] = useState('')
+  const qRef = useRef('')
+  const [status, setStatus] = useState('ready.')
+  const hidRef = useRef()
+
+  const go = () => {
+    const s = qRef.current.trim()
+    qRef.current = ''
+    setQ('')
+    if (hidRef.current) hidRef.current.value = ''
+    window.__termTyping = false
+    if (!s) return
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
+    setStatus(`→ opened results for “${s}” in a new tab`)
+  }
+
+  useEffect(() => {
+    if (!focused) return
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (document.activeElement === hidRef.current) return
+      if (e.key === 'Enter') {
+        go()
+      } else if (e.key === 'Backspace') {
+        qRef.current = qRef.current.slice(0, -1)
+        setQ(qRef.current)
+      } else if (e.key.length === 1) {
+        if (qRef.current.length < 40) {
+          qRef.current += e.key
+          setQ(qRef.current)
+        }
+      } else {
+        return
+      }
+      window.__termTyping = qRef.current.length > 0
+      keyClack()
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.__termTyping = false
+    }
+  }, [focused])
+
+  return (
+    <div className="web">
+      <div className="web-bar">
+        <span className="web-nav">◀</span>
+        <span className="web-nav">▶</span>
+        <span className="web-nav">⟳</span>
+        <span className="web-addr">http://www.noogle.com</span>
+      </div>
+      <div className="web-marks">
+        {BOOKMARKS.map(([label, url]) => (
+          <button
+            className="web-mark"
+            key={label}
+            data-click
+            tabIndex={-1}
+            onClick={() => {
+              window.open(url, '_blank', 'noopener')
+              setStatus(`→ opened ${label} in a new tab`)
+            }}
+          >
+            ★ {label}
+          </button>
+        ))}
+      </div>
+      <div className="web-page">
+        <div className="web-logo">
+          <span style={{ color: '#4285f4' }}>N</span>
+          <span style={{ color: '#ea4335' }}>o</span>
+          <span style={{ color: '#fbbc05' }}>o</span>
+          <span style={{ color: '#4285f4' }}>g</span>
+          <span style={{ color: '#34a853' }}>l</span>
+          <span style={{ color: '#ea4335' }}>e</span>
+        </div>
+        <div
+          className="web-search"
+          data-click
+          onClick={() => {
+            if (IS_TOUCH) hidRef.current?.focus()
+          }}
+        >
+          {q}
+          {focused && <span className="term-caret">▊</span>}
+        </div>
+        <button
+          className="web-go"
+          data-click
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation()
+            go()
+          }}
+        >
+          Noogle Search
+        </button>
+        <div className="web-status">{status}</div>
+      </div>
+      <input
+        ref={hidRef}
+        className="hid-input"
+        autoCapitalize="none"
+        autoCorrect="off"
+        onInput={(e) => {
+          qRef.current = e.target.value.slice(0, 40)
+          setQ(qRef.current)
+          window.__termTyping = qRef.current.length > 0
+          keyClack()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') go()
+        }}
+      />
+    </div>
+  )
+}
 
 // A4 page at CSS 96dpi: 794 x 1123 px; the CV is two pages stacked.
 const CV_PAGE_W = 794
@@ -311,12 +442,16 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
                   </i>
                 </span>
               </div>
-              <div className={`win-body${w.kind === 'cv' ? ' win-body-cv' : ''}`}>
+              <div
+                className={`win-body${w.kind === 'cv' ? ' win-body-cv' : ''}${w.kind === 'web' ? ' win-body-web' : ''}`}
+              >
                 {w.kind === 'cv' ? (
                   <CvViewer
                     width={s.max ? mon.pxW - 24 : s.w}
                     height={s.max ? mon.pxH - 76 : s.h}
                   />
+                ) : w.kind === 'web' ? (
+                  <WebBrowser focused={focusedWin === key} />
                 ) : (
                   w.body.map((line, i) => <p key={i}>{line}</p>)
                 )}

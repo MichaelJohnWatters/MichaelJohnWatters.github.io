@@ -513,6 +513,34 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           </div>
         </Html>
       </group>
+      {/* second post-it: the browser click convention */}
+      <group
+        position={[MONITORS.primary.x, 0, MONITORS.primary.z]}
+        rotation-y={MONITORS.primary.rotY}
+      >
+        <mesh position={[-0.31, 0.9, 0.012]}>
+          <planeGeometry args={[0.085, 0.085]} />
+          <meshStandardMaterial colorWrite={false} />
+        </mesh>
+        <Html
+          transform
+          occlude="blending"
+          portal={portal}
+          distanceFactor={(400 * 0.078) / 120}
+          position={[-0.31, 0.9, 0.014]}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="postit postit-alt">
+            <b>netscape:</b>
+            <br />
+            links open in HERE
+            <br />
+            ⇧shift + click
+            <br />
+            → your real browser
+          </div>
+        </Html>
+      </group>
       <group
         position={[MONITORS.primary.x, MONITORS.primary.y, MONITORS.primary.z + 0.004]}
         rotation-y={MONITORS.primary.rotY}

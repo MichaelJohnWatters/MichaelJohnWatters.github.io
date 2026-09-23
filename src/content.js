@@ -16,6 +16,7 @@ export const OS_WINDOWS = [
   {
     title: 'cv.html',
     kind: 'cv',
+    glyph: '📄',
     defW: 390,
     defH: 290,
     body: [],
@@ -23,6 +24,7 @@ export const OS_WINDOWS = [
   {
     title: 'netscape.exe',
     kind: 'web',
+    glyph: '🌐',
     defW: 400,
     defH: 250,
     body: [],
@@ -48,6 +50,7 @@ export const OS_WINDOWS = [
   },
   {
     title: 'skills.json',
+    glyph: '{ }',
     defW: 370,
     defH: 190,
     body: [
@@ -59,6 +62,7 @@ export const OS_WINDOWS = [
   },
   {
     title: 'contact.sh',
+    glyph: '✉',
     defW: 340,
     defH: 160,
     body: [

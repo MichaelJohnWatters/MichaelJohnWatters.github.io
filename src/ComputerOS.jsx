@@ -467,7 +467,7 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
                 open(w.title)
               }}
             >
-              <span className="desk-icon-glyph">▤</span>
+              <span className="desk-icon-glyph">{w.glyph || '▤'}</span>
               <span className="desk-icon-label">{w.title}</span>
             </button>
           ))}
@@ -582,6 +582,22 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
         >
           🐧 Applications
         </button>
+        {/* pinned quick-launch: always available, open or not */}
+        {['netscape.exe', 'cv.html'].map((key) => {
+          const w = OS_WINDOWS.find((x) => x.title === key)
+          return (
+            <button
+              className="task-pin"
+              key={key}
+              title={key}
+              data-click
+              tabIndex={-1}
+              onClick={() => open(key)}
+            >
+              {w?.glyph || '▤'}
+            </button>
+          )
+        })}
         {order.map((key) => (
           <button
             className={`task-open${focusedWin === key && !st(key).min ? ' task-active' : ''}`}

@@ -115,7 +115,9 @@ const DEFAULT_W = 320
 const DEFAULT_H = 150
 
 export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
-  const [order, setOrder] = useState(['about.txt']) // open windows, last = front
+  // CV opens by default, front and focused — it's the first thing a visitor
+  // sees on the monitor. about.txt peeks out behind it.
+  const [order, setOrder] = useState(['about.txt', 'cv.html'])
   const [menuOpen, setMenuOpen] = useState(false)
   const [time, setTime] = useState('')
 
@@ -129,7 +131,8 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
 
   // Per-window state: minimized / maximized / position / size.
   const [winState, setWinState] = useState({
-    'about.txt': { x: 104, y: 22, w: 350, h: 200 },
+    'about.txt': { x: 104, y: 14, w: 350, h: 200 },
+    'cv.html': { x: 190, y: 6, w: 390, h: 285 },
   })
   const st = (key) => winState[key] || {}
   const patch = (key, p) => setWinState((s) => ({ ...s, [key]: { ...s[key], ...p } }))

@@ -934,10 +934,19 @@ body {
   }
 }
 .wb-item {
+  display: flex;
+  align-items: baseline;
   font-size: 20px;
   line-height: 1.15;
   font-weight: 600;
   white-space: nowrap;
+}
+.wb-tick {
+  margin-left: auto;
+  padding-left: 10px;
+  color: #1d8a3a;
+  font-weight: 700;
+  font-size: 22px;
 }
 /* slight per-line wobble = handwritten feel */
 .wb-item:nth-child(odd) {
@@ -952,10 +961,27 @@ body {
   margin-left: 16px;
 }
 .wb-done .wb-label {
-  text-decoration: line-through;
-  text-decoration-color: #c0392b;
-  text-decoration-thickness: 2px;
-  color: #9aa3ad;
+  color: #7d8894; /* done = faded ink, ✓ on the right does the talking */
+}
+
+/* FP crosshair tooltip: names the interactive you're aiming at */
+.aim-label {
+  position: fixed;
+  z-index: 8388646;
+  top: calc(50% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffd9a0;
+  font-family: 'DejaVu Sans Mono', 'SF Mono', Menlo, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.aim-label.show {
+  opacity: 1;
 }
 
 /* Post-it on the monitor bezel (rendered via Html transform) */

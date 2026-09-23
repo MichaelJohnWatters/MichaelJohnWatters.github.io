@@ -51,10 +51,8 @@ function Whiteboard({ portal, eraserRef }) {
         <div className="whiteboard">
           {TASKS.map((t) => (
             <div key={t.id} className={`wb-item${done[t.id] ? ' wb-done' : ''}`}>
-              <span className="wb-label">
-                {done[t.id] ? '✓ ' : ''}
-                {t.label}
-              </span>
+              <span className="wb-label">{t.label}</span>
+              {done[t.id] && <span className="wb-tick">✓</span>}
             </div>
           ))}
         </div>
@@ -520,14 +518,21 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     if (!fpRef.current) return
     if (aimTick.current++ % 3 !== 0) return
     moveFnRef.current?.({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 })
+    const r = aimRay.current
+    r.rc.setFromCamera(r.v.set(0, 0), camera)
+    let label = ''
     const sws = (switchesArrRef.current?.current || []).filter(Boolean)
-    let hit = false
-    if (sws.length) {
-      const r = aimRay.current
-      r.rc.setFromCamera(r.v.set(0, 0), camera)
-      hit = r.rc.intersectObjects(sws, false).length > 0
+    if (sws.length && r.rc.intersectObjects(sws, false).length) {
+      label = 'flip the lights'
+    } else if (eraserRef.current && r.rc.intersectObject(eraserRef.current, false).length) {
+      label = 'wipe the whiteboard'
     }
-    document.documentElement.classList.toggle('aim-hit', hit)
+    document.documentElement.classList.toggle('aim-hit', !!label)
+    const el = document.getElementById('aim-label')
+    if (el) {
+      el.textContent = label
+      el.classList.toggle('show', !!label)
+    }
   })
 
   // Portal target: the R3F container (canvas parent) — NOT the default, which

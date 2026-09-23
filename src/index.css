@@ -22,6 +22,9 @@ body,
   height: 100%;
   background: #0a0a0f;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* keep scroll/pinch but KILL double-tap-to-zoom — it fights the
+     double-tap lean-in and shifts the whole page on iOS */
+  touch-action: manipulation;
 }
 
 body {

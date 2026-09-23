@@ -33,5 +33,37 @@ const out = await page.evaluate(() => ({
   titles: [...document.querySelectorAll('.web-res-title')].slice(0, 3).map((t) => t.textContent),
   note: document.querySelector('.web-res-note')?.textContent || null,
 }))
-console.log(JSON.stringify(out, null, 2))
+console.log('results:', JSON.stringify(out))
+
+// click the first result → proxied page should render in the embed
+await clickAt('.web-result', 0)
+await new Promise((r) => setTimeout(r, 8000))
+const embed = await page.evaluate(() => ({
+  srcdocLen: document.querySelector('.web-embed iframe')?.srcdoc?.length || 0,
+  notice: document.querySelector('.web-notice-text')?.textContent || null,
+  status: document.querySelector('.web-addr')?.textContent || null,
+}))
+console.log('page view:', JSON.stringify(embed))
+
+// LinkedIn bookmark → should show the native 🚫 notice (blocked upstream)
+await clickAt('.web-nav', 0) // home
+await new Promise((r) => setTimeout(r, 600))
+await clickAt('.web-mark', 4) // LinkedIn
+await new Promise((r) => setTimeout(r, 8000))
+const li = await page.evaluate(() => ({
+  notice: document.querySelector('.web-notice-text')?.textContent || null,
+  embed: !!document.querySelector('.web-embed iframe'),
+}))
+console.log('linkedin:', JSON.stringify(li))
+
+// same-origin bookmark (CV) must bypass the proxy and render via raw iframe
+await clickAt('.web-nav', 0) // home
+await new Promise((r) => setTimeout(r, 600))
+await clickAt('.web-mark', 1) // CV
+await new Promise((r) => setTimeout(r, 2500))
+const cv = await page.evaluate(() => {
+  const f = document.querySelector('.web-embed iframe')
+  return { src: f?.src || null, srcdocLen: f?.srcdoc?.length || 0, loading: !!document.querySelector('.web-embed .web-res-note') }
+})
+console.log('cv bookmark:', JSON.stringify(cv))
 await b.close()

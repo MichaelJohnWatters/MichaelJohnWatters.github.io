@@ -72,7 +72,14 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       (desk↔explore↔drive transitions; fixes back-to-desk clipping too)
 - [ ] Mixamo character (walk/idle) replaces the blockout figure
 - [ ] Garage set dressing pass: project posters on walls, nicer low-poly
-      .glbs piece by piece, TV playing something
+      .glbs piece by piece
+- [ ] **World-builder environment swap** (Spline to design / Blender to
+      export .glb): model to layout.js dimensions (real metres — it's the
+      contract all systems read), NAME interactive nodes (tv-screen,
+      switch-1..4, door-L/R, phone-prop, eraser…) and bind refs by name via
+      useGLTF; re-trace COLLIDERS around the new furniture; run through
+      gltf-transform + Draco before committing. Screens/whiteboard/bridge/
+      tasks/sfx all carry over untouched — they're position-driven.
 
 ## 🔊 Tier 3 — ambience & polish
 - [x] **Cave TV plays a live YouTube stream** — click the TV (crosshair-aim in

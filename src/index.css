@@ -1017,7 +1017,7 @@ body {
 .phone {
   width: 300px;
   height: 640px;
-  margin-bottom: -34px; /* sits IN the hand below the screen edge */
+  margin-bottom: 14px; /* fully on screen — buttons stay reachable */
   transform: rotate(-5deg);
   transform-origin: bottom center;
   display: flex;
@@ -1171,7 +1171,7 @@ body {
 /* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
 .cave-tv {
   width: 480px;
-  height: 268px;
+  height: 270px;
   background: #000;
   overflow: hidden;
 }

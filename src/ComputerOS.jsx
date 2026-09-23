@@ -44,8 +44,10 @@ const BOOKMARKS = [
 function WebBrowser({ focused }) {
   const [q, setQ] = useState('')
   const qRef = useRef('')
-  const [status, setStatus] = useState('enter = browse in-world (wikipedia) · shift+enter = Google in your browser')
+  const [status, setStatus] = useState('enter = search the web in-world · shift+enter = Google in your browser')
   const [page, setPage] = useState(null) // embedded page URL, or null = home
+  const [pageHtml, setPageHtml] = useState(null) // proxied page html (worker mode)
+  const [pageLoading, setPageLoading] = useState(false) // proxy fetch in flight
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
   const [live, setLive] = useState(false) // true = real input INTO the page
   const [results, setResults] = useState(null) // native in-OS search results
@@ -69,10 +71,44 @@ function WebBrowser({ focused }) {
   }, [])
 
   const openPage = (url, label) => {
-    setPage(url)
     setScrollY(0)
-    setLive(true) // interactive by default — click buttons/links right away
-    setStatus(`${label} · live — 🔒 for view-only (in-game cursor)`)
+    if (!SEARCH_PROXY || !/^https?:/i.test(url)) {
+      // no worker, or same-origin relative url: raw iframe, no proxy needed
+      setPage(url)
+      setPageHtml(null)
+      setPageLoading(false)
+      setLive(true)
+      setStatus(`${label} · live — 🔒 for view-only (in-game cursor)`)
+      return
+    }
+    // Worker mode: fetch the page THROUGH the proxy — frame-blocking headers
+    // never reach us, and the x-page-ok flag tells us when a site refuses
+    // server fetches too (LinkedIn etc.) so we can show the native notice.
+    setPage(url)
+    setPageHtml(null)
+    setPageLoading(true)
+    setNotice(null)
+    setStatus(`loading ${label}…`)
+    fetch(`${SEARCH_PROXY}/page?u=${encodeURIComponent(url)}`)
+      .then(async (r) => ({ ok: r.headers.get('x-page-ok') === '1', html: await r.text() }))
+      .then(({ ok, html }) => {
+        setPageLoading(false)
+        if (!ok) {
+          setPage(null)
+          setNotice({ label, url })
+          setStatus(`${label} refuses the in-world browser`)
+        } else {
+          setPageHtml(html)
+          setLive(true)
+          setStatus(`${label} · live — 🔒 for view-only (in-game cursor)`)
+        }
+      })
+      .catch(() => {
+        setPageLoading(false)
+        setPage(null)
+        setNotice({ label, url })
+        setStatus(`${label} unreachable`)
+      })
   }
 
   // external=true (shift) → the visitor's real browser; else in-window Bing
@@ -152,8 +188,10 @@ function WebBrowser({ focused }) {
           onClick={(e) => {
             e.stopPropagation()
             // from an article → back to results; from results/notice → home
-            if (page) setPage(null)
-            else {
+            if (page) {
+              setPage(null)
+              setPageHtml(null)
+            } else {
               setResults(null)
               setNotice(null)
             }
@@ -201,7 +239,9 @@ function WebBrowser({ focused }) {
               if (external) {
                 window.open(url, '_blank', 'noopener')
                 setStatus(`→ opened ${label} in your browser`)
-              } else if (kind === 'embed') {
+              } else if (kind === 'embed' || SEARCH_PROXY) {
+                // worker mode tries ANY site through the proxy — blockers
+                // (LinkedIn) fall through to the notice automatically
                 setNotice(null)
                 openPage(url, label)
               } else {
@@ -220,9 +260,9 @@ function WebBrowser({ focused }) {
         <div className="web-notice">
           <div className="web-notice-icon">🚫</div>
           <div className="web-notice-text">
-            <b>{notice.label}</b> refuses to be embedded
+            <b>{notice.label}</b> won't let the in-world browser in
             <br />
-            <span className="term-dim-dark">(X-Frame-Options — their servers forbid it)</span>
+            <span className="term-dim-dark">(their servers turn away everything but real browsers)</span>
           </div>
           <button
             className="web-go"
@@ -267,12 +307,16 @@ function WebBrowser({ focused }) {
       ) : page ? (
         <div className="cv-row">
         <div className="web-embed">
-          {/* pointerEvents AUTO: the browser natively hit-tests transformed
+          {pageLoading ? (
+            <div className="web-res-note">loading…</div>
+          ) : (
+          /* pointerEvents AUTO: the browser natively hit-tests transformed
               elements, so real clicks/wheel/typing go INTO the page — live
-              browsing on the in-world monitor. (Sites that forbid framing
-              will refuse to load when navigated to — that's on them.) */}
+              browsing on the in-world monitor. Worker mode renders the
+              proxied html via srcDoc (frame-blocking headers never apply). */
           <iframe
-            src={page}
+            src={pageHtml ? undefined : page}
+            srcDoc={pageHtml || undefined}
             title="embedded page"
             // sandbox WITHOUT allow-top-navigation: framed sites cannot
             // "frame-bust" and hijack the visitor's whole tab — links
@@ -292,6 +336,7 @@ function WebBrowser({ focused }) {
               transformOrigin: '0 0',
             }}
           />
+          )}
         </div>
         {/* right-side scrollbar with draggable thumb (like the CV viewer) */}
         <div className="cv-scroll">

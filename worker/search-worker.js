@@ -61,14 +61,95 @@ function relevant(items, q) {
   )
 }
 
+// /page?u=<url> — fetch a page server-side and re-serve it so the in-world
+// browser can display sites that forbid being framed (X-Frame-Options/CSP
+// never reach the client: we return the BODY under our own headers). Scripts
+// are stripped (static retro rendering — fitting for netscape.exe), <base>
+// is injected so images/CSS resolve, and links are rewritten back through
+// the proxy so browsing keeps working in-frame.
+async function servePage(target, workerOrigin, cors) {
+  // x-page-ok lets the CLIENT detect a blocked page (CORS-exposed) and show
+  // its native 🚫 notice instead of rendering our error page.
+  const ok = (body, headers) =>
+    new Response(body, { headers: { ...cors, 'x-page-ok': '1', ...headers } })
+  const fail = (host, why) =>
+    new Response(pageErrorHtml(host, why), {
+      headers: { ...cors, 'x-page-ok': '0', 'Content-Type': 'text/html; charset=utf-8' },
+    })
+  let t
+  try {
+    t = new URL(target)
+  } catch {
+    return fail(target, 'bad url')
+  }
+  if (t.protocol !== 'https:' && t.protocol !== 'http:') return fail(t.hostname, 'blocked')
+  let res
+  try {
+    res = await fetch(t.href, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.9',
+      },
+    })
+  } catch {
+    return fail(t.hostname, 'unreachable')
+  }
+  const ctype = res.headers.get('content-type') || ''
+  if (!ctype.includes('html')) {
+    // non-HTML (pdf, image…): pass straight through
+    return ok(res.body, { 'Content-Type': ctype })
+  }
+  let html = await res.text()
+  if (res.status >= 400 || !html) return fail(t.hostname, 'HTTP ' + res.status)
+  const base = (res.url || t.href).replace(/"/g, '')
+  html = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<script[^>]*\/>/gi, '')
+    .replace(/<meta[^>]+http-equiv=["']?(content-security-policy|refresh)[^>]*>/gi, '')
+    .replace(/<base[^>]*>/gi, '')
+    // keep browsing in-frame: route links back through the proxy (must be
+    // ABSOLUTE — the injected <base> would otherwise send relative links to
+    // the target site)
+    .replace(/(<a\b[^>]*?\shref=)["']([^"']+)["']/gi, (m, pre, href) => {
+      if (/^(#|mailto:|javascript:|tel:)/i.test(href)) return m
+      try {
+        const abs = new URL(href, base).href
+        return `${pre}"${workerOrigin}/page?u=${encodeURIComponent(abs)}"`
+      } catch {
+        return m
+      }
+    })
+    .replace(/<head([^>]*)>/i, `<head$1><base href="${base}">`)
+  return ok(html, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' })
+}
+
+// Retro-styled in-frame error page — shown when the user navigates INSIDE an
+// already-open page to a blocked site (the client's notice covers first-load).
+const pageErrorHtml = (host, why) =>
+  `<html><body style="background:#0d0d12;color:#c9c9d4;font-family:ui-monospace,monospace;padding:28px">
+<h2 style="color:#e8b34b">🚫 ${host}</h2>
+<p>won't let the in-world browser in (${why}).</p>
+<p style="color:#8a8a96">tip: ⇧shift+click the link to open it in your real browser.</p>
+</body></html>`
+
 export default {
   async fetch(req) {
     const reqUrl = new URL(req.url)
-    const q = (reqUrl.searchParams.get('q') || '').slice(0, 200)
     const origin = req.headers.get('Origin') || ''
     const allowed = ALLOWED_ORIGINS.includes(origin) || origin.startsWith('http://localhost')
-    const headers = {
+    const cors = {
       'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+      'Access-Control-Expose-Headers': 'x-page-ok',
+    }
+    if (reqUrl.pathname === '/page') {
+      return servePage(reqUrl.searchParams.get('u') || '', reqUrl.origin, cors)
+    }
+    const q = (reqUrl.searchParams.get('q') || '').slice(0, 200)
+    const headers = {
+      ...cors,
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=600',
     }

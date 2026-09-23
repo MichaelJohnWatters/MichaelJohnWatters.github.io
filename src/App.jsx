@@ -8,7 +8,7 @@ import Joystick from './Joystick'
 import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
 import { IS_TOUCH } from './touch'
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -16,16 +16,16 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
           The page CSS supplies the same #0a0a0f behind everything. */}
       <fog attach="fog" args={['#0a0a0f', 12, 30]} />
 
-      {/* NIGHT WORKSHOP — monitors light the desk, work lights over the bays,
-          neon in the cave corner. Fill raised a touch for the bigger room. */}
-      <hemisphereLight intensity={0.24} color="#2e3a55" groundColor="#14141a" />
-      <directionalLight position={[6, 2.5, 3]} intensity={0.15} color="#5a6a9a" />
+      {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
+          "lights on" and moody night mode (monitors + neon only). */}
+      <hemisphereLight intensity={lights ? 0.85 : 0.2} color="#3e4a66" groundColor="#1e1e26" />
+      <directionalLight position={[6, 5, 3]} intensity={lights ? 0.6 : 0.14} color="#7a86a8" />
       {/* primary monitor glow (cool) */}
       <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
       {/* terminal glow (warm terracotta) */}
       <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -45,6 +45,21 @@ export default function App() {
   const [view, setView] = useState('first') // 'first' | 'third' (explore camera)
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
   const [muted, setMutedUI] = useState(false)
+  const [lights, setLights] = useState(true) // workshop lights on by default
+
+  const toggleLights = () => {
+    clickDown() // satisfying switch clack
+    setLights((l) => !l)
+  }
+
+  // L toggles the workshop lights from anywhere.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code === 'KeyL' && !window.__termTyping) toggleLights()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Ambient room tone starts on the first user gesture (autoplay policy).
   useEffect(() => {
@@ -124,6 +139,8 @@ export default function App() {
             onZoom={zoomToggle}
             onZoomExit={() => setZoomScreen(null)}
             joyRef={joyRef}
+            lights={lights}
+            onToggleLights={toggleLights}
           />
         </ScrollControls>
       </Canvas>
@@ -131,6 +148,9 @@ export default function App() {
       {/* DOM overlays */}
       <button className="ctl ctl-mute" onClick={toggleMute} title="toggle sound">
         {muted ? '🔇' : '🔊'}
+      </button>
+      <button className="ctl ctl-lights" onClick={toggleLights} title="toggle lights (L)">
+        {lights ? '💡' : '🌙'}
       </button>
       {mode === 'desk' && (
         <>

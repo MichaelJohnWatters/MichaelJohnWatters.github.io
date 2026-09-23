@@ -241,7 +241,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom }) {
+export default function Monitors({ mode = 'desk', onZoom, switchRef, onToggleLights }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -278,6 +278,10 @@ export default function Monitors({ mode = 'desk', onZoom }) {
   const lastDownRef = useRef({ screen: null, t: 0, bg: false }) // dbl-click detect
   const onZoomRef = useRef(onZoom)
   onZoomRef.current = onZoom
+  const switchMeshRef = useRef(null)
+  switchMeshRef.current = switchRef?.current || null
+  const onToggleLightsRef = useRef(onToggleLights)
+  onToggleLightsRef.current = onToggleLights
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
@@ -343,6 +347,18 @@ export default function Monitors({ mode = 'desk', onZoom }) {
       // Refresh the hit from THIS event's coordinates — on touch there's no
       // hover history, the tap itself carries the position.
       move(e)
+
+      // The wall light switch is clickable in ANY mode.
+      const sw = switchMeshRef.current
+      if (sw) {
+        ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1)
+        raycaster.setFromCamera(ndc, camera)
+        if (raycaster.intersectObject(sw, false).length) {
+          onToggleLightsRef.current?.()
+          return
+        }
+      }
+
       const p = posRef.current
       if (!p.screen) return
       clickDown()

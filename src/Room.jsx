@@ -396,7 +396,8 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights }) {
+  const switchRef = useRef()
   return (
     <group>
       {/* --- Shell --- */}
@@ -468,9 +469,9 @@ export default function Room({ mode = 'desk', onZoom }) {
       {[
         { p: [LIFT.x, 3.9, LIFT.z], lit: true, warm: true },
         { p: [CIVIC.pos[0], 3.9, 2.2], lit: true, warm: false },
-        { p: [0, 3.9, -2.2], lit: false },
-        { p: [0, 3.9, 5.2], lit: false },
-        { p: [-4.8, 3.9, -0.8], lit: false },
+        { p: [0, 3.9, -2.2], lit: false }, // off over the desk — monitors own it
+        { p: [0.3, 3.9, 5.2], lit: true, warm: false },
+        { p: [-4.8, 3.9, -0.8], lit: true, warm: true },
       ].map((f, i) => (
         <group key={i}>
           {/* dark housing — no glare when seen from above */}
@@ -478,7 +479,7 @@ export default function Room({ mode = 'desk', onZoom }) {
             <boxGeometry args={[2.2, 0.08, 0.32]} />
             <meshStandardMaterial color="#26262a" emissive="#3a3a34" emissiveIntensity={0.12} />
           </mesh>
-          {f.lit && (
+          {f.lit && lights && (
             <>
               {/* downward-facing glow panel */}
               <mesh position={[f.p[0], f.p[1] - 0.05, f.p[2]]} rotation-x={Math.PI / 2}>
@@ -492,7 +493,7 @@ export default function Room({ mode = 'desk', onZoom }) {
               </mesh>
               <pointLight
                 position={[f.p[0], f.p[1] - 0.4, f.p[2]]}
-                intensity={f.warm ? 6 : 4.5}
+                intensity={f.warm ? 10 : 8}
                 distance={11}
                 decay={2}
                 color={f.warm ? '#ffe9c4' : '#dfe8ff'}
@@ -514,6 +515,31 @@ export default function Room({ mode = 'desk', onZoom }) {
         </mesh>
       ))}
 
+      {/* Wall switch on the pillar between the doors — click it (any mode) */}
+      <group position={[0.3, 1.25, maxZ - 0.08]}>
+        <mesh ref={switchRef}>
+          <boxGeometry args={[0.16, 0.24, 0.06]} />
+          <meshStandardMaterial color="#d8d4c8" />
+        </mesh>
+        {/* toggle nub flips with the state */}
+        <mesh position={[0, lights ? 0.04 : -0.04, -0.05]} rotation-x={lights ? 0.4 : -0.4}>
+          <boxGeometry args={[0.05, 0.1, 0.05]} />
+          <meshStandardMaterial color={lights ? '#e8b84a' : '#555a60'} />
+        </mesh>
+      </group>
+
+      {/* LED bias strip above the monitors — washes the back wall (always on) */}
+      <mesh position={[0, 2.35, -2.97]}>
+        <boxGeometry args={[2.6, 0.06, 0.05]} />
+        <meshStandardMaterial
+          color="#55aaff"
+          emissive="#55aaff"
+          emissiveIntensity={2.4}
+          toneMapped={false}
+        />
+      </mesh>
+      <pointLight position={[0, 2.2, -2.6]} intensity={2.8} color="#55aaff" distance={5} decay={2} />
+
       {/* --- Office corner (unchanged coordinates) --- */}
       <mesh position={[0, 0.72, -2.6]} castShadow receiveShadow>
         <boxGeometry args={[1.8, 0.04, 0.75]} />
@@ -525,7 +551,7 @@ export default function Room({ mode = 'desk', onZoom }) {
           <meshStandardMaterial color="#5f4633" />
         </mesh>
       ))}
-      <Monitors mode={mode} onZoom={onZoom} />
+      <Monitors mode={mode} onZoom={onZoom} switchRef={switchRef} onToggleLights={onToggleLights} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

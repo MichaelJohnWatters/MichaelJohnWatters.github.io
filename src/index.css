@@ -587,6 +587,11 @@ body {
   right: 2rem;
   padding: 0.5rem 0.7rem;
 }
+.ctl-lights {
+  bottom: 2rem;
+  right: 5.2rem;
+  padding: 0.5rem 0.7rem;
+}
 
 /* Virtual joystick (touch explore mode) */
 .joystick {

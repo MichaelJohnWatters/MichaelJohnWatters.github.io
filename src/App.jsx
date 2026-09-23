@@ -37,7 +37,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
       {/* terminal glow (warm terracotta) */}
       <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && view === 'first'} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -135,6 +135,14 @@ export default function App() {
   // Double-clicking a screen's background (bridged from Monitors) toggles the lean-in.
   const zoomToggle = (which) => setZoomScreen((z) => (z === which ? null : which))
 
+  // First person: hide the native cursor — the centre crosshair is the pointer.
+  const isFp = mode === 'explore' && view === 'first'
+  useEffect(() => {
+    document.documentElement.classList.toggle('fp-cursor', isFp)
+    if (!isFp) document.documentElement.classList.remove('aim-hit')
+    return () => document.documentElement.classList.remove('fp-cursor')
+  }, [isFp])
+
   return (
     <>
       <Canvas shadows dpr={[1, 1.5]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
@@ -207,6 +215,7 @@ export default function App() {
             </div>
           )}
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
+          {isFp && <div className="crosshair" />}
         </>
       )}
     </>

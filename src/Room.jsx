@@ -396,7 +396,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false }) {
   const switchesRef = useRef([])
   return (
     <group>
@@ -567,7 +567,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           <meshStandardMaterial color="#5f4633" />
         </mesh>
       ))}
-      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} />
+      <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} />
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />
         <meshStandardMaterial color="#20202a" />

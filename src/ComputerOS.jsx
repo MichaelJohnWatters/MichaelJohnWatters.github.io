@@ -19,15 +19,18 @@ const BOOKMARKS = [
 function WebBrowser({ focused }) {
   const [q, setQ] = useState('')
   const qRef = useRef('')
-  const [status, setStatus] = useState('enter = search in-window · shift+enter = your real browser')
+  const [status, setStatus] = useState('enter = browse in-world (wikipedia) · shift+enter = Google in your browser')
   const [page, setPage] = useState(null) // embedded page URL, or null = home
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
+  const [live, setLive] = useState(false) // true = real input INTO the page
   const hidRef = useRef()
 
   const openPage = (url, label) => {
     setPage(url)
     setScrollY(0)
-    setStatus(`${label} · live — click away! (some sites refuse frames: shift-click those)`)
+    setLive(false)
+    document.documentElement.classList.remove('over-embed')
+    setStatus(`${label} · view mode — 🖱 to interact`)
   }
 
   // external=true (shift) → the visitor's real browser; else in-window Bing
@@ -43,7 +46,12 @@ function WebBrowser({ focused }) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
       setStatus(`→ opened Google for “${s}” in your browser`)
     } else {
-      openPage('https://www.bing.com/search?q=' + encodeURIComponent(s), `results for “${s}”`)
+      // Wikipedia: reliably embeddable AND its links navigate in-frame
+      // (Bing forces target=_blank on results; most engines forbid frames).
+      openPage(
+        'https://en.wikipedia.org/w/index.php?search=' + encodeURIComponent(s),
+        `wikipedia: “${s}”`,
+      )
     }
   }
 
@@ -86,6 +94,8 @@ function WebBrowser({ focused }) {
           onClick={(e) => {
             e.stopPropagation()
             setPage(null)
+            setLive(false)
+            document.documentElement.classList.remove('over-embed')
             setStatus('ready.')
           }}
         >
@@ -93,6 +103,25 @@ function WebBrowser({ focused }) {
         </button>
         {page && (
           <>
+            <button
+              className="web-nav"
+              data-click
+              tabIndex={-1}
+              title={live ? 'release control' : 'take control of the page'}
+              onClick={(e) => {
+                e.stopPropagation()
+                const nv = !live
+                setLive(nv)
+                if (!nv) document.documentElement.classList.remove('over-embed')
+                setStatus(
+                  nv
+                    ? 'live — your real cursor works inside the page · 🔒 releases'
+                    : 'view mode — 🖱 to interact',
+                )
+              }}
+            >
+              {live ? '🔒' : '🖱'}
+            </button>
             <button
               className="web-nav"
               data-click
@@ -157,11 +186,16 @@ function WebBrowser({ focused }) {
             // "frame-bust" and hijack the visitor's whole tab — links
             // navigate IN-frame; explicit new-tab links still pop out.
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            // View mode (default): in-game cursor, ▲▼ scroll, no page input.
+            // Live mode (🖱): real input INTO the page — the parent goes
+            // blind there, so the retro cursor hands off at the boundary.
+            onPointerEnter={() => live && document.documentElement.classList.add('over-embed')}
+            onPointerLeave={() => document.documentElement.classList.remove('over-embed')}
             style={{
               width: '200%',
               height: '200%',
               border: 'none',
-              pointerEvents: 'auto',
+              pointerEvents: live ? 'auto' : 'none',
               transform: `scale(0.5) translateY(${-scrollY * 2}px)`,
               transformOrigin: '0 0',
             }}

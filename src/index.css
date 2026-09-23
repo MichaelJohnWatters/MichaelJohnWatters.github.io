@@ -3,10 +3,15 @@
 }
 
 /* While the pointer is on a monitor's glass (set by Monitors.jsx), hide the
-   native cursor everywhere — only the in-world retro cursor shows. */
-html.on-glass,
-html.on-glass * {
+   native cursor everywhere — only the in-world retro cursor shows.
+   EXCEPT over a live embedded page (over-embed): there the page owns input
+   and the native cursor takes over cleanly. */
+html.on-glass:not(.over-embed),
+html.on-glass:not(.over-embed) * {
   cursor: none !important;
+}
+html.over-embed .os-cursor {
+  opacity: 0 !important;
 }
 
 /* First person: no cursor at all — the centre crosshair is the pointer. */

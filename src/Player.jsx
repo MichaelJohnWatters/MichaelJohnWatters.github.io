@@ -105,18 +105,28 @@ function blocked(x, z) {
   return false
 }
 
-// Third-person walkable character. Mounted only in "explore" mode.
-// Spawns beside the desk on the open (left) half of the garage.
-export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit }) {
+// Walkable character, third- OR first-person (view prop). Mounted in
+// "explore" mode. Spawns beside the desk on the open half of the garage.
+export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit, view = 'third' }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
   const { camera } = useThree()
   const near = useRef(false)
   const bob = useRef(0)
-  // Camera yaw chases the character's heading so the camera swings around
-  // behind whichever way you walk (starts facing the garage from behind).
+  // Camera yaw: in third person it chases the walking heading; in first
+  // person the mouse drives it directly (starts facing the garage).
   const camYaw = useRef(Math.PI)
+  const mouse = useRef({ x: 0.5, y: 0.5 })
+
+  useEffect(() => {
+    const mm = (e) => {
+      mouse.current.x = e.clientX / window.innerWidth
+      mouse.current.y = e.clientY / window.innerHeight
+    }
+    window.addEventListener('pointermove', mm)
+    return () => window.removeEventListener('pointermove', mm)
+  }, [])
 
   // E to sit back down at the desk (only when close to the chair).
   useEffect(() => {
@@ -129,8 +139,17 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit }) {
 
   useFrame((_, delta) => {
     const k = keys.current
-    // Camera-relative input: W walks away from the camera, A/D strafe on
-    // screen — stays intuitive as the follow cam swings around.
+    const first = view === 'first'
+
+    // First person: the mouse position steers the view directly.
+    // Centre of screen = spawn facing; edges sweep ±180° / pitch ±~30°.
+    if (first) {
+      camYaw.current = Math.PI + (0.5 - mouse.current.x) * Math.PI * 2
+    }
+    const pitch = first ? THREE.MathUtils.clamp((0.5 - mouse.current.y) * 1.1, -0.55, 0.55) : 0
+
+    // Camera-relative input: W walks away from the camera (or forward in FP),
+    // A/D strafe — stays intuitive as the view turns.
     const fwdAmt = (k.forward ? 1 : 0) - (k.back ? 1 : 0)
     const rightAmt = (k.right ? 1 : 0) - (k.left ? 1 : 0)
     const fx = Math.sin(camYaw.current)
@@ -149,11 +168,12 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit }) {
       if (!blocked(pos.current.x, nz)) pos.current.z = nz
       const heading = Math.atan2(dx, dz)
       group.current.rotation.y = heading
-      // Swing the camera around behind the new heading.
-      camYaw.current = dampAngle(camYaw.current, heading, 0.08, delta)
+      // Third person: swing the camera around behind the new heading.
+      if (!first) camYaw.current = dampAngle(camYaw.current, heading, 0.08, delta)
       bob.current += delta * 10
     }
 
+    group.current.visible = !first // hide the body in first person
     group.current.position.set(
       pos.current.x,
       Math.abs(Math.sin(bob.current)) * 0.04,
@@ -167,18 +187,29 @@ export default function Player({ start = [-1.5, 0, -0.5], onNearSeat, onSit }) {
       onNearSeat?.(isNear)
     }
 
-    // Follow camera: orbits to sit BEHIND the current heading, above the
-    // character, clamped INSIDE the garage so walls never block the view.
-    const a = 1 - Math.pow(0.0025, delta)
-    camera.position.lerp(
-      tmpCam.set(
-        clamp(pos.current.x - Math.sin(camYaw.current) * CAM_DIST, GARAGE.minX + 0.4, GARAGE.maxX - 0.4),
-        CAM_HEIGHT,
-        clamp(pos.current.z - Math.cos(camYaw.current) * CAM_DIST, GARAGE.minZ + 0.4, GARAGE.maxZ - 0.3),
-      ),
-      a,
-    )
-    camera.lookAt(pos.current.x, 1.2, pos.current.z)
+    if (first) {
+      // First person: eyes at head height, walk-bob, look along yaw+pitch.
+      const eyeY = 1.6 + Math.abs(Math.sin(bob.current)) * 0.035
+      camera.position.set(pos.current.x, eyeY, pos.current.z)
+      camera.lookAt(
+        pos.current.x + Math.sin(camYaw.current) * Math.cos(pitch),
+        eyeY + Math.sin(pitch),
+        pos.current.z + Math.cos(camYaw.current) * Math.cos(pitch),
+      )
+    } else {
+      // Follow camera: orbits to sit BEHIND the current heading, above the
+      // character, clamped INSIDE the garage so walls never block the view.
+      const a = 1 - Math.pow(0.0025, delta)
+      camera.position.lerp(
+        tmpCam.set(
+          clamp(pos.current.x - Math.sin(camYaw.current) * CAM_DIST, GARAGE.minX + 0.4, GARAGE.maxX - 0.4),
+          CAM_HEIGHT,
+          clamp(pos.current.z - Math.cos(camYaw.current) * CAM_DIST, GARAGE.minZ + 0.4, GARAGE.maxZ - 0.3),
+        ),
+        a,
+      )
+      camera.lookAt(pos.current.x, 1.2, pos.current.z)
+    }
     // Keep the on-glass screens glued: refresh matrices BEFORE drei <Html>
     // computes its CSS transform this frame (see CameraRig, same trick).
     camera.updateMatrixWorld()

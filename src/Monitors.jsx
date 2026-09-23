@@ -7,17 +7,47 @@ import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
 import { clickDown, clickUp } from './sfx'
 
-// Both monitors render their UI onto the glass permanently — from any angle,
-// in any mode — via drei <Html transform occlude> (true 3D perspective).
-// One shared mouse cursor travels between the two displays like a real
-// dual-monitor rig: whichever screen the real pointer is over owns the cursor.
+// Both monitors render their UI onto the glass permanently via drei
+// <Html transform occlude="blending">. One shared retro cursor travels between
+// the displays; clicks are bridged from a camera raycast to real DOM clicks;
+// keyboard input routes to whichever surface has FOCUS.
 
 // drei transform mode: world width = px * distanceFactor / 400.
 const df = (m) => (400 * m.w) / m.pxW
 
-// A REAL (scripted) terminal: type when seated, Enter to send, `clear` wipes.
-// Responses come from the local pattern-matcher in claudeTerm.js.
-function TerminalScreen({ mon, active }) {
+// Hit-test [data-click] elements in FRAMEBUFFER (layout) coordinates.
+// offsetLeft/Top are layout values — unaffected by the CSS 3D transform — so
+// this is exact regardless of screen angle. Last match wins (= topmost).
+function hitTest(root, x, y) {
+  if (!root) return null
+  let best = null
+  for (const el of root.querySelectorAll('[data-click]')) {
+    let ox = 0
+    let oy = 0
+    let n = el
+    while (n && n !== root) {
+      ox += n.offsetLeft
+      oy += n.offsetTop
+      n = n.offsetParent
+    }
+    if (x >= ox && x <= ox + el.offsetWidth && y >= oy && y <= oy + el.offsetHeight) best = el
+  }
+  return best
+}
+
+const STATUS_LINES = [
+  'michael@garage ~ $ ./status.sh',
+  '─────────────────────────────',
+  ' host: garage-workstation',
+  ' uptime: 14d 03:12',
+  ' build: passing ✔',
+  ' mx5_na/restoration: 12% ▓░░░░░░░░',
+  ' parts_needed: [engine, doors x2, bonnet, wheels x4]',
+]
+
+// The terminal: tabs (status.sh | claude), typed input when focused.
+function TerminalScreen({ mon, active, focused, onFocusClick }) {
+  const [tab, setTab] = useState('claude')
   const [history, setHistory] = useState([
     { who: 'claude', text: "Hey — I'm the garage AI. Ask about Michael, or type `help`." },
   ])
@@ -50,6 +80,7 @@ function TerminalScreen({ mon, active }) {
       } else {
         return
       }
+      setTab('claude') // typing always lands in the claude tab
       e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
@@ -57,90 +88,150 @@ function TerminalScreen({ mon, active }) {
   }, [active])
 
   return (
-    <div className="os-screen term" style={{ width: mon.pxW, height: mon.pxH }}>
-      {/* terminal tabs — claude is the active one */}
+    <div
+      className={`os-screen term${focused ? '' : ' term-unfocused'}`}
+      style={{ width: mon.pxW, height: mon.pxH }}
+      data-click
+      onClick={onFocusClick}
+    >
       <div className="term-tabs">
-        <span className="term-tab">status.sh</span>
-        <span className="term-tab active">✻ claude</span>
+        <span
+          className={`term-tab${tab === 'status' ? ' active' : ''}`}
+          data-click
+          onClick={() => setTab('status')}
+        >
+          status.sh
+        </span>
+        <span
+          className={`term-tab${tab === 'claude' ? ' active' : ''}`}
+          data-click
+          onClick={() => setTab('claude')}
+        >
+          ✻ claude
+        </span>
         <span className="term-tab-fill" />
       </div>
-      <div className="term-body claude">
-        <div className="term-line">
-          <span className="claude-logo">✻</span> <b>Claude Code</b> <span className="term-dim">· michael@garage</span>
-        </div>
-        <div className="term-line term-dim">──────────────────────────────────</div>
-        {history.slice(-9).map((l, i) => (
-          <div className="term-line" key={i}>
-            {l.who === 'user' ? (
-              <>
-                <span className="claude-user">&gt; </span>
-                {l.text}
-              </>
-            ) : (
-              <>
-                <span className="claude-dot">● </span>
-                {l.text}
-              </>
-            )}
+
+      {tab === 'claude' ? (
+        <div className="term-body claude">
+          <div className="term-line">
+            <span className="claude-logo">✻</span> <b>Claude Code</b>{' '}
+            <span className="term-dim">· michael@garage</span>
           </div>
-        ))}
-        <div className="term-line">
-          <span className="claude-user">&gt; </span>
-          {input}
-          <span className="term-caret">▊</span>
+          <div className="term-line term-dim">──────────────────────────────────</div>
+          {history.slice(-9).map((l, i) => (
+            <div className="term-line" key={i}>
+              {l.who === 'user' ? (
+                <>
+                  <span className="claude-user">&gt; </span>
+                  {l.text}
+                </>
+              ) : (
+                <>
+                  <span className="claude-dot">● </span>
+                  {l.text}
+                </>
+              )}
+            </div>
+          ))}
+          <div className="term-line">
+            <span className="claude-user">&gt; </span>
+            {input}
+            <span className="term-caret">▊</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="term-body status">
+          {STATUS_LINES.map((l, i) => (
+            <div className="term-line" key={i}>
+              {l}
+            </div>
+          ))}
+          <div className="term-line">
+            michael@garage ~ $ <span className="term-caret">▊</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function Monitors({ mode = 'desk' }) {
+  const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
   const curB = useRef()
+  const glassA = useRef()
+  const glassB = useRef()
   const scrollState = useScroll()
   const gl = useThree((s) => s.gl)
   const camera = useThree((s) => s.camera)
-  const glassA = useRef()
-  const glassB = useRef()
 
-  // Cursor routing via OUR OWN raycast (R3F mesh events silently die in the
-  // ScrollControls + blending-occlusion setup): window pointermove → ray from
-  // the camera → UV hit on the glass → framebuffer px. Perspective-correct at
-  // any angle. While over a screen the NATIVE cursor hides via cursor:none.
+  // Which surface owns the keyboard: 'terminal' | 'desk' | 'win:<key>'.
+  const [focused, setFocused] = useState('terminal')
+
+  // Cursor + click bridge via OUR OWN raycast (R3F mesh events silently die in
+  // the ScrollControls + blending-occlusion setup): window pointermove → ray →
+  // UV on the glass → framebuffer px. Clicks hit-test [data-click] elements in
+  // layout coords and fire el.click(), so the OS uses normal React handlers.
+  const posRef = useRef({ screen: null, x: 0, y: 0 })
+  const hoverRef = useRef(null)
+
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
     const ndc = new THREE.Vector2()
-    const route = (cur, other, mon, uv) => {
-      if (!cur) return
-      cur.style.transform = `translate(${uv.x * mon.pxW}px, ${(1 - uv.y) * mon.pxH}px)`
-      cur.style.opacity = '1'
+
+    const setHover = (el) => {
+      if (el === hoverRef.current) return
+      hoverRef.current?.classList.remove('ui-hover')
+      el?.classList.add('ui-hover')
+      hoverRef.current = el
+    }
+
+    const route = (which, cur, other, mon, root, uv) => {
+      const x = uv.x * mon.pxW
+      const y = (1 - uv.y) * mon.pxH
+      posRef.current = { screen: which, x, y }
+      if (cur) {
+        cur.style.transform = `translate(${x}px, ${y}px)`
+        cur.style.opacity = '1'
+      }
       if (other) other.style.opacity = '0'
-      // Root class + !important CSS: the native cursor is hidden no matter
-      // which DOM element sits under the pointer.
+      setHover(hitTest(root, x, y))
       document.documentElement.classList.add('on-glass')
     }
+
     const move = (e) => {
       if (!glassA.current || !glassB.current) return
       ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1)
       raycaster.setFromCamera(ndc, camera)
       const hit = raycaster.intersectObjects([glassA.current, glassB.current], false)[0]
       if (hit && hit.uv) {
-        if (hit.object === glassA.current) route(curA.current, curB.current, MONITORS.primary, hit.uv)
-        else route(curB.current, curA.current, MONITORS.secondary, hit.uv)
+        if (hit.object === glassA.current) {
+          route('A', curA.current, curB.current, MONITORS.primary, screenA.current, hit.uv)
+        } else {
+          route('B', curB.current, curA.current, MONITORS.secondary, screenB.current, hit.uv)
+        }
       } else {
+        posRef.current = { screen: null, x: 0, y: 0 }
         if (curA.current) curA.current.style.opacity = '0'
         if (curB.current) curB.current.style.opacity = '0'
+        setHover(null)
         document.documentElement.classList.remove('on-glass')
       }
     }
-    // Mouse-click sounds while the pointer is on a screen.
+
     const down = () => {
-      if (document.documentElement.classList.contains('on-glass')) clickDown()
+      const p = posRef.current
+      if (!p.screen) return
+      clickDown()
+      const root = p.screen === 'A' ? screenA.current : screenB.current
+      hitTest(root, p.x, p.y)?.click()
     }
     const up = () => {
-      if (document.documentElement.classList.contains('on-glass')) clickUp()
+      if (posRef.current.screen) clickUp()
     }
+
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointerup', up)
@@ -150,7 +241,7 @@ export default function Monitors({ mode = 'desk' }) {
       window.removeEventListener('pointerup', up)
       document.documentElement.classList.remove('on-glass')
     }
-  }, [camera, scrollState])
+  }, [camera])
 
   // Portal target: the R3F container (canvas parent) — NOT the default, which
   // is ScrollControls' scrolling element (screens would scroll away with the
@@ -197,7 +288,13 @@ export default function Monitors({ mode = 'desk' }) {
         rotation-y={MONITORS.primary.rotY}
       >
         <Html {...common} distanceFactor={df(MONITORS.primary)}>
-          <ComputerOS mon={MONITORS.primary} cursorRef={curA} />
+          <ComputerOS
+            mon={MONITORS.primary}
+            cursorRef={curA}
+            screenRef={screenA}
+            focusedWin={focused.startsWith('win:') ? focused.slice(4) : null}
+            onFocus={setFocused}
+          />
         </Html>
       </group>
       <group
@@ -206,15 +303,12 @@ export default function Monitors({ mode = 'desk' }) {
       >
         <Html {...common} distanceFactor={df(MONITORS.secondary)}>
           <div style={{ position: 'relative' }} ref={screenB}>
-            <TerminalScreen mon={MONITORS.secondary} active={mode === 'desk'} />
-            <svg className="os-cursor" ref={curB} width="18" height="24" viewBox="0 0 18 24">
-              <path
-                d="M1 1 L1 17 L5 13 L8 20 L11 19 L8 12 L14 12 Z"
-                fill="#f5f5f5"
-                stroke="#111"
-                strokeWidth="1.2"
-              />
-            </svg>
+            <TerminalScreen
+              mon={MONITORS.secondary}
+              active={mode === 'desk' && focused === 'terminal'}
+              focused={focused === 'terminal'}
+              onFocusClick={() => setFocused('terminal')}
+            />
           </div>
         </Html>
       </group>

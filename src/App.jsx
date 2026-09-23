@@ -6,7 +6,7 @@ import CameraRig from './CameraRig'
 import Player from './Player'
 import { clickDown } from './sfx'
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -24,8 +24,10 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view }) {
       {/* terminal glow (warm terracotta) */}
       <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} />
-      {mode === 'desk' && <CameraRig hintRef={hintRef} onSeated={onSeated} />}
+      <Room mode={mode} onZoom={onZoom} />
+      {mode === 'desk' && (
+        <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
+      )}
       {mode === 'explore' && <Player onNearSeat={onNearSeat} onSit={onSit} view={view} />}
     </>
   )
@@ -36,7 +38,8 @@ export default function App() {
   const [mode, setMode] = useState('desk') // 'desk' | 'explore'
   const [seated, setSeated] = useState(false)
   const [nearSeat, setNearSeat] = useState(false)
-  const [view, setView] = useState('third') // 'third' | 'first' (explore camera)
+  const [view, setView] = useState('first') // 'first' | 'third' (explore camera)
+  const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
 
   // V toggles first/third person while exploring.
   useEffect(() => {
@@ -48,6 +51,26 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [mode])
 
+  // Seated: 1 / 2 lean in to a screen, Esc (or 0) sits back. Capture phase so
+  // it beats the terminal's typing listener — but only when the terminal
+  // input is empty, so typing digits still works.
+  useEffect(() => {
+    if (mode !== 'desk') return
+    const onKey = (e) => {
+      if (e.key === 'Escape' || e.key === '0') {
+        setZoomScreen(null)
+        return
+      }
+      if ((e.key === '1' || e.key === '2') && !window.__termTyping) {
+        e.preventDefault()
+        e.stopPropagation()
+        setZoomScreen(e.key === '1' ? 'A' : 'B')
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [mode])
+
   const sitDown = () => {
     clickDown()
     setNearSeat(false)
@@ -56,8 +79,12 @@ export default function App() {
   const stepAway = () => {
     clickDown()
     setSeated(false)
+    setZoomScreen(null)
+    setView('first') // stepping away always starts in first person
     setMode('explore')
   }
+  // Double-clicking a screen's background (bridged from Monitors) toggles the lean-in.
+  const zoomToggle = (which) => setZoomScreen((z) => (z === which ? null : which))
 
   return (
     <>
@@ -71,6 +98,9 @@ export default function App() {
             onNearSeat={setNearSeat}
             onSit={sitDown}
             view={view}
+            zoom={zoomScreen}
+            onZoom={zoomToggle}
+            onZoomExit={() => setZoomScreen(null)}
           />
         </ScrollControls>
       </Canvas>
@@ -87,11 +117,12 @@ export default function App() {
             ↓ scroll to sit down at the desk
           </div>
 
-          {seated && (
+          {seated && !zoomScreen && (
             <button className="ctl ctl-step" onClick={stepAway}>
               ⎋ step away from desk
             </button>
           )}
+          {zoomScreen && <div className="zoom-hint">esc · scroll · double-click → sit back</div>}
         </>
       )}
 

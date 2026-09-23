@@ -16,6 +16,31 @@ import { clickDown, clickUp } from './sfx'
 // drei transform mode: world width = px * distanceFactor / 400.
 const df = (m) => (400 * m.w) / m.pxW
 
+// One shared cursor: classic Windows arrow (white, black outline), sized so
+// its PHYSICAL size matches on both monitors despite different px densities.
+const CURSOR_PHYS_W = 0.013 // metres wide on the glass
+const cursorPx = (m) => (CURSOR_PHYS_W * m.pxW) / m.w
+function WinCursor({ refEl, mon }) {
+  const w = cursorPx(mon)
+  return (
+    <svg
+      className="os-cursor"
+      ref={refEl}
+      width={w}
+      height={(w * 22) / 14}
+      viewBox="0 0 14 22"
+    >
+      <path
+        d="M1 1 L1 17.5 L4.7 14.1 L7 19.8 L9.6 18.7 L7.3 13.1 L12.4 13.1 Z"
+        fill="#ffffff"
+        stroke="#000000"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 // Hit-test interactive elements in FRAMEBUFFER (layout) coordinates.
 // offsetLeft/Top are layout values — unaffected by the CSS 3D transform — so
 // this is exact regardless of screen angle. Last match wins (= topmost).
@@ -78,6 +103,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
         const q = inputRef.current.trim()
         inputRef.current = ''
         setInput('')
+        window.__termTyping = false
         if (!q) return
         if (/^(cv|download( cv)?|resume)$/i.test(q)) {
           downloadCV()
@@ -105,11 +131,16 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
       } else {
         return
       }
+      // Lets the screen-zoom keys (1/2) know whether we're mid-sentence.
+      window.__termTyping = inputRef.current.length > 0
       setTab('claude') // typing always lands in the claude tab
       e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.__termTyping = false
+    }
   }, [active])
 
   return (
@@ -181,7 +212,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk' }) {
+export default function Monitors({ mode = 'desk', onZoom }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -202,6 +233,9 @@ export default function Monitors({ mode = 'desk' }) {
   const posRef = useRef({ screen: null, x: 0, y: 0 })
   const hoverRef = useRef(null)
   const dragRef = useRef(null) // { el, screen, lastX, lastY } while dragging
+  const lastDownRef = useRef({ screen: null, t: 0, bg: false }) // dbl-click detect
+  const onZoomRef = useRef(onZoom)
+  onZoomRef.current = onZoom
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
@@ -269,6 +303,23 @@ export default function Monitors({ mode = 'desk' }) {
       clickDown()
       const root = p.screen === 'A' ? screenA.current : screenB.current
       const el = hitTest(root, p.x, p.y)
+
+      // Double-click on the screen BACKGROUND (not a button/window) leans the
+      // camera into that screen; double-click again to sit back.
+      const isBg =
+        !el ||
+        el.classList.contains('desktop') ||
+        el.classList.contains('os-screen') ||
+        el.classList.contains('term')
+      const now = performance.now()
+      const last = lastDownRef.current
+      if (isBg && last.bg && last.screen === p.screen && now - last.t < 350) {
+        lastDownRef.current = { screen: null, t: 0, bg: false }
+        onZoomRef.current?.(p.screen)
+        return
+      }
+      lastDownRef.current = { screen: p.screen, t: now, bg: isBg }
+
       if (!el) return
       if (el.dataset.drag !== undefined) {
         // start a drag session instead of clicking
@@ -334,18 +385,49 @@ export default function Monitors({ mode = 'desk' }) {
     <>
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
+      {/* Post-it stuck on the primary monitor's bezel corner — teaches the
+          lean-in controls. Needs its own depth-punch plane (blending mode). */}
+      <group
+        position={[MONITORS.primary.x, 0, MONITORS.primary.z]}
+        rotation-y={MONITORS.primary.rotY}
+      >
+        <mesh position={[0.31, 0.9, 0.012]}>
+          <planeGeometry args={[0.085, 0.085]} />
+          <meshStandardMaterial colorWrite={false} />
+        </mesh>
+        <Html
+          transform
+          occlude="blending"
+          portal={portal}
+          distanceFactor={(400 * 0.078) / 120}
+          position={[0.31, 0.9, 0.014]}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="postit">
+            <b>lean in:</b>
+            <br />
+            dbl-click a screen
+            <br />
+            or press 1 / 2
+            <br />
+            esc → sit back
+          </div>
+        </Html>
+      </group>
       <group
         position={[MONITORS.primary.x, MONITORS.primary.y, MONITORS.primary.z + 0.004]}
         rotation-y={MONITORS.primary.rotY}
       >
         <Html {...common} distanceFactor={df(MONITORS.primary)}>
-          <ComputerOS
-            mon={MONITORS.primary}
-            cursorRef={curA}
-            screenRef={screenA}
-            focusedWin={focused.startsWith('win:') ? focused.slice(4) : null}
-            onFocus={setFocused}
-          />
+          <div style={{ position: 'relative' }}>
+            <ComputerOS
+              mon={MONITORS.primary}
+              screenRef={screenA}
+              focusedWin={focused.startsWith('win:') ? focused.slice(4) : null}
+              onFocus={setFocused}
+            />
+            <WinCursor refEl={curA} mon={MONITORS.primary} />
+          </div>
         </Html>
       </group>
       <group
@@ -360,16 +442,9 @@ export default function Monitors({ mode = 'desk' }) {
               focused={focused === 'terminal'}
               onFocusClick={() => setFocused('terminal')}
             />
-            {/* terminal's retro cursor — sibling of the screen so the
-                unfocused brightness filter doesn't dim it */}
-            <svg className="os-cursor" ref={curB} width="18" height="24" viewBox="0 0 18 24">
-              <path
-                d="M1 1 L1 17 L5 13 L8 20 L11 19 L8 12 L14 12 Z"
-                fill="#f5f5f5"
-                stroke="#111"
-                strokeWidth="1.2"
-              />
-            </svg>
+            {/* cursor as sibling of the screen so the unfocused brightness
+                filter doesn't dim it */}
+            <WinCursor refEl={curB} mon={MONITORS.secondary} />
           </div>
         </Html>
       </group>

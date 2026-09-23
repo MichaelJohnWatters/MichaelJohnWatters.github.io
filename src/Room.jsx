@@ -203,7 +203,7 @@ function Person() {
   )
 }
 
-export default function Room({ mode = 'desk' }) {
+export default function Room({ mode = 'desk', onZoom }) {
   return (
     <group>
       {/* --- Garage shell: 9 x 7.5m, 2.8m ceiling. Floor z -3..4.5, x -4.5..4.5 --- */}
@@ -268,7 +268,7 @@ export default function Room({ mode = 'desk' }) {
         </mesh>
       ))}
       {/* Dual monitors: hardware + always-on screens live in Monitors.jsx */}
-      <Monitors mode={mode} />
+      <Monitors mode={mode} onZoom={onZoom} />
       {/* keyboard */}
       <mesh position={[0, 0.75, -2.35]} castShadow>
         <boxGeometry args={[0.45, 0.03, 0.15]} />

@@ -6,36 +6,38 @@ const CV_PAGE_W = 794
 const CV_DOC_H = 2246
 const CV_STEP = 250 // unscaled px per scroll click
 
-// Scaled iframe of the real CV html + ▲▼ paging + PDF download.
+// Scaled iframe of the real CV html + a proper right-side scrollbar
+// (arrows + draggable proportional thumb) + a prominent PDF download.
 function CvViewer({ width, height }) {
-  const [off, setOff] = useState(0)
-  const scale = Math.max(0.1, (width - 26) / CV_PAGE_W)
-  const visH = Math.max(60, (height - 58) / scale)
-  const maxOff = Math.max(0, Math.ceil((CV_DOC_H - visH) / CV_STEP))
-  const o = Math.min(off, maxOff)
+  const rootRef = useRef()
+  const [scroll, setScroll] = useState(0)
+  const scale = Math.max(0.1, (width - 42) / CV_PAGE_W)
+  const visH = Math.max(60, (height - 62) / scale)
+  const maxScroll = Math.max(0, CV_DOC_H - visH)
+  const sc = Math.min(scroll, maxScroll)
+
+  // Thumb dragging: the bridge dispatches os-drag (framebuffer-px deltas).
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const onDrag = (e) => {
+      const t = e.target
+      if (!t.classList || !t.classList.contains('cv-thumb')) return
+      const track = t.parentElement
+      const range = Math.max(1, track.offsetHeight - t.offsetHeight)
+      const ratio = maxScroll / range
+      setScroll((s) => Math.max(0, Math.min(maxScroll, s + e.detail.dy * ratio)))
+    }
+    root.addEventListener('os-drag', onDrag)
+    return () => root.removeEventListener('os-drag', onDrag)
+  }, [maxScroll])
+
+  const step = (d) => setScroll((s) => Math.max(0, Math.min(maxScroll, s + d)))
+
   return (
-    <div className="cv-viewer">
+    <div className="cv-viewer" ref={rootRef}>
       <div className="cv-tools">
-        <button
-          data-click
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation()
-            setOff(Math.max(0, o - 1))
-          }}
-        >
-          ▲
-        </button>
-        <button
-          data-click
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation()
-            setOff(Math.min(maxOff, o + 1))
-          }}
-        >
-          ▼
-        </button>
+        <span className="cv-name">Michael-Watters-CV.pdf</span>
         <button
           className="cv-dl"
           data-click
@@ -45,23 +47,60 @@ function CvViewer({ width, height }) {
             downloadCV()
           }}
         >
-          ⬇ download pdf
+          ⬇ DOWNLOAD PDF
         </button>
       </div>
-      <div className="cv-frame">
-        <iframe
-          src="cv/michael-watters-cv.html"
-          title="Michael Watters CV"
-          scrolling="no"
-          style={{
-            width: CV_PAGE_W,
-            height: CV_DOC_H,
-            border: 'none',
-            pointerEvents: 'none',
-            transform: `scale(${scale}) translateY(${-o * CV_STEP}px)`,
-            transformOrigin: '0 0',
-          }}
-        />
+      <div className="cv-row">
+        <div className="cv-frame">
+          <iframe
+            src="cv/michael-watters-cv.html"
+            title="Michael Watters CV"
+            scrolling="no"
+            style={{
+              width: CV_PAGE_W,
+              height: CV_DOC_H,
+              border: 'none',
+              pointerEvents: 'none',
+              transform: `scale(${scale}) translateY(${-sc}px)`,
+              transformOrigin: '0 0',
+            }}
+          />
+        </div>
+        {/* classic right-side scrollbar: full height, arrows, draggable thumb */}
+        <div className="cv-scroll">
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              step(-CV_STEP)
+            }}
+          >
+            ▲
+          </button>
+          <div className="cv-track">
+            <div
+              className="cv-thumb"
+              data-drag="cv-thumb"
+              style={{
+                top: `${(sc / CV_DOC_H) * 100}%`,
+                height: `${Math.min(100, (visH / CV_DOC_H) * 100)}%`,
+              }}
+            />
+          </div>
+          <button
+            className="cv-btn"
+            data-click
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation()
+              step(CV_STEP)
+            }}
+          >
+            ▼
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -75,7 +114,7 @@ function CvViewer({ width, height }) {
 const DEFAULT_W = 320
 const DEFAULT_H = 150
 
-export default function ComputerOS({ mon, cursorRef, screenRef, focusedWin, onFocus }) {
+export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
   const [order, setOrder] = useState(['about.txt']) // open windows, last = front
   const [menuOpen, setMenuOpen] = useState(false)
   const [time, setTime] = useState('')
@@ -339,15 +378,6 @@ export default function ComputerOS({ mon, cursorRef, screenRef, focusedWin, onFo
         <div className="clock">{time}</div>
       </div>
 
-      {/* Fake retro cursor — driven by Monitors' raycast router */}
-      <svg className="os-cursor" ref={cursorRef} width="18" height="24" viewBox="0 0 18 24">
-        <path
-          d="M1 1 L1 17 L5 13 L8 20 L11 19 L8 12 L14 12 Z"
-          fill="#f5f5f5"
-          stroke="#111"
-          strokeWidth="1.2"
-        />
-      </svg>
     </div>
   )
 }

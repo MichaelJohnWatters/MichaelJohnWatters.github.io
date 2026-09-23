@@ -656,6 +656,12 @@ body {
   color: #1a5bc4;
   filter: none;
 }
+.web-embed {
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+  min-height: 0;
+}
 .web-page {
   flex: 1;
   display: flex;

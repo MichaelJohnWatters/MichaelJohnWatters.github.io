@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { ScrollControls } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
@@ -8,6 +8,16 @@ import Joystick from './Joystick'
 import { clickDown, startRoomTone, setMuted, isMuted } from './sfx'
 import { IS_TOUCH } from './touch'
 
+// Global brightness: lights-on raises the tone-mapping exposure — the one
+// knob that brightens every surface uniformly.
+function Exposure({ lights }) {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    gl.toneMappingExposure = lights ? 1.45 : 1.0
+  }, [gl, lights])
+  return null
+}
+
 function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights }) {
   return (
     <>
@@ -15,11 +25,13 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, view, zoom, onZoom,
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
       <fog attach="fog" args={['#0a0a0f', 12, 30]} />
+      <Exposure lights={lights} />
 
       {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
           "lights on" and moody night mode (monitors + neon only). */}
-      <hemisphereLight intensity={lights ? 0.85 : 0.2} color="#3e4a66" groundColor="#1e1e26" />
-      <directionalLight position={[6, 5, 3]} intensity={lights ? 0.6 : 0.14} color="#7a86a8" />
+      <hemisphereLight intensity={lights ? 1.1 : 0.2} color="#4a5570" groundColor="#26262e" />
+      <directionalLight position={[4, 7, 2]} intensity={lights ? 0.9 : 0.14} color="#8a94b0" />
+      {lights && <ambientLight intensity={0.18} color="#5a627a" />}
       {/* primary monitor glow (cool) */}
       <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
       {/* terminal glow (warm terracotta) */}
@@ -125,7 +137,7 @@ export default function App() {
 
   return (
     <>
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene

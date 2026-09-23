@@ -467,8 +467,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
 
       {/* --- Ceiling fixtures: two LIT over the bays, husks elsewhere --- */}
       {[
-        { p: [LIFT.x, 3.9, LIFT.z], lit: true, warm: true },
-        { p: [CIVIC.pos[0], 3.9, 2.2], lit: true, warm: false },
+        // lamp: true = real pointLight (expensive!); others glow visually only
+        { p: [LIFT.x, 3.9, LIFT.z], lit: true, warm: true, lamp: true },
+        { p: [CIVIC.pos[0], 3.9, 2.2], lit: true, warm: false, lamp: true },
         { p: [0, 3.9, -2.2], lit: false }, // off over the desk — monitors own it
         { p: [0.3, 3.9, 5.2], lit: true, warm: false },
         { p: [-4.8, 3.9, -0.8], lit: true, warm: true },
@@ -491,13 +492,15 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
                   toneMapped={false}
                 />
               </mesh>
-              <pointLight
-                position={[f.p[0], f.p[1] - 0.4, f.p[2]]}
-                intensity={f.warm ? 10 : 8}
-                distance={11}
-                decay={2}
-                color={f.warm ? '#ffe9c4' : '#dfe8ff'}
-              />
+              {f.lamp && (
+                <pointLight
+                  position={[f.p[0], f.p[1] - 0.4, f.p[2]]}
+                  intensity={f.warm ? 15 : 12}
+                  distance={13}
+                  decay={2}
+                  color={f.warm ? '#ffe9c4' : '#dfe8ff'}
+                />
+              )}
             </>
           )}
         </group>

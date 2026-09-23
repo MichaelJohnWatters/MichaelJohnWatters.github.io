@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { GARAGE, COLLIDERS, SEAT } from './layout'
 import { footstep } from './sfx'
+import { IS_TOUCH } from './touch'
 
 // Minimal keyboard hook (no context — robust across the R3F boundary).
 function useKeys() {
@@ -131,6 +132,32 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     return () => window.removeEventListener('pointermove', mm)
   }, [])
 
+  // First person on desktop: POINTER LOCK for infinite turning (the absolute
+  // mouse-position fallback stops at the screen edge). Click captures the
+  // mouse; Esc releases; deltas drive yaw/pitch.
+  const lockPitch = useRef(0)
+  useEffect(() => {
+    if (view !== 'first' || IS_TOUCH) return
+    const canvas = document.querySelector('canvas')
+    const mm = (e) => {
+      if (!document.pointerLockElement) return
+      camYaw.current -= e.movementX * 0.0032
+      lockPitch.current = clamp(lockPitch.current - e.movementY * 0.0032, -0.9, 0.9)
+    }
+    const relock = () => {
+      if (!document.pointerLockElement) canvas?.requestPointerLock?.()
+    }
+    lockPitch.current = 0
+    canvas?.requestPointerLock?.() // works when entering FP via a click/key gesture
+    window.addEventListener('pointermove', mm)
+    window.addEventListener('pointerdown', relock)
+    return () => {
+      window.removeEventListener('pointermove', mm)
+      window.removeEventListener('pointerdown', relock)
+      if (document.pointerLockElement) document.exitPointerLock()
+    }
+  }, [view])
+
   // E to sit back down at the desk (only when close to the chair).
   useEffect(() => {
     const sit = (e) => {
@@ -144,12 +171,17 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, view 
     const k = keys.current
     const first = view === 'first'
 
-    // First person: the mouse position steers the view directly.
-    // Centre of screen = spawn facing; edges sweep ±180° / pitch ±~30°.
-    if (first) {
+    // First person look: pointer-locked = infinite delta turning; otherwise
+    // fall back to absolute mouse position (limited sweep).
+    const locked = typeof document !== 'undefined' && !!document.pointerLockElement
+    if (first && !locked) {
       camYaw.current = Math.PI + (0.5 - mouse.current.x) * Math.PI * 2
     }
-    const pitch = first ? THREE.MathUtils.clamp((0.5 - mouse.current.y) * 1.1, -0.55, 0.55) : 0
+    const pitch = first
+      ? locked
+        ? lockPitch.current
+        : THREE.MathUtils.clamp((0.5 - mouse.current.y) * 1.1, -0.55, 0.55)
+      : 0
 
     // Camera-relative input: W walks away from the camera (or forward in FP),
     // A/D strafe — stays intuitive as the view turns. The virtual joystick

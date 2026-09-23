@@ -704,6 +704,52 @@ body {
   background: #fff;
   min-height: 0;
 }
+/* native in-OS search results (clickable with the in-game cursor) */
+.web-results {
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  gap: 4px;
+}
+.web-res-note {
+  font-size: 0.65rem;
+  color: #666;
+  padding: 8px;
+}
+.web-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1px;
+  padding: 3px 6px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: inherit;
+}
+.web-result.ui-hover {
+  background: #eef2fa;
+  filter: none;
+}
+.web-res-title {
+  font-size: 0.72rem;
+  color: #1a0dab;
+  text-decoration: underline;
+}
+.web-res-snip {
+  font-size: 0.6rem;
+  color: #444;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .web-page {
   flex: 1;
   display: flex;

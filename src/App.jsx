@@ -237,9 +237,16 @@ export default function App() {
             👁 {view === 'third' ? 'first person' : 'third person'} (V)
           </button>
           {nearSeat ? (
-            <button className="ctl ctl-sit" onClick={sitDown}>
-              {IS_TOUCH ? '⏎ tap to sit back down' : '⏎ press E to sit back down'}
-            </button>
+            IS_TOUCH ? (
+              <button className="ctl ctl-sit" onClick={sitDown}>
+                ⏎ tap to sit back down
+              </button>
+            ) : (
+              // same style as the crosshair aim labels — consistent HUD
+              <div className="aim-label show sit-label" onClick={sitDown}>
+                press E to sit back down
+              </div>
+            )
           ) : (
             <div className="explore-hint">
               {IS_TOUCH

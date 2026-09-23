@@ -983,6 +983,13 @@ body {
 .aim-label.show {
   opacity: 1;
 }
+/* the sit prompt shares the aim-label look; sits below any aim tooltip
+   and stays clickable for mouse users */
+.sit-label {
+  top: calc(50% + 40px);
+  pointer-events: auto;
+  cursor: pointer;
+}
 
 /* Post-it on the monitor bezel (rendered via Html transform) */
 .postit {

@@ -170,7 +170,7 @@ export default function App() {
 
   return (
     <>
-      <Canvas shadows dpr={[1, 1.5]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
+      <Canvas dpr={[1, 1.35]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene

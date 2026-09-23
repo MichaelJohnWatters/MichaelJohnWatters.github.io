@@ -88,22 +88,28 @@ function WebBrowser({ focused }) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(s), '_blank', 'noopener')
       setStatus(`→ opened Google for “${s}” in your browser`)
     } else {
-      // Native results page rendered by the OS itself — clickable with the
-      // in-game cursor; picks open in the embedded frame.
       complete('search') // whiteboard task
-      setPage(null)
       setNotice(null)
-      setResults({ q: s, loading: true, items: [] })
-      setStatus(`searching “${s}”…`)
-      searchWeb(s)
-        .then((items) => {
-          setResults({ q: s, loading: false, items })
-          setStatus(items.length ? `${items.length} results for “${s}”` : `no results for “${s}”`)
-        })
-        .catch(() => {
-          setResults(null)
-          setStatus('search failed — shift+enter for your real browser')
-        })
+      if (SEARCH_PROXY) {
+        // Worker deployed: native results page, fully in-world clickable.
+        setPage(null)
+        setResults({ q: s, loading: true, items: [] })
+        setStatus(`searching “${s}”…`)
+        searchWeb(s)
+          .then((items) => {
+            setResults({ q: s, loading: false, items })
+            setStatus(items.length ? `${items.length} results for “${s}”` : `no results for “${s}”`)
+          })
+          .catch(() => {
+            setResults(null)
+            setStatus('search failed — shift+enter for your real browser')
+          })
+      } else {
+        // No worker yet: embed REAL Bing results (visible + interactive).
+        // Quirk: Bing forces result clicks into a new real-browser tab.
+        setResults(null)
+        openPage('https://www.bing.com/search?q=' + encodeURIComponent(s), `results: “${s}”`)
+      }
     }
   }
 

@@ -41,6 +41,15 @@ export function complete(id) {
   subs.forEach((f) => f())
 }
 
+// The whiteboard eraser: wipe everything clean.
+export function resetTasks() {
+  state = {}
+  try {
+    localStorage.removeItem(KEY)
+  } catch {}
+  subs.forEach((f) => f())
+}
+
 export function useTasks() {
   return useSyncExternalStore(
     (cb) => {

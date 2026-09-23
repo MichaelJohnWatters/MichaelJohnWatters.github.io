@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useThree, useFrame } from '@react-three/fiber'
 import { Html, useScroll } from '@react-three/drei'
 import * as THREE from 'three'
 import { MONITORS } from './layout'
@@ -241,7 +241,7 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
   )
 }
 
-export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights }) {
+export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleLights, fp = false }) {
   const screenA = useRef()
   const screenB = useRef()
   const curA = useRef()
@@ -275,6 +275,8 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   const posRef = useRef({ screen: null, x: 0, y: 0 })
   const hoverRef = useRef(null)
   const dragRef = useRef(null) // { el, screen, lastX, lastY } while dragging
+  const moveFnRef = useRef(null) // the pointermove routine, callable per-frame in FP
+  const aimRay = useRef({ rc: new THREE.Raycaster(), v: new THREE.Vector2(0, 0) })
   const lastDownRef = useRef({ screen: null, t: 0, bg: false }) // dbl-click detect
   const onZoomRef = useRef(onZoom)
   onZoomRef.current = onZoom
@@ -282,6 +284,9 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   switchesArrRef.current = switchesRef
   const onToggleLightsRef = useRef(onToggleLights)
   onToggleLightsRef.current = onToggleLights
+  // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
+  const fpRef = useRef(fp)
+  fpRef.current = fp
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster()
@@ -325,7 +330,10 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
 
     const move = (e) => {
       if (!glassA.current || !glassB.current) return
-      ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1)
+      // FP crosshair: aim is always the screen centre.
+      const cx = fpRef.current ? window.innerWidth / 2 : e.clientX
+      const cy = fpRef.current ? window.innerHeight / 2 : e.clientY
+      ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1)
       raycaster.setFromCamera(ndc, camera)
       const hit = raycaster.intersectObjects([glassA.current, glassB.current], false)[0]
       if (hit && hit.uv) {
@@ -348,10 +356,12 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       // hover history, the tap itself carries the position.
       move(e)
 
-      // Wall light switches are clickable in ANY mode.
+      // Wall light switches are clickable in ANY mode (centre-aimed in FP).
       const sws = (switchesArrRef.current?.current || []).filter(Boolean)
       if (sws.length) {
-        ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1)
+        const cx = fpRef.current ? window.innerWidth / 2 : e.clientX
+        const cy = fpRef.current ? window.innerHeight / 2 : e.clientY
+        ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1)
         raycaster.setFromCamera(ndc, camera)
         if (raycaster.intersectObjects(sws, false).length) {
           onToggleLightsRef.current?.()
@@ -397,6 +407,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       dragRef.current = null
     }
 
+    moveFnRef.current = move
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointerup', up)
@@ -407,6 +418,21 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
       document.documentElement.classList.remove('on-glass')
     }
   }, [camera])
+
+  // FP: refresh the centre-aim every frame (the view moves while walking,
+  // no pointermove needed) and flare the crosshair over interactives.
+  useFrame(() => {
+    if (!fpRef.current) return
+    moveFnRef.current?.({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 })
+    const sws = (switchesArrRef.current?.current || []).filter(Boolean)
+    let hit = false
+    if (sws.length) {
+      const r = aimRay.current
+      r.rc.setFromCamera(r.v.set(0, 0), camera)
+      hit = r.rc.intersectObjects(sws, false).length > 0
+    }
+    document.documentElement.classList.toggle('aim-hit', hit)
+  })
 
   // Portal target: the R3F container (canvas parent) — NOT the default, which
   // is ScrollControls' scrolling element (screens would scroll away with the

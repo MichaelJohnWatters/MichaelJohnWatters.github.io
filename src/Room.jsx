@@ -205,6 +205,103 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
   )
 }
 
+// Every street/road lamp GLOWS (emissive heads, free), but casting real
+// light from all of them at once would melt the GPU — three.js shades every
+// light on every pixel. So a small POOL of point-lights hops to the lamps
+// nearest the camera each frame: whichever lamps you're near illuminate the
+// ground, at a fixed cost no matter how many lamps exist.
+const LAMP_POS = [
+  // lot corners
+  [5.4, 3.0, 10.3], [-19, 3.0, 27.5], [19, 3.0, -12], [-19, 3.0, -12], [19, 3.0, 27.5],
+  // road lamps (alternating sides) down the straight
+  [6.4, 3.0, 74], [-5.8, 3.0, 154], [6.4, 3.0, 234], [-5.8, 3.0, 314], [6.4, 3.0, 394], [-5.8, 3.0, 474],
+]
+function LampLights({ active }) {
+  const refs = useRef([])
+  useFrame(({ camera }) => {
+    if (!active) return
+    const cx = camera.position.x
+    const cz = camera.position.z
+    const order = LAMP_POS.map((p, i) => [i, (p[0] - cx) ** 2 + (p[2] - cz) ** 2]).sort(
+      (a, b) => a[1] - b[1],
+    )
+    for (let j = 0; j < refs.current.length; j++) {
+      const l = refs.current[j]
+      if (!l) continue
+      const p = LAMP_POS[order[j]?.[0]]
+      if (p) {
+        l.position.set(p[0], p[1], p[2])
+        l.visible = true
+      } else l.visible = false
+    }
+  })
+  if (!active) return null
+  return (
+    <>
+      {Array.from({ length: 5 }).map((_, j) => (
+        <pointLight
+          key={j}
+          ref={(el) => (refs.current[j] = el)}
+          intensity={1.5}
+          distance={14}
+          decay={2}
+          color="#ffd9a0"
+        />
+      ))}
+    </>
+  )
+}
+
+// Blown engine: smoke billowing + fire licking from the front of the car.
+// Driven each frame by vehiclesRef[0].blown (no React churn).
+function Wreck({ vehiclesRef }) {
+  const grp = useRef()
+  const puffs = useRef([])
+  const fire = useRef()
+  const t = useRef(0)
+  const N = 7
+  useFrame((_, dt) => {
+    const c = vehiclesRef.current?.[0]
+    const on = !!c?.blown
+    if (grp.current) grp.current.visible = on
+    if (!on || !grp.current) return
+    t.current += dt
+    const fx = Math.sin(c.heading)
+    const fz = Math.cos(c.heading)
+    grp.current.position.set(c.x + fx * 1.9, 0, c.z + fz * 1.9)
+    puffs.current.forEach((m, i) => {
+      if (!m) return
+      const ph = (t.current * 0.5 + i / N) % 1
+      m.position.set(fx * ph * 1.2, 0.7 + ph * 3.2, fz * ph * 1.2)
+      m.scale.setScalar(0.3 + ph * 1.3)
+      m.material.opacity = 0.55 * (1 - ph)
+    })
+    if (fire.current) {
+      fire.current.scale.y = 0.75 + Math.sin(t.current * 34) * 0.25
+      fire.current.scale.x = fire.current.scale.z = 0.9 + Math.sin(t.current * 27) * 0.12
+    }
+  })
+  return (
+    <group ref={grp} visible={false}>
+      {Array.from({ length: N }).map((_, i) => (
+        <mesh key={i} ref={(el) => (puffs.current[i] = el)}>
+          <sphereGeometry args={[0.36, 8, 8]} />
+          <meshStandardMaterial color="#35353a" transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+      ))}
+      <mesh ref={fire} position={[0, 0.55, 0]}>
+        <coneGeometry args={[0.32, 1.0, 8]} />
+        <meshBasicMaterial color="#ff7a2a" transparent opacity={0.92} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.45, 0]}>
+        <coneGeometry args={[0.16, 0.6, 8]} />
+        <meshBasicMaterial color="#ffd23a" toneMapped={false} />
+      </mesh>
+      <pointLight position={[0, 0.9, 0]} intensity={2.4} distance={7} decay={2} color="#ff6a2a" />
+    </group>
+  )
+}
+
 // Soft radial glow texture for the neon's fake bloom (built once).
 let _neonGlow = null
 function neonGlowTex() {
@@ -957,11 +1054,10 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
                 emissiveIntensity={daytime ? 0.1 : 1.6}
               />
             </mesh>
-            {mode !== 'desk' && !daytime && i < 3 && (
-              <pointLight position={[0, 3.0, 0]} intensity={1.4} color="#ffd9a0" distance={10} decay={2} />
-            )}
           </group>
         ))}
+        {/* pooled lights that hop to whichever lamps you're nearest */}
+        <LampLights active={mode !== 'desk' && !daytime} />
         {/* (wheelie bins + cones are DYNAMIC now — see Playground.jsx) */}
         {/* shipping container across the lot */}
         <group position={[-17.5, 0, 25.3]} rotation-y={0.15}>
@@ -1111,6 +1207,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
         <CompleteCar />
         <CarLights on={headlights === 0} />
       </VehicleRig>
+      <Wreck vehiclesRef={vehiclesRef} />
       <LiftedMx5 />
       <Mx5Parts />
 

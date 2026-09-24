@@ -288,6 +288,42 @@ export function screechStop() {
   }, 160)
 }
 
+// Engine blow-up — a low boom + a metallic noise burst (money-shift grenade).
+export function explode() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  // noise burst, filter sweeping down
+  const dur = 0.7
+  const buf = ac.createBuffer(1, (ac.sampleRate * dur) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.4)
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(2000, t)
+  lp.frequency.exponentialRampToValueAtTime(180, t + 0.55)
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0.4, t)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.7)
+  src.connect(lp)
+  lp.connect(g)
+  g.connect(master)
+  src.start(t)
+  // sub thump
+  const o = ac.createOscillator()
+  o.type = 'sine'
+  o.frequency.setValueAtTime(95, t)
+  o.frequency.exponentialRampToValueAtTime(28, t + 0.45)
+  const og = ac.createGain()
+  og.gain.setValueAtTime(0.5, t)
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.5)
+  o.connect(og)
+  og.connect(master)
+  o.start(t)
+  o.stop(t + 0.55)
+}
+
 // Gearshift — a short mechanical clack (a touch beefier than a mouse click).
 export function shiftClack() {
   const ac = ensureCtx()

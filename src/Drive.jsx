@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS, CIRCLES } from './layout'
 import { IS_TOUCH } from './touch'
-import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, shiftClack } from './sfx'
+import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, shiftClack, explode } from './sfx'
 
 // Arcade drive controller with a simulated manual gearbox + clutch.
 //   W/S throttle-brake · A/D steer · ⇧ clutch (hold) · ↑/↓ shift · E out
@@ -75,7 +75,8 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
 
   const doShift = (dir) => {
     if (shiftCd.current > 0) return
-    const g = clamp(gear.current + dir, 1, P.gears.length)
+    // gear 0 = Neutral, 1..5 = drive gears
+    const g = clamp(gear.current + dir, 0, P.gears.length)
     if (g !== gear.current) {
       gear.current = g
       shiftCd.current = 0.3
@@ -105,6 +106,9 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
 
   useEffect(() => {
     engineStart(isBike ? 'bike' : 'car')
+    // getting in = a fresh (repaired) engine
+    if (vehiclesRef.current[index]) vehiclesRef.current[index].blown = false
+    gear.current = 1
     const map = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r' }
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true
@@ -145,36 +149,73 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
 
     let v = speed.current
     let g = gear.current
+    const neutral = g === 0
+    const decoupled = clutchIn || neutral // engine not driving the wheels
+    const dead = !!c.blown
+    const IDLE = 0.12
+    let wrRaw = 0 // wheel-demanded rpm (for the over-rev warning)
 
-    // --- ENGINE RPM ---
-    if (clutchIn) {
-      // clutch pressed: engine free-revs, decoupled from the wheels
-      const target = throttle > 0 ? 1.0 : 0.14
-      rpm.current += (target - rpm.current) * (throttle > 0 ? REV_RATE : 2) * dt
-      rpm.current = clamp(rpm.current, 0.12, 1)
-      if (rpm.current > 0.98) rpm.current = 0.94 + Math.random() * 0.05 // limiter flutter
-    } else {
-      // engaged: rpm tracks road speed within the current gear
+    // rpm the WHEELS would spin the engine to at this speed in this gear
+    // (the clutch tries to match the engine to this when engaged)
+    const wheelRpm = (sp) => {
+      if (g <= 0) return IDLE
       const top = P.gears[g - 1]
       const bot = g > 1 ? P.gears[g - 2] : 0
-      const sp = Math.max(0, v)
-      rpm.current = clamp(0.15 + 0.85 * ((sp - bot) / Math.max(0.5, top - bot)), 0.12, 1.06)
-      if (rpm.current > 1) rpm.current = 0.97 + Math.random() * 0.03 // bouncing off the limiter
+      return 0.15 + 0.85 * ((sp - bot) / Math.max(0.5, top - bot))
+    }
+    let overRev = false
+
+    // --- ENGINE RPM (its own inertial state — NOT just a function of speed;
+    // that's why a wall bogs it down instead of snapping it to idle) ---
+    if (dead) {
+      rpm.current = Math.max(0, rpm.current - 0.5 * dt) // engine's gone, revs die
+    } else if (decoupled) {
+      // clutch in / neutral: free-revs on throttle, falls on engine friction
+      const target = throttle > 0 ? 1.0 : IDLE
+      rpm.current += (target - rpm.current) * (throttle > 0 ? REV_RATE : 1.8) * dt
+      if (rpm.current > 0.98 && throttle > 0) rpm.current = 0.95 + Math.random() * 0.04 // limiter
+      rpm.current = clamp(rpm.current, IDLE, 1.02)
+    } else {
+      // engaged: the clutch COUPLES engine and wheels (with inertia), the
+      // throttle adds revs, engine friction bleeds them off
+      wrRaw = wheelRpm(Math.max(0, v))
+      const wr = Math.max(IDLE, wrRaw)
+      rpm.current += (wr - rpm.current) * 2.6 * dt // clutch pull (finite = inertia)
+      rpm.current += throttle * 1.0 * dt // throttle
+      rpm.current -= 0.35 * dt // friction
+      // soft limiter when it's the ENGINE pushing (not the wheels)
+      if (rpm.current > 1.02 && wrRaw <= 1.05) rpm.current = 1.0 + Math.random() * 0.02
+      rpm.current = clamp(rpm.current, IDLE, 1.6)
+      // MONEY SHIFT: the wheels force the engine >140% of redline (a reckless
+      // downshift at speed) → the gearbox grenades
+      if (wrRaw > 1.4) {
+        overRev = true
+        c.blown = true
+        explode()
+        engineStop()
+        if (screeching.current) {
+          screechStop()
+          screeching.current = false
+        }
+      }
     }
 
     // clutch DROP: released at high revs while nearly stopped → launch
-    if (prevClutch.current && !clutchIn && rpm.current > 0.7 && Math.abs(v) < 4) {
+    if (!dead && prevClutch.current && !clutchIn && !neutral && rpm.current > 0.7 && Math.abs(v) < 4) {
       launch.current = 0.7
       gear.current = g = 1
     }
     prevClutch.current = clutchIn
 
     // --- DRIVE FORCE ---
-    if (v <= 0.05 && throttle < 0) {
-      // reverse (no gearbox)
+    if (dead) {
+      // blown: no power, coasts down over a few seconds (doesn't stop dead)
+      v -= Math.sign(v) * Math.min(Math.abs(v), 4 * dt)
+    } else if (v <= 0.05 && throttle < 0 && g <= 1) {
+      // reverse (only from N or 1st, no gearbox)
       v += P.accel * 0.6 * throttle * dt
       v = Math.max(v, -P.rev)
-    } else if (!clutchIn && throttle > 0) {
+    } else if (!decoupled && throttle > 0) {
       // forward torque: peak mid-band, taper near the limiter, punchier low gears
       const torque = clamp(1.15 - 0.85 * Math.abs(rpm.current - 0.55), 0.4, 1)
       let a = P.accel * throttle * torque * P.gearMul[g - 1]
@@ -190,15 +231,16 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
 
     // --- AUTO-SHIFT: touch only (no shift keys). Desktop is fully manual:
     // wind it out, upshift yourself, downshift for corners. ---
-    if (IS_TOUCH && !clutchIn && shiftCd.current <= 0 && v > 0.3) {
-      if (rpm.current > 0.94 && g < P.gears.length) doShift(1)
+    if (!dead && IS_TOUCH && !clutchIn && shiftCd.current <= 0 && v > 0.3) {
+      if ((g === 0 || rpm.current > 0.94) && g < P.gears.length) doShift(1) // never idle in N on touch
       else if (rpm.current < 0.33 && g > 1) doShift(-1)
     }
 
     // --- WHEELSPIN (launch, or flooring 1st from low speed) ---
     const spin =
-      launch.current > 0 ||
-      (gear.current === 1 && !clutchIn && throttle > 0 && v < 3.5 && rpm.current > 0.82)
+      !dead &&
+      (launch.current > 0 ||
+        (gear.current === 1 && !clutchIn && throttle > 0 && v < 3.5 && rpm.current > 0.82))
     if (spin && !screeching.current) {
       screechStart()
       screeching.current = true
@@ -230,15 +272,28 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     // HUD (DOM write, no React churn) — gear, rev bar, clutch, km/h
     const hud = document.getElementById('gear-num')
     if (hud) {
-      hud.textContent = v < -0.1 ? 'R' : gear.current
+      hud.textContent = dead ? '✕' : v < -0.1 ? 'R' : gear.current === 0 ? 'N' : gear.current
       const fill = document.getElementById('rpm-fill')
       if (fill) {
         fill.style.width = `${Math.round(clamp(rpm.current, 0, 1) * 100)}%`
-        fill.style.background = rpm.current > 0.9 ? '#ff4e45' : '#5ad0e6'
+        fill.style.background = dead ? '#555' : rpm.current > 0.9 ? '#ff4e45' : '#5ad0e6'
       }
       const spd = document.getElementById('spd-num')
       if (spd) spd.textContent = Math.round(Math.abs(v) * 3.6)
       document.documentElement.classList.toggle('clutch-in', clutchIn)
+      // over-rev / blown warning
+      const warn = document.getElementById('rev-warn')
+      if (warn) {
+        const msg = dead
+          ? '✕ GEARBOX BLOWN'
+          : wrRaw > 1.05
+            ? '⚠ OVER-REV!'
+            : rpm.current > 0.92
+              ? 'REDLINE'
+              : ''
+        warn.textContent = msg
+        warn.className = 'rev-warn' + (dead ? ' blown' : msg === '⚠ OVER-REV!' ? ' danger' : msg ? ' redline' : '')
+      }
     }
 
     const fx = Math.sin(c.heading)

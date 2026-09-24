@@ -20,7 +20,7 @@ import { TV_PRESETS, ytSearch } from './content'
 function Exposure({ lights, daytime }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
-    gl.toneMappingExposure = daytime ? 1.5 : lights ? 1.75 : 1.0
+    gl.toneMappingExposure = daytime ? 1.5 : lights ? 1.9 : 1.35
   }, [gl, lights, daytime])
   return null
 }
@@ -32,23 +32,24 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
-      <fog attach="fog" args={[daytime ? '#a9c6de' : '#0a0a0f', 14, daytime ? 90 : 52]} />
+      <fog attach="fog" args={[daytime ? '#a9c6de' : '#13161f', 14, daytime ? 90 : 68]} />
       <Exposure lights={lights} daytime={daytime} />
 
       {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
           "lights on" and moody night mode (monitors + neon only). The
           ☀️/🌙 toggle overrides the whole WORLD to daylight. */}
       <hemisphereLight
-        intensity={daytime ? 1.6 : lights ? 1.4 : 0.2}
-        color={daytime ? '#bdd7ee' : '#4a5570'}
-        groundColor={daytime ? '#8f8f80' : '#26262e'}
+        intensity={daytime ? 1.6 : lights ? 1.55 : 0.55}
+        color={daytime ? '#bdd7ee' : '#586688'}
+        groundColor={daytime ? '#8f8f80' : '#2b2c36'}
       />
       <directionalLight
         position={daytime ? [18, 28, 12] : [4, 7, 2]}
-        intensity={daytime ? 2.2 : lights ? 0.9 : 0.14}
-        color={daytime ? '#fff3dd' : '#8a94b0'}
+        intensity={daytime ? 2.2 : lights ? 1.05 : 0.4}
+        color={daytime ? '#fff3dd' : '#98a2c0'}
       />
-      {(lights || daytime) && <ambientLight intensity={daytime ? 0.5 : 0.3} color="#5a627a" />}
+      {/* soft fill — always on at night too, so nothing sits in pure black */}
+      <ambientLight intensity={daytime ? 0.5 : lights ? 0.3 : 0.24} color="#5a627a" />
       {/* Monitor glow pools — only in night mode (with the workshop lights on
           they wash out anyway; skipping them halves the dynamic light count) */}
       {!lights && !daytime && (

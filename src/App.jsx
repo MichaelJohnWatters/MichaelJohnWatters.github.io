@@ -24,7 +24,8 @@ function Exposure({ lights, daytime }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode }) {
+  const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -63,9 +64,20 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       {mode === 'explore' && (
         <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} posOutRef={playerPosRef} torch={torch} />
       )}
-      {mode === 'drive' && <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
-      {/* the cannon-es physics playground (paused while at the desk) */}
-      <Playground vehiclesRef={vehiclesRef} playerPosRef={playerPosRef} paused={mode === 'desk'} />
+      {/* kinematic controller drives everything EXCEPT the physics Civic */}
+      {mode === 'drive' && !carPhysicsDrive && (
+        <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />
+      )}
+      {/* the cannon-es physics playground (paused while at the desk) — also
+          hosts the real raycast-vehicle Civic when physics mode is on */}
+      <Playground
+        vehiclesRef={vehiclesRef}
+        playerPosRef={playerPosRef}
+        paused={mode === 'desk'}
+        physicsMode={physicsMode}
+        carActive={carPhysicsDrive}
+        onExitDrive={onExitDrive}
+      />
     </>
   )
 }
@@ -88,6 +100,7 @@ export default function App() {
   const [doors, setDoors] = useState([false, true]) // roller doors open? (Civic's bay open to start)
   const [nearVehicle, setNearVehicle] = useState(-1)
   const [torch, setTorch] = useState(false) // hand torch while on foot
+  const [physicsMode, setPhysicsMode] = useState(false) // Civic on real raycast physics
   const [driving, setDriving] = useState(0) // which vehicle Drive controls
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
   // Live vehicle poses — they persist wherever you park them. r = the
@@ -373,6 +386,7 @@ export default function App() {
             spawn={spawn}
             playerPosRef={playerPosRef}
             torch={torch}
+            physicsMode={physicsMode}
           />
         </ScrollControls>
       </Canvas>
@@ -403,6 +417,16 @@ export default function App() {
         title="toggle day / night"
       >
         {daytime ? '☀️' : '🌃'}
+      </button>
+      <button
+        className="ctl ctl-phys"
+        onClick={() => {
+          clickDown()
+          setPhysicsMode((p) => !p)
+        }}
+        title="Civic: arcade vs real physics (experimental)"
+      >
+        {physicsMode ? '🔧 physics' : '🎮 arcade'}
       </button>
       {mode === 'desk' && !IS_TOUCH && <div id="desk-dot" className="crosshair desk-dot" />}
       {mode === 'desk' && (
@@ -520,7 +544,19 @@ export default function App() {
               </div>
             </div>
           </div>
-          {IS_TOUCH ? (
+          {physicsMode && driving === 0 ? (
+            <div className="drive-help">
+              <div className="drive-help-row">
+                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive</span>
+                <span><kbd>H</kbd> horn</span>
+                <span><kbd>F</kbd> lights</span>
+                <span><kbd>E</kbd> get out</span>
+              </div>
+              <div className="drive-help-tip">
+                🔧 <b>real physics</b> (experimental) — raycast wheels, suspension, grip
+              </div>
+            </div>
+          ) : IS_TOUCH ? (
             <div className="explore-hint">stick drives · auto gears · tap buttons for view/horn</div>
           ) : (
             <div className="drive-help">

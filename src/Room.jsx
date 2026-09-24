@@ -580,7 +580,7 @@ function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, children }) {
   useFrame(() => {
     const c = vehiclesRef?.current?.[idx]
     if (!c || !g.current) return
-    g.current.position.set(c.x, 0, c.z)
+    g.current.position.set(c.x, c.y || 0, c.z) // c.y lifts on jumps (physics car)
     g.current.rotation.y = c.heading + nose
     g.current.rotation.z = lean ? c.lean || 0 : 0
   })

@@ -303,7 +303,18 @@ export default function App() {
 
   return (
     <>
-      <Canvas dpr={[1, 1.25]} camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}>
+      <Canvas
+        dpr={[1, 1.25]}
+        camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}
+        onCreated={() => {
+          // scene is live — fade the static boot screen away
+          const b = document.getElementById('boot')
+          if (b) {
+            b.classList.add('done')
+            setTimeout(() => b.remove(), 800)
+          }
+        }}
+      >
         {/* pages=3 gives 300vh of scroll to drive the camera dive */}
         <ScrollControls pages={3} damping={0.3} enabled={mode === 'desk'}>
           <Scene

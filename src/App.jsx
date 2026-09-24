@@ -593,6 +593,7 @@ export default function App() {
                 ['mass', 'weight', 'kg'],
                 ['force', 'power', 'N'],
                 ['grip', 'grip', ''],
+                ['balance', 'balance', ''],
                 ['brake', 'brakes', ''],
               ].map(([field, label, unit]) => (
                 <label key={field} className="tune-row">

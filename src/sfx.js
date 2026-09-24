@@ -168,16 +168,18 @@ export function engineStart() {
   g.connect(master)
   o.start()
   o2.start()
-  engine = { o, o2, g }
+  engine = { o, o2, g, lp }
   // idle rumble fades in
   g.gain.linearRampToValueAtTime(0.05, ac.currentTime + 0.4)
 }
-export function engineSpeed(v) {
-  // v: 0..1 of top speed
+export function engineSpeed(rpm) {
+  // rpm: 0..1 (0 = idle, 1 = redline). Wide sweep so it screams at redline.
   if (!engine) return
-  engine.o.frequency.value = 55 + v * 105
-  engine.o2.frequency.value = 27.5 + v * 50
-  engine.g.gain.value = 0.05 + v * 0.06
+  const r = Math.max(0, Math.min(1, rpm))
+  engine.o.frequency.value = 42 + r * 250
+  engine.o2.frequency.value = 21 + r * 120
+  engine.g.gain.value = 0.045 + r * 0.075
+  if (engine.lp) engine.lp.frequency.value = 300 + r * 1400 // open up at revs
 }
 export function engineStop() {
   if (!engine) return
@@ -185,12 +187,72 @@ export function engineStop() {
   engine.g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3)
   const e = engine
   engine = null
+  screechStop()
   setTimeout(() => {
     try {
       e.o.stop()
       e.o2.stop()
     } catch {}
   }, 400)
+}
+
+// Tyre screech / burnout — a looping bandpassed-noise squeal, gain ramped
+// on/off so it can sustain during a clutch-drop.
+let screech = null
+export function screechStart() {
+  const ac = ensureCtx()
+  if (screech) return
+  const buf = ac.createBuffer(1, (ac.sampleRate * 0.5) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  src.loop = true
+  const bp = ac.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 1300
+  bp.Q.value = 2.5
+  const g = ac.createGain()
+  g.gain.value = 0
+  src.connect(bp)
+  bp.connect(g)
+  g.connect(master)
+  src.start()
+  g.gain.linearRampToValueAtTime(0.09, ac.currentTime + 0.05)
+  screech = { src, g }
+}
+export function screechStop() {
+  if (!screech) return
+  const ac = ensureCtx()
+  const s = screech
+  screech = null
+  s.g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.12)
+  setTimeout(() => {
+    try {
+      s.src.stop()
+    } catch {}
+  }, 160)
+}
+
+// Gearshift — a short mechanical clack (a touch beefier than a mouse click).
+export function shiftClack() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  const buf = ac.createBuffer(1, (ac.sampleRate * 0.05) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4)
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const bp = ac.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 220
+  bp.Q.value = 1.5
+  const g = ac.createGain()
+  g.gain.value = 0.12
+  src.connect(bp)
+  bp.connect(g)
+  g.connect(master)
+  src.start(t)
 }
 
 // Roller-door motor: low mechanical rumble + slat rattle for ~2.2s.

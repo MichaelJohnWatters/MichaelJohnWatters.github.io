@@ -49,6 +49,10 @@ body,
 #root {
   width: 100%;
   height: 100%;
+  /* dvh tracks the VISIBLE viewport as the mobile browser toolbar shows/hides,
+     so the canvas fills the screen exactly instead of running off the bottom
+     behind the toolbar (with 100% as the fallback for old browsers). */
+  height: 100dvh;
   background: #0a0a0f;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* keep scroll/pinch but KILL double-tap-to-zoom — it fights the

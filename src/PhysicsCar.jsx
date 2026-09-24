@@ -266,9 +266,13 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
         if (slipping) f *= clamp(grip / 3.7, 0.3, 0.7)
         force = -dir * f // cannon: negative engine force drives +forward
         wheelspin = slipping && rpm.current > 0.7 // screech + smoke
-      } else if (!clutchIn && Math.abs(v) > 0.5) {
-        // off throttle & in gear: engine braking — the car (and revs) ease down
-        brake = ENGINE_BRAKE
+      } else if (!clutchIn) {
+        // off throttle & in gear: above idle speed the engine BRAKES; below it
+        // the engine IDLE keeps the car creeping (no stall once you're rolling).
+        // From a dead stop (v~0) the stall logic still wins unless you clutch.
+        const idleSpeed = 2.2
+        if (Math.abs(v) > idleSpeed) brake = ENGINE_BRAKE
+        else if (Math.abs(v) > 0.4) force = -dir * FORCE * 0.05 * gearMul // idle creep
       }
       if (brakeInput > 0 && Math.abs(v) > 0.3) brake = BRAKE_F * brakeInput
     }

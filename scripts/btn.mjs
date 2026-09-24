@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage()
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise(r=>setTimeout(r,4000))
+const box = await page.evaluate(() => { const el=document.querySelector('.ctl-phys'); if(!el) return null; const r=el.getBoundingClientRect(); return {text:el.textContent, x:Math.round(r.x), y:Math.round(r.y), w:Math.round(r.width), onScreen: r.x>0&&r.right<1280&&r.y>0&&r.bottom<800} })
+console.log('phys button:', JSON.stringify(box))
+await page.screenshot({ path:'/tmp/shots/btn.png' })
+await b.close()

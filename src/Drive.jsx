@@ -12,15 +12,15 @@ import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, 
 // vehicles ref so they persist where you park.
 const PARAMS = {
   car: {
-    // progressive spacing: short punchy 1st, taller close-ratio gears up top
-    gears: [5, 11, 18, 27, 38], // top speed (m/s) per gear 1..5 (~137 km/h)
-    gearMul: [1.0, 0.84, 0.72, 0.6, 0.5], // upper gears still pull properly
+    // widely-spread progressive gears: short 1st, big gaps up top
+    gears: [5, 13, 24, 36, 50], // top speed (m/s) per gear 1..5 (~180 km/h)
+    gearMul: [1.0, 0.82, 0.68, 0.56, 0.46], // upper gears still pull properly
     accel: 9.5, brake: 15, rev: 5, steer: 1.8, r: 0.95, grip: 7, // grip = traction limit (m/s²)
     camD: 6.5, camH: 2.9, eyeY: 1.02, eyeOff: 1.2,
   },
   bike: {
-    gears: [8, 16, 25, 35, 47], // ~169 km/h flat out
-    gearMul: [1.12, 0.9, 0.76, 0.64, 0.54],
+    gears: [7, 16, 28, 42, 58], // ~209 km/h flat out
+    gearMul: [1.12, 0.88, 0.74, 0.62, 0.52],
     accel: 12, brake: 17, rev: 4, steer: 2.6, r: 0.45, grip: 8,
     camD: 5, camH: 2.1, eyeY: 1.34, eyeOff: -0.05,
   },

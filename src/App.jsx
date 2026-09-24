@@ -57,7 +57,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}

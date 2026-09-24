@@ -4,6 +4,7 @@ import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
 import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT } from './layout'
 import Monitors from './Monitors'
+import { SHAPES } from './cars'
 
 // Low-poly MAN-CAVE WORKSHOP blockout — ALL DIMENSIONS IN METRES.
 //   Shell: 13 x 10m, 4m ceiling · two roller doors, one per bay
@@ -63,30 +64,34 @@ function Wheel({ position, radius = 0.3, width = 0.2, rotZ = false }) {
 
 // Honda Civic FN4: 4.27 x 1.77 x 1.45, wheelbase 2.64. Built along x,
 // rotated by the caller so its nose points at the roller door (+z).
-function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0', wheels = true }) {
+// Parametric car body — its proportions read as its class of vehicle
+// (roadster low, hatch normal, muscle long, SUV tall). Built along +x (nose).
+function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0', wheels = true, type = 'hatch' }) {
+  const S = SHAPES[type] || SHAPES.hatch
+  const hx = S.len / 2 - 0.85 // wheel offset (x, along length)
+  const hz = S.wid / 2 - 0.14
   return (
     <group position={position} rotation-y={rotY}>
-      <mesh position={[0, 0.46, 0]} castShadow>
-        <boxGeometry args={[4.27, 0.62, 1.77]} />
+      {/* hull */}
+      <mesh position={[0, S.bodyY + S.ride, 0]} castShadow>
+        <boxGeometry args={[S.len, S.bodyH, S.wid]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      <mesh position={[-0.35, 1.08, 0]} castShadow>
-        <boxGeometry args={[2.1, 0.68, 1.6]} />
+      {/* greenhouse / cabin */}
+      <mesh position={[S.cabinX, S.cabinY + S.ride, 0]} castShadow>
+        <boxGeometry args={[S.cabinLen, S.cabinH, S.wid * 0.9]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      <mesh position={[0.85, 1.05, 0]} rotation-z={0.55}>
-        <boxGeometry args={[0.05, 0.62, 1.55]} />
+      {/* windscreen */}
+      <mesh position={[S.cabinX + S.cabinLen / 2 - 0.04, S.cabinY + S.ride - 0.02, 0]} rotation-z={0.5}>
+        <boxGeometry args={[0.05, S.cabinH * 0.85, S.wid * 0.84]} />
         <meshStandardMaterial color="#1a2733" />
       </mesh>
       {/* physics mode supplies its own spinning/steering wheels */}
-      {wheels && (
-        <>
-          <Wheel position={[1.32, 0.3, 0.75]} />
-          <Wheel position={[1.32, 0.3, -0.75]} />
-          <Wheel position={[-1.32, 0.3, 0.75]} />
-          <Wheel position={[-1.32, 0.3, -0.75]} />
-        </>
-      )}
+      {wheels &&
+        [[hx, hz], [hx, -hz], [-hx, hz], [-hx, -hz]].map(([x, z], i) => (
+          <Wheel key={i} position={[x, S.wheelR + S.ride, z]} radius={S.wheelR} />
+        ))}
     </group>
   )
 }
@@ -832,7 +837,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0' }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch' }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1254,7 +1259,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
 
       {/* --- The bays --- */}
       <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2} drop={physicsMode ? -0.5 : 0} physCar={physicsMode}>
-        <CompleteCar wheels={!physicsMode} color={carColor} />
+        <CompleteCar wheels={!physicsMode} color={carColor} type={carType} />
         <CarLights on={headlights === 0} />
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />

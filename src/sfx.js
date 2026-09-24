@@ -91,6 +91,32 @@ export function taskDing() {
   })
 }
 
+// Physics impact thud — volume follows collision speed. Rate-limited so a
+// tumbling pile doesn't machine-gun.
+let lastImpact = 0
+export function impact(v) {
+  const now = Date.now()
+  if (now - lastImpact < 80) return
+  lastImpact = now
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  const dur = 0.11
+  const buf = ac.createBuffer(1, (ac.sampleRate * dur) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5)
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 420 + Math.min(v, 10) * 60
+  const g = ac.createGain()
+  g.gain.value = Math.min(0.16, 0.02 + v * 0.016)
+  src.connect(lp)
+  lp.connect(g)
+  g.connect(master)
+  src.start(t)
+}
+
 // Horn: classic double beep. Cars get a two-tone chord, bikes a higher
 // single tone.
 export function horn(kind = 'car') {

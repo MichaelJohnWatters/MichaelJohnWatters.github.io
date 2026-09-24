@@ -889,13 +889,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             )}
           </group>
         ))}
-        {/* wheelie bins by the building */}
-        {[[-5.6, 10.6], [-4.9, 10.7]].map(([x, z], i) => (
-          <mesh key={i} position={[x, 0.55, z]}>
-            <boxGeometry args={[0.55, 1.1, 0.55]} />
-            <meshStandardMaterial color={i ? '#2c4a35' : '#33343c'} />
-          </mesh>
-        ))}
+        {/* (wheelie bins + cones are DYNAMIC now — see Playground.jsx) */}
         {/* shipping container across the lot */}
         <group position={[-17.5, 0, 25.3]} rotation-y={0.15}>
           <mesh position={[0, 1.3, 0]}>
@@ -903,13 +897,6 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             <meshStandardMaterial color="#5a3b32" metalness={0.2} roughness={0.7} />
           </mesh>
         </group>
-        {/* a few cones near the driveway */}
-        {[[3.8, 13.5], [5.2, 15.8], [-2.6, 14.6]].map(([x, z], i) => (
-          <mesh key={i} position={[x, 0.22, z]}>
-            <coneGeometry args={[0.16, 0.45, 10]} />
-            <meshStandardMaterial color="#d9622b" />
-          </mesh>
-        ))}
         {/* night sky — points shader, ignores fog, basically free */}
         {!daytime && <Stars radius={70} depth={30} count={2200} factor={3.6} fade speed={0.4} />}
       </group>

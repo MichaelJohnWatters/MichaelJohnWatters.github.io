@@ -335,6 +335,83 @@ function WallArt({ kind, pos, rotY = 0, w = 0.78, h = 1.04 }) {
   )
 }
 
+// Headlights. Lamp meshes glow faintly parked, fully when driven — and the
+// driven vehicle gets a real spotlight beam (only ever ONE active, cheap).
+// Local axes: the Civic's nose is +x, the bikes' is +z.
+function CarLights({ on }) {
+  const l = useRef()
+  const t = useRef()
+  useEffect(() => {
+    if (l.current && t.current) l.current.target = t.current
+  }, [on])
+  return (
+    <group>
+      {[0.55, -0.55].map((z, i) => (
+        <mesh key={i} position={[2.14, 0.55, z]}>
+          <boxGeometry args={[0.06, 0.14, 0.3]} />
+          <meshStandardMaterial
+            color="#fffbe8"
+            emissive="#fff3c4"
+            emissiveIntensity={on ? 2.4 : 0.25}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {on && (
+        <>
+          <spotLight
+            ref={l}
+            position={[2.2, 0.7, 0]}
+            angle={0.62}
+            penumbra={0.6}
+            intensity={40}
+            distance={24}
+            decay={1.5}
+            color="#ffeecb"
+          />
+          <object3D ref={t} position={[13, 0.1, 0]} />
+        </>
+      )}
+    </group>
+  )
+}
+
+function BikeLight({ on }) {
+  const l = useRef()
+  const t = useRef()
+  useEffect(() => {
+    if (l.current && t.current) l.current.target = t.current
+  }, [on])
+  return (
+    <group>
+      <mesh position={[0, 0.88, 0.72]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.09, 0.09, 0.07, 12]} />
+        <meshStandardMaterial
+          color="#fffbe8"
+          emissive="#fff3c4"
+          emissiveIntensity={on ? 2.4 : 0.25}
+          toneMapped={false}
+        />
+      </mesh>
+      {on && (
+        <>
+          <spotLight
+            ref={l}
+            position={[0, 0.9, 0.8]}
+            angle={0.5}
+            penumbra={0.6}
+            intensity={32}
+            distance={22}
+            decay={1.5}
+            color="#ffeecb"
+          />
+          <object3D ref={t} position={[0, 0.05, 12]} />
+        </>
+      )}
+    </group>
+  )
+}
+
 // A drivable vehicle: its live pose lives in App's vehicles ref so the
 // Drive controller and this mesh read the same truth each frame. `nose`
 // corrects for the mesh's forward axis (car nose = +x → -π/2; bike = +z
@@ -584,7 +661,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1 }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -944,6 +1021,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
       {/* --- The bays --- */}
       <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2}>
         <CompleteCar />
+        <CarLights on={headlights === 0} />
       </VehicleRig>
       <LiftedMx5 />
       <Mx5Parts />
@@ -954,6 +1032,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
       {BIKES.map((b, i) => (
         <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
           <Motorbike color={i === 0 ? '#b03030' : '#2a2a30'} />
+          <BikeLight on={headlights === i + 1} />
         </VehicleRig>
       ))}
       <CaveCorner />

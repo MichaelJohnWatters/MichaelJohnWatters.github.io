@@ -301,28 +301,33 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     // understeer / power-oversteer / drift EMERGE (cannon's RaycastVehicle
     // can't trade longitudinal grip for lateral). Bicycle model: one lateral
     // force at the front axle, one at the rear.
-    if (Math.abs(v) > 0.6 && chassisApi.applyImpulse) {
-      const P2 = pose.current
+    const P2 = pose.current
+    if (P2.fwd > 0.8 && chassisApi.applyImpulse) {
       const fwx = Math.sin(P2.heading)
       const fwz = Math.cos(P2.heading)
       const rgx = Math.cos(P2.heading) // car's right vector
       const rgz = -Math.sin(P2.heading)
       const vLat = P2.vx * rgx + P2.vz * rgz
-      const speed = Math.max(3, Math.abs(P2.fwd)) // avoid huge slip at a crawl
+      const speed = Math.max(4, Math.abs(P2.fwd)) // clamp keeps slip sane at low speed
       const a = wf + 0.2 // axle distance from CoG
       const slipF = Math.atan2(vLat + P2.yaw * a, speed) + steerAngle.current // fronts are steered
       const slipR = Math.atan2(vLat - P2.yaw * a, speed)
-      const C = mass * 11 // cornering stiffness (N per rad)
-      const base = mass * 11 // peak lateral grip per axle (N) — generous = stable default
+      const C = mass * 9 // cornering stiffness (N per rad)
+      const base = mass * 11 // peak lateral grip per axle (N)
       const balance = prof.current.balance ?? 0.55 // >0.5 = grippier rear (safe/understeery)
       const throttleUse = clamp(Math.abs(force) / (FORCE * 0.9), 0, 1)
       const brakeUse = clamp(brake / BRAKE_F, 0, 1)
-      const gripF = base * (2 * (1 - balance)) * (1 - brakeUse * 0.3) // braking → nose tucks in
-      const gripR = base * (2 * balance) * (1 - throttleUse * 0.4 - (spin ? 0.35 : 0)) // power → tail out
-      const fF = clamp(-C * slipF, -gripF, gripF)
-      const fR = clamp(-C * slipR, -gripR, gripR)
+      const gripF = base * (2 * (1 - balance)) * (1 - brakeUse * 0.25)
+      // rear grip never collapses fully (floor) → no snap spins
+      const gripR = base * (2 * balance) * Math.max(0.5, 1 - throttleUse * 0.3 - (spin ? 0.2 : 0))
+      // fade the whole model in with speed — kills the low-speed spin
+      const fade = clamp((Math.abs(P2.fwd) - 1.5) / 4, 0, 1)
+      const fF = clamp(-C * slipF, -gripF, gripF) * fade
+      const fR = clamp(-C * slipR, -gripR, gripR) * fade
       chassisApi.applyImpulse([rgx * fF * dt, 0, rgz * fF * dt], [P2.x + fwx * a, P2.y, P2.z + fwz * a])
       chassisApi.applyImpulse([rgx * fR * dt, 0, rgz * fR * dt], [P2.x - fwx * a, P2.y, P2.z - fwz * a])
+      // yaw damper: bleed off spin the tyres aren't catching (self-corrects)
+      if (chassisApi.applyTorque) chassisApi.applyTorque([0, -P2.yaw * mass * 2.2 * dt, 0])
     }
 
     // engine sound with rev-limiter fuel cut

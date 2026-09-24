@@ -52,7 +52,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   const mass = profile.mass || DEFAULT.mass
   const chassisRef = useRef()
   const [, chassisApi] = useBox(
-    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
+    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.8, allowSleep: false }),
     chassisRef,
   )
   // live mass edits from the tuning panel (F=ma changes accel immediately)
@@ -72,8 +72,10 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     dampingCompression: spring * 0.28,
     maxSuspensionForce: mass * 220,
     suspensionRestLength: 0.38, maxSuspensionTravel: 0.34,
-    frictionSlip: 2.6, // fixed (can't hot-swap safely); profile.grip drives the slip model
-    rollInfluence: 0.06,
+    // low base friction — our own slip-angle tyre model (in useFrame) provides
+    // the lateral grip, so understeer/oversteer/drift can emerge
+    frictionSlip: 1.4,
+    rollInfluence: 0.05,
     useCustomSlidingRotationalSpeed: true, customSlidingRotationalSpeed: -30,
   }
   const wx = CHASSIS[0] / 2 - 0.05
@@ -88,7 +90,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     chassisBody: chassisRef, wheels, wheelInfos, indexForwardAxis: 2, indexRightAxis: 0, indexUpAxis: 1,
   }))
 
-  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, quat: [0, 0, 0, 1] })
+  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, vx: 0, vz: 0, yaw: 0, quat: [0, 0, 0, 1] })
   useEffect(() => {
     const q = new THREE.Quaternion(), e = new THREE.Euler()
     const up = chassisApi.position.subscribe((p) => { pose.current.x = p[0]; pose.current.y = p[1]; pose.current.z = p[2] })
@@ -97,9 +99,11 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       q.set(qq[0], qq[1], qq[2], qq[3]); e.setFromQuaternion(q, 'YXZ'); pose.current.heading = e.y
     })
     const uv = chassisApi.velocity.subscribe((v) => {
+      pose.current.vx = v[0]; pose.current.vz = v[2]
       pose.current.fwd = v[0] * Math.sin(pose.current.heading) + v[2] * Math.cos(pose.current.heading)
     })
-    return () => { up(); uq(); uv() }
+    const ua = chassisApi.angularVelocity.subscribe((a) => { pose.current.yaw = a[1] })
+    return () => { up(); uq(); uv(); ua() }
   }, [chassisApi])
 
   // gearbox state
@@ -293,13 +297,32 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     if (spin && !screeching.current) { screechStart(); screeching.current = true }
     else if (!spin && screeching.current) { screechStop(); screeching.current = false }
 
-    // POWER-OVERSTEER: cannon's tyre model won't drop lateral grip when the
-    // rears spin, so we fake it — a lateral impulse at the rear axle kicks the
-    // back out (more with steering + speed). Get on the power mid-corner and
-    // it steps out; hold it straight and it wiggles loose.
-    if (spin && Math.abs(v) > 2 && chassisApi.applyLocalImpulse) {
-      const kick = (steerInput * 0.7 + (Math.random() - 0.5) * 0.5) * clamp(Math.abs(v) / 8, 0, 1) * mass * 0.06
-      chassisApi.applyLocalImpulse([kick, 0, 0], [0, -0.1, -1.7]) // sideways at the rear
+    // --- TYRE MODEL: lateral grip from slip angle + a friction circle, so
+    // understeer / power-oversteer / drift EMERGE (cannon's RaycastVehicle
+    // can't trade longitudinal grip for lateral). Bicycle model: one lateral
+    // force at the front axle, one at the rear.
+    if (Math.abs(v) > 0.6 && chassisApi.applyImpulse) {
+      const P2 = pose.current
+      const fwx = Math.sin(P2.heading)
+      const fwz = Math.cos(P2.heading)
+      const rgx = Math.cos(P2.heading) // car's right vector
+      const rgz = -Math.sin(P2.heading)
+      const vLat = P2.vx * rgx + P2.vz * rgz
+      const speed = Math.max(3, Math.abs(P2.fwd)) // avoid huge slip at a crawl
+      const a = wf + 0.2 // axle distance from CoG
+      const slipF = Math.atan2(vLat + P2.yaw * a, speed) + steerAngle.current // fronts are steered
+      const slipR = Math.atan2(vLat - P2.yaw * a, speed)
+      const C = mass * 11 // cornering stiffness (N per rad)
+      const base = mass * 11 // peak lateral grip per axle (N) — generous = stable default
+      const balance = prof.current.balance ?? 0.55 // >0.5 = grippier rear (safe/understeery)
+      const throttleUse = clamp(Math.abs(force) / (FORCE * 0.9), 0, 1)
+      const brakeUse = clamp(brake / BRAKE_F, 0, 1)
+      const gripF = base * (2 * (1 - balance)) * (1 - brakeUse * 0.3) // braking → nose tucks in
+      const gripR = base * (2 * balance) * (1 - throttleUse * 0.4 - (spin ? 0.35 : 0)) // power → tail out
+      const fF = clamp(-C * slipF, -gripF, gripF)
+      const fR = clamp(-C * slipR, -gripR, gripR)
+      chassisApi.applyImpulse([rgx * fF * dt, 0, rgz * fF * dt], [P2.x + fwx * a, P2.y, P2.z + fwz * a])
+      chassisApi.applyImpulse([rgx * fR * dt, 0, rgz * fR * dt], [P2.x - fwx * a, P2.y, P2.z - fwz * a])
     }
 
     // engine sound with rev-limiter fuel cut

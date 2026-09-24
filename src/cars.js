@@ -13,6 +13,7 @@ export const CARS = [
     force: 9000,
     brake: 130,
     grip: 2.6, // tyre frictionSlip — higher = more grip, harder to spin
+    balance: 0.55, // grip bias: >0.5 grippier rear (stable), <0.5 tail-happy
     gears: [8, 16, 26, 37, 50], // 29 / 58 / 94 / 133 / 180 km/h
   },
   {
@@ -23,6 +24,7 @@ export const CARS = [
     force: 6800,
     brake: 120,
     grip: 2.9,
+    balance: 0.5, // neutral — playful, easy to rotate
     gears: [7, 14, 22, 31, 42], // ~151 km/h
   },
   {
@@ -33,6 +35,7 @@ export const CARS = [
     force: 15000,
     brake: 150,
     grip: 2.15,
+    balance: 0.42, // tail-happy — lift the rear grip, easy to drift
     gears: [11, 21, 33, 47, 62], // ~223 km/h
   },
 ]
@@ -54,4 +57,5 @@ export const TUNE = {
   force: [5000, 20000, 250],
   brake: [80, 220, 5],
   grip: [1.6, 3.6, 0.05],
+  balance: [0.35, 0.65, 0.01],
 }

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
 import { WORLD } from './layout'
@@ -25,14 +26,23 @@ function Fence({ position, args }) {
 }
 
 // A kinematic box that shadows a vehicle's live pose each frame.
+// CRUCIAL: kinematic bodies interact through their VELOCITY — a body that
+// only teleports (position.set) has v=0, never wakes sleeping props, and
+// drives straight through them. So we set real velocity from the frame
+// delta AND the position (to correct drift).
 function VehiclePusher({ vehiclesRef, idx, args }) {
   const [ref, api] = useBox(() => ({ type: 'Kinematic', args, position: [0, 0.6, 0] }))
-  useFrame(() => {
+  const prev = useRef(null)
+  useFrame((_, dt) => {
     const c = vehiclesRef.current[idx]
     if (!c) return
+    if (prev.current && dt > 0) {
+      api.velocity.set((c.x - prev.current.x) / dt, 0, (c.z - prev.current.z) / dt)
+    }
     api.position.set(c.x, 0.6, c.z)
     const h = c.heading / 2
     api.quaternion.set(0, Math.sin(h), 0, Math.cos(h))
+    prev.current = { x: c.x, z: c.z }
   })
   return <mesh ref={ref} visible={false} />
 }
@@ -40,9 +50,15 @@ function VehiclePusher({ vehiclesRef, idx, args }) {
 // The walker shoves things too.
 function PlayerPusher({ playerPosRef }) {
   const [ref, api] = useSphere(() => ({ type: 'Kinematic', args: [0.35], position: [0, 0.5, 0] }))
-  useFrame(() => {
+  const prev = useRef(null)
+  useFrame((_, dt) => {
     const p = playerPosRef?.current
-    if (p) api.position.set(p.x, 0.5, p.z)
+    if (!p) return
+    if (prev.current && dt > 0) {
+      api.velocity.set((p.x - prev.current.x) / dt, 0, (p.z - prev.current.z) / dt)
+    }
+    api.position.set(p.x, 0.5, p.z)
+    prev.current = { x: p.x, z: p.z }
   })
   return <mesh ref={ref} visible={false} />
 }

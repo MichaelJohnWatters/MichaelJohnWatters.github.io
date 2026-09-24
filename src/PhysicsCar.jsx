@@ -16,8 +16,8 @@ import {
 const CHASSIS = [1.8, 0.7, 4.2]
 const WHEEL_R = 0.34
 // gearbox (mirrors the arcade car)
-const GEARS = [5, 11, 18, 27, 38] // gear-top road speed (m/s)
-const GEARMUL = [1.0, 0.84, 0.72, 0.6, 0.5]
+const GEARS = [5, 13, 24, 36, 50] // gear-top road speed (m/s, ~180 km/h)
+const GEARMUL = [1.0, 0.82, 0.68, 0.56, 0.46]
 const REV_TOP = 5
 const FORCE = 2600 // base engine force to the wheels
 const BRAKE_F = 42
@@ -32,11 +32,16 @@ function Wheel({ wheelRef, radius }) {
     () => ({ mass: 1, type: 'Kinematic', material: 'wheel', collisionFilterGroup: 0, args: [radius, radius, 0.4, 16] }),
     wheelRef,
   )
+  // VISIBLE — the raycast vehicle steers (front) and spins these for real
   return (
     <group ref={wheelRef}>
-      <mesh rotation={[0, 0, Math.PI / 2]} visible={false}>
-        <cylinderGeometry args={[radius, radius, 0.32, 16]} />
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[radius, radius, 0.32, 18]} />
         <meshStandardMaterial color="#15151a" />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[radius * 0.45, radius * 0.45, 0.34, 8]} />
+        <meshStandardMaterial color="#6a6a72" metalness={0.6} roughness={0.4} />
       </mesh>
     </group>
   )
@@ -173,6 +178,15 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
     const dir = g === -1 ? -1 : 1
     const v = p.fwd
     let wrRaw = 0
+    // are the tyres slipping? big power at low road speed in a low gear, or a
+    // clutch-drop launch. Slip → wheels spin free (revs run up, less grip);
+    // grip → the ground friction pulls the revs back down to road speed.
+    const slipping =
+      !decoupled &&
+      !stalled.current &&
+      !dead &&
+      gas > 0 &&
+      (launch.current > 0 || ((g === 1 || g === -1) && Math.abs(v) < 3))
     let wheelspin = false
 
     // --- ENGINE RPM ---
@@ -185,9 +199,11 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
       rpm.current = clamp(rpm.current, IDLE, 1.02)
     } else {
       wrRaw = Math.abs(v) / gearTop
-      const couple = launch.current > 0 ? 1.2 : Math.abs(v) < 1.2 ? 8 : 2.6
+      // slipping = weak coupling (revs free-run); gripping = strong coupling
+      // so tyre friction drags the revs down toward the road speed
+      const couple = slipping ? 1.0 : Math.abs(v) < 1.2 ? 8 : 3.4
       rpm.current += (wrRaw - rpm.current) * couple * dt
-      rpm.current += gas * 1.0 * dt
+      rpm.current += gas * (slipping ? 1.8 : 0.8) * dt // throttle revs it (more when slipping)
       rpm.current -= 0.35 * dt
       if (rpm.current > 1.02 && wrRaw <= 1.05) rpm.current = 1.0 + Math.random() * 0.02
       rpm.current = clamp(rpm.current, 0, 1.6)
@@ -217,15 +233,15 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
         const torque = clamp(1.15 - 0.85 * Math.abs(rpm.current - 0.55), 0.4, 1)
         let f = FORCE * gas * torque * gearMul
         if (launch.current > 0) f *= 1.8
+        // slipping tyres put LESS power down (lost grip = less bite)
+        if (slipping) f *= 0.55
         force = -dir * f // cannon: negative engine force drives +forward
-        // wheelspin (for screech + smoke): low gears / launches, revs up
-        wheelspin = launch.current > 0 || ((g === 1 || g === -1) && Math.abs(v) < 4 && rpm.current > 0.55)
-        if (wheelspin) rpm.current = clamp(rpm.current + 1.0 * dt, IDLE, 1.05)
+        wheelspin = slipping && rpm.current > 0.7 // screech + smoke
       }
       if (brakeInput > 0 && Math.abs(v) > 0.3) brake = BRAKE_F * brakeInput
     }
-    vehicleApi.setSteeringValue(steerInput * STEER_MAX, 0)
-    vehicleApi.setSteeringValue(steerInput * STEER_MAX, 1)
+    vehicleApi.setSteeringValue(-steerInput * STEER_MAX, 0)
+    vehicleApi.setSteeringValue(-steerInput * STEER_MAX, 1)
     vehicleApi.applyEngineForce(force, 2)
     vehicleApi.applyEngineForce(force, 3)
     for (let i = 0; i < 4; i++) vehicleApi.setBrake(brake, i)

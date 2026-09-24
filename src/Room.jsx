@@ -63,7 +63,7 @@ function Wheel({ position, radius = 0.3, width = 0.2, rotZ = false }) {
 
 // Honda Civic FN4: 4.27 x 1.77 x 1.45, wheelbase 2.64. Built along x,
 // rotated by the caller so its nose points at the roller door (+z).
-function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0' }) {
+function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0', wheels = true }) {
   return (
     <group position={position} rotation-y={rotY}>
       <mesh position={[0, 0.46, 0]} castShadow>
@@ -78,10 +78,15 @@ function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0' }) {
         <boxGeometry args={[0.05, 0.62, 1.55]} />
         <meshStandardMaterial color="#1a2733" />
       </mesh>
-      <Wheel position={[1.32, 0.3, 0.75]} />
-      <Wheel position={[1.32, 0.3, -0.75]} />
-      <Wheel position={[-1.32, 0.3, 0.75]} />
-      <Wheel position={[-1.32, 0.3, -0.75]} />
+      {/* physics mode supplies its own spinning/steering wheels */}
+      {wheels && (
+        <>
+          <Wheel position={[1.32, 0.3, 0.75]} />
+          <Wheel position={[1.32, 0.3, -0.75]} />
+          <Wheel position={[-1.32, 0.3, 0.75]} />
+          <Wheel position={[-1.32, 0.3, -0.75]} />
+        </>
+      )}
     </group>
   )
 }
@@ -575,12 +580,12 @@ function BikeLight({ on }) {
 // Drive controller and this mesh read the same truth each frame. `nose`
 // corrects for the mesh's forward axis (car nose = +x → -π/2; bike = +z
 // → 0). Bikes also lean into corners (pose.lean, set by Drive).
-function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, children }) {
+function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, drop = 0, children }) {
   const g = useRef()
   useFrame(() => {
     const c = vehiclesRef?.current?.[idx]
     if (!c || !g.current) return
-    g.current.position.set(c.x, c.y || 0, c.z) // c.y lifts on jumps (physics car)
+    g.current.position.set(c.x, (c.y || 0) + drop, c.z) // c.y lifts on jumps; drop aligns body to the physics wheels
     g.current.rotation.y = c.heading + nose
     g.current.rotation.z = lean ? c.lean || 0 : 0
   })
@@ -820,7 +825,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1 }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1241,8 +1246,8 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       </mesh>
 
       {/* --- The bays --- */}
-      <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2}>
-        <CompleteCar />
+      <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2} drop={physicsMode ? -0.5 : 0}>
+        <CompleteCar wheels={!physicsMode} />
         <CarLights on={headlights === 0} />
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />

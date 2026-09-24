@@ -547,13 +547,14 @@ export default function App() {
           {physicsMode && driving === 0 ? (
             <div className="drive-help">
               <div className="drive-help-row">
+                <span><kbd>I</kbd> start</span>
                 <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive</span>
-                <span><kbd>H</kbd> horn</span>
-                <span><kbd>F</kbd> lights</span>
-                <span><kbd>E</kbd> get out</span>
+                <span><kbd>⇧</kbd> clutch</span>
+                <span><kbd>↑</kbd><kbd>↓</kbd> gears</span>
+                <span><kbd>H</kbd> horn · <kbd>F</kbd> lights · <kbd>E</kbd> out</span>
               </div>
               <div className="drive-help-tip">
-                🔧 <b>real physics</b> (experimental) — raycast wheels, suspension, grip
+                🔧 <b>real physics</b> — raycast wheels, suspension, real tyre grip
               </div>
             </div>
           ) : IS_TOUCH ? (

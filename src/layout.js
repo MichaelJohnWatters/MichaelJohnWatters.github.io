@@ -79,8 +79,7 @@ export const COLLIDERS = [
   { minX: -6.5, maxX: -5.8, minZ: -2.6, maxZ: -0.2 },
   // shelving, right wall
   { minX: 6.0, maxX: 6.5, minZ: 0.4, maxZ: 2.6 },
-  // motorbikes
-  { minX: 4.9, maxX: 6.3, minZ: 2.9, maxZ: 5.2 },
+  // (motorbikes are NOT here — they ride; live circle collisions instead)
   // man-cave corner: couch (fridge now in the front-right corner)
   { minX: 3.9, maxX: 5.9, minZ: -1.8, maxZ: -0.7 },
   { minX: 5.75, maxX: 6.5, minZ: 5.8, maxZ: 6.6 },

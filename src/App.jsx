@@ -438,8 +438,14 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
+          <button
+            className="ctl ctl-view"
+            onClick={() => window.dispatchEvent(new Event('vehicle-flash'))}
+          >
+            💡 flash (F)
+          </button>
           <div className="explore-hint">
-            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · E to get out'}
+            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · F flash · E to get out'}
           </div>
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>

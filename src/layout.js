@@ -53,6 +53,14 @@ export const SEAT = { x: 0, z: -1.85 }
 
 // Placement anchors (Room.jsx builds from these).
 export const CIVIC = { pos: [2.8, 0, 2.2], rotY: Math.PI / 2 } // nose to its door
+
+// Cars parked in a row out in the lot (decorative; different classes).
+export const PARKED = [
+  { type: 'suv', color: '#48604a', x: 15, z: 12, rotY: -Math.PI / 2 },
+  { type: 'hatch', color: '#b8892f', x: 15, z: 16.5, rotY: -Math.PI / 2 },
+  { type: 'roadster', color: '#7a2f6a', x: 15, z: 21, rotY: -Math.PI / 2 },
+  { type: 'muscle', color: '#2f5f6a', x: 15, z: 25.5, rotY: -Math.PI / 2 },
+]
 export const BIKES = [
   { pos: [5.6, 0, 4.6], rotY: -0.5 },
   { pos: [5.7, 0, 3.4], rotY: -0.35 },
@@ -91,6 +99,8 @@ export const COLLIDERS = [
   // outside: lamp post + shipping container (bins are physics props now)
   { minX: 5.25, maxX: 5.55, minZ: 10.15, maxZ: 10.45 },
   { minX: -20.5, maxX: -14.5, minZ: 24.0, maxZ: 26.6 },
+  // the parked cars (rotated → length runs along z)
+  ...PARKED.map((p) => ({ minX: p.x - 1.0, maxX: p.x + 1.0, minZ: p.z - 2.3, maxZ: p.z + 2.3 })),
   // lot north wall, split with a gap where the road exits
   { minX: -28, maxX: -3.9, minZ: 33.85, maxZ: 34.15 },
   { minX: 4.5, maxX: 28, minZ: 33.85, maxZ: 34.15 },

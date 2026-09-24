@@ -262,8 +262,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
         const torque = clamp(1.15 - 0.85 * Math.abs(rpm.current - 0.55), 0.4, 1)
         let f = FORCE * gas * torque * gearMul
         if (launch.current > 0) f *= 1.8
-        // slipping tyres put LESS power down (lower grip = less bite)
-        if (slipping) f *= clamp(grip / 3.7, 0.3, 0.7)
+        // slipping = a bit less bite, but keep enough to keep the rears lit
+        if (slipping) f *= clamp(grip / 3.0, 0.5, 0.85)
         force = -dir * f // cannon: negative engine force drives +forward
         wheelspin = slipping && rpm.current > 0.7 // screech + smoke
       } else if (!clutchIn) {
@@ -292,6 +292,15 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     if (c) c.wheelspin = spin
     if (spin && !screeching.current) { screechStart(); screeching.current = true }
     else if (!spin && screeching.current) { screechStop(); screeching.current = false }
+
+    // POWER-OVERSTEER: cannon's tyre model won't drop lateral grip when the
+    // rears spin, so we fake it — a lateral impulse at the rear axle kicks the
+    // back out (more with steering + speed). Get on the power mid-corner and
+    // it steps out; hold it straight and it wiggles loose.
+    if (spin && Math.abs(v) > 2 && chassisApi.applyLocalImpulse) {
+      const kick = (steerInput * 0.7 + (Math.random() - 0.5) * 0.5) * clamp(Math.abs(v) / 8, 0, 1) * mass * 0.06
+      chassisApi.applyLocalImpulse([kick, 0, 0], [0, -0.1, -1.7]) // sideways at the rear
+    }
 
     // engine sound with rev-limiter fuel cut
     const atLimit = !dead && !stalled.current && rpm.current >= 0.985 && wrRaw <= 1.05

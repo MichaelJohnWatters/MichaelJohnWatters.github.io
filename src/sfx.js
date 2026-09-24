@@ -91,6 +91,35 @@ export function taskDing() {
   })
 }
 
+// Horn: classic double beep. Cars get a two-tone chord, bikes a higher
+// single tone.
+export function horn(kind = 'car') {
+  const ac = ensureCtx()
+  const freqs = kind === 'bike' ? [620] : [400, 505]
+  const t0 = ac.currentTime
+  for (const start of [0, 0.3]) {
+    const g = ac.createGain()
+    const t = t0 + start
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(kind === 'bike' ? 0.11 : 0.13, t + 0.02)
+    g.gain.setValueAtTime(kind === 'bike' ? 0.11 : 0.13, t + 0.16)
+    g.gain.linearRampToValueAtTime(0, t + 0.2)
+    const lp = ac.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 1800
+    lp.connect(g)
+    g.connect(master)
+    for (const f of freqs) {
+      const o = ac.createOscillator()
+      o.type = 'square'
+      o.frequency.value = f
+      o.connect(lp)
+      o.start(t)
+      o.stop(t + 0.22)
+    }
+  }
+}
+
 // Car engine: a looping saw hum whose pitch/level follow speed.
 let engine = null
 export function engineStart() {

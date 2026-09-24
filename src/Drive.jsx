@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS } from './layout'
-import { engineStart, engineSpeed, engineStop } from './sfx'
+import { engineStart, engineSpeed, engineStop, horn } from './sfx'
 
 // Arcade drive controller for any vehicle. Kinematic: W/S throttle-brake,
 // A/D steer (authority scales with speed), gentle drag, circle-vs-AABB
@@ -53,19 +53,23 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
   const isBike = vehiclesRef.current[index]?.kind === 'bike'
   const [cockpit, setCockpit] = useState(false)
 
-  // V/C (or the HUD button's event) toggles chase ↔ cockpit
+  // V/C (or the HUD button's event) toggles chase ↔ cockpit; H honks.
   useEffect(() => {
     const toggle = () => setCockpit((v) => !v)
+    const honk = () => horn(isBike ? 'bike' : 'car')
     const onKey = (e) => {
       if (e.code === 'KeyV' || e.code === 'KeyC') toggle()
+      if (e.code === 'KeyH') honk()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('drive-cam', toggle)
+    window.addEventListener('vehicle-horn', honk)
     return () => {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('drive-cam', toggle)
+      window.removeEventListener('vehicle-horn', honk)
     }
-  }, [])
+  }, [isBike])
 
   useEffect(() => {
     engineStart()

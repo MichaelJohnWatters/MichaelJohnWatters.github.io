@@ -474,8 +474,16 @@ export default function App() {
           >
             👁 view (V)
           </button>
+          <button
+            className="ctl ctl-horn"
+            onClick={() => window.dispatchEvent(new Event('vehicle-horn'))}
+          >
+            📯 horn (H)
+          </button>
           <div className="explore-hint">
-            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · V view · F flash · E to get out'}
+            {IS_TOUCH
+              ? 'stick drives · push up to go'
+              : 'WASD to drive · V view · F flash · H horn · E to get out'}
           </div>
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>

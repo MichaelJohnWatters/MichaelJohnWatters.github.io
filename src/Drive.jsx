@@ -101,8 +101,13 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     const auth = clamp(Math.abs(v) / 3, 0, 1)
     const steer = steerIn * auth * Math.sign(v)
     c.heading -= steer * P.steer * dt
-    // bikes lean into the corner with speed
-    c.lean = THREE.MathUtils.lerp(c.lean || 0, steer * clamp(Math.abs(v) / P.top, 0, 1) * 0.42, 1 - Math.pow(0.001, dt))
+    // bikes lean into the corner with speed — properly committed (~43° max,
+    // sqrt curve so it reads at town speeds too)
+    c.lean = THREE.MathUtils.lerp(
+      c.lean || 0,
+      steer * Math.sqrt(clamp(Math.abs(v) / P.top, 0, 1)) * 0.75,
+      1 - Math.pow(0.001, dt),
+    )
 
     const nx = c.x + Math.sin(c.heading) * v * dt
     const nz = c.z + Math.cos(c.heading) * v * dt

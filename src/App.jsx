@@ -214,6 +214,9 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('daytime', daytime)
   }, [daytime])
+  useEffect(() => {
+    if (mode !== 'drive') document.documentElement.classList.remove('clutch-in')
+  }, [mode])
 
   // L toggles the workshop lights from anywhere.
   useEffect(() => {
@@ -500,10 +503,26 @@ export default function App() {
           >
             📯 horn (H)
           </button>
+          {/* gearbox HUD — Drive writes into these each frame (no re-render) */}
+          <div className="gauge">
+            <div className="gauge-gear">
+              <span id="gear-num">1</span>
+              <small>gear</small>
+            </div>
+            <div className="gauge-right">
+              <div className="rpm-track">
+                <div id="rpm-fill" />
+              </div>
+              <div className="gauge-spd">
+                <span id="spd-num">0</span> km/h
+                <span className="clutch-tag">CLUTCH</span>
+              </div>
+            </div>
+          </div>
           <div className="explore-hint">
             {IS_TOUCH
-              ? 'stick drives · push up to go'
-              : 'WASD to drive · V view · F flash · H horn · E to get out'}
+              ? 'stick drives · auto gears'
+              : 'WASD drive · ⇧ clutch · ↑↓ gears · rev + drop the clutch to launch · V F H · E out'}
           </div>
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>

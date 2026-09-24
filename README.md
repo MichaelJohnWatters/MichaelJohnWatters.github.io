@@ -45,10 +45,13 @@ Everything is code: procedural low-poly geometry, synthesized WebAudio
   corner. The hand-rolled vehicle sim stays in charge of driving; vehicles
   and the walker enter the physics world as kinematic pushers, and impact
   thuds are synthesized from collision velocity.
-- **Vehicles are a tiny kinematic sim** — speed-scaled steering, bikes
-  lean ~43° into corners (the first-person camera leans with them), a
-  single spotlight headlight beam only ever exists on the vehicle being
-  driven, and everything collides with the building, each other, and you.
+- **Vehicles are a tiny kinematic sim with a simulated gearbox** — a
+  5-speed with a torque curve, auto-shifting engine note, and a real
+  clutch: hold it to free-rev to the limiter and drop it for a wheelspin
+  launch (synthesized tyre screech and all). Speed-scaled steering, bikes
+  lean ~43° into corners (the first-person camera leans with them), one
+  spotlight headlight beam on the driven vehicle, and everything collides
+  with the building, each other, and you.
 - **Verification harness** — `scripts/*.mjs` drive the site headlessly
   (walk, sit, unlock the phone, open doors, drive out) and capture
   screenshots + FPS probes. 60fps is the bar.
@@ -59,7 +62,7 @@ Everything is code: procedural low-poly geometry, synthesized WebAudio
 |---|---|
 | Desk | scroll to dive · click/type the OS · `1`/`2` lean in, `3`/Esc back · click post-its to read |
 | On foot | `WASD` walk · mouse look · `E` sit/ride/drive · `P` phone · `L` lights |
-| Driving | `WASD` drive · `V` bonnet/chase cam · `F` flash · `H` horn · `E` get out |
+| Driving | `WASD` drive · `⇧` clutch · `↑`/`↓` gears · `V` cam · `F` flash · `H` horn · `E` out |
 | Anywhere | 💡 lights · ☀️ day/night · 🔊 mute |
 
 ## Develop

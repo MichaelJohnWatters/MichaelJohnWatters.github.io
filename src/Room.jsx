@@ -588,17 +588,34 @@ function BikeLight({ on }) {
 function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, drop = 0, physCar = false, children }) {
   const g = useRef()
   const q = useMemo(() => new THREE.Quaternion(), [])
+  const tp = useMemo(() => new THREE.Vector3(), [])
+  const te = useMemo(() => new THREE.Euler(), [])
   const nq = useMemo(() => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), nose), [nose])
-  useFrame(() => {
+  const started = useRef(false)
+  useFrame((_, dt) => {
     const c = vehiclesRef?.current?.[idx]
     if (!c || !g.current) return
-    g.current.position.set(c.x, (c.y || 0) + drop, c.z) // c.y lifts on jumps; drop aligns body to the physics wheels
+    // The physics worker steps at 60 Hz; on a 120 Hz (ProMotion) display the
+    // raw pose only changes every other frame, which reads as judder. Smooth
+    // the VISUAL toward the physics pose (which stays the source of truth for
+    // collisions) so the in-between frames are filled — kills the jitter with
+    // barely any lag. First frame snaps so it doesn't slide in from origin.
+    tp.set(c.x, (c.y || 0) + drop, c.z) // c.y lifts on jumps; drop aligns body to the physics wheels
     if (physCar && c.quat) {
       // follow the FULL chassis orientation → visible body roll / dive / squat / airtime
-      q.set(c.quat[0], c.quat[1], c.quat[2], c.quat[3])
-      g.current.quaternion.copy(q).multiply(nq)
+      q.set(c.quat[0], c.quat[1], c.quat[2], c.quat[3]).multiply(nq)
     } else {
-      g.current.rotation.set(0, c.heading + nose, lean ? c.lean || 0 : 0)
+      q.setFromEuler(te.set(0, c.heading + nose, lean ? c.lean || 0 : 0))
+    }
+    if (!started.current) {
+      started.current = true
+      g.current.position.copy(tp)
+      g.current.quaternion.copy(q)
+    } else {
+      const kp = 1 - Math.exp(-dt * 32) // position: ~30ms time constant
+      const kr = 1 - Math.exp(-dt * 26) // rotation: a touch softer
+      g.current.position.lerp(tp, kp)
+      g.current.quaternion.slerp(q, kr)
     }
   })
   return <group ref={g}>{children}</group>

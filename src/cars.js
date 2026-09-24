@@ -12,7 +12,8 @@ export const CARS = [
     mass: 1200, // balanced hot hatch
     force: 9000,
     brake: 130,
-    grip: 2.6, // tyre frictionSlip — higher = more grip, harder to spin
+    grip: 2.6, // wheelspin resistance: higher = rears break loose later on power
+    // (NB: cornering grip is a fixed frictionSlip today; tail-happiness = balance)
     balance: 0.55, // grip bias: >0.5 grippier rear (stable), <0.5 tail-happy
     gears: [8, 16, 26, 37, 50], // 29 / 58 / 94 / 133 / 180 km/h
   },

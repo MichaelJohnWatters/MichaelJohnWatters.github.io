@@ -124,7 +124,7 @@ function blocked(x, z, doors, vehicles) {
 // First-person walker. Mounted in "explore" mode. Spawns beside the desk on
 // the open half of the garage. Desktop: pointer-lock mouse-look. Touch:
 // drag anywhere (off the joystick) to look.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive, posOutRef }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -281,6 +281,11 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
     }
 
     group.current.visible = false // first person: the body is the camera
+    // feed the physics playground's kinematic pusher
+    if (posOutRef) {
+      posOutRef.current.x = pos.current.x
+      posOutRef.current.z = pos.current.z
+    }
     group.current.position.set(
       pos.current.x,
       Math.abs(Math.sin(bob.current)) * 0.04,

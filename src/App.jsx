@@ -5,6 +5,7 @@ import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
 import Drive from './Drive'
+import Playground from './Playground'
 import Joystick from './Joystick'
 import Phone from './Phone'
 import { CIVIC, BIKES } from './layout'
@@ -23,7 +24,7 @@ function Exposure({ lights, daytime }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -60,9 +61,11 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} />
+        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} posOutRef={playerPosRef} />
       )}
       {mode === 'drive' && <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
+      {/* the cannon-es physics playground (paused while at the desk) */}
+      <Playground vehiclesRef={vehiclesRef} playerPosRef={playerPosRef} paused={mode === 'desk'} />
     </>
   )
 }
@@ -88,6 +91,7 @@ export default function App() {
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
   // Live vehicle poses — they persist wherever you park them. r = the
   // circle other things collide with. Civic heading 0 = nose to its door.
+  const playerPosRef = useRef({ x: 0.9, z: 0.4 }) // fed to the physics pusher
   const vehiclesRef = useRef([
     { kind: 'car', x: CIVIC.pos[0], z: CIVIC.pos[2], heading: 0, lean: 0, r: 1.5 },
     { kind: 'bike', x: BIKES[0].pos[0], z: BIKES[0].pos[2], heading: BIKES[0].rotY, lean: 0, r: 0.6 },
@@ -359,6 +363,7 @@ export default function App() {
             onDrive={enterDrive}
             onExitDrive={exitDrive}
             spawn={spawn}
+            playerPosRef={playerPosRef}
           />
         </ScrollControls>
       </Canvas>

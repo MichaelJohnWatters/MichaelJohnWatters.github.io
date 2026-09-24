@@ -39,6 +39,12 @@ Everything is code: procedural low-poly geometry, synthesized WebAudio
 - **All audio is synthesized** — clicks, key clacks, footsteps, the door
   motor, engine (pitch follows speed), the two-tone horn: WebAudio
   oscillators and filtered noise. No audio files exist in this repo.
+- **A cannon-es physics playground** (the Bruno Simon special) — the lot
+  is scattered with proper rigid bodies: drive through **MICHAEL** in big
+  tumbling letters, scatter the cones, flatten the bins, bowl the 10-pin
+  corner. The hand-rolled vehicle sim stays in charge of driving; vehicles
+  and the walker enter the physics world as kinematic pushers, and impact
+  thuds are synthesized from collision velocity.
 - **Vehicles are a tiny kinematic sim** — speed-scaled steering, bikes
   lean ~43° into corners (the first-person camera leans with them), a
   single spotlight headlight beam only ever exists on the vehicle being

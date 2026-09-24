@@ -83,9 +83,8 @@ export const COLLIDERS = [
   // man-cave corner: couch (fridge now in the front-right corner)
   { minX: 3.9, maxX: 5.9, minZ: -1.8, maxZ: -0.7 },
   { minX: 5.75, maxX: 6.5, minZ: 5.8, maxZ: 6.6 },
-  // outside: lamp post + bins cluster + shipping container
+  // outside: lamp post + shipping container (bins are physics props now)
   { minX: 5.25, maxX: 5.55, minZ: 10.15, maxZ: 10.45 },
-  { minX: -5.95, maxX: -4.55, minZ: 10.3, maxZ: 11.0 },
   { minX: -20.5, maxX: -14.5, minZ: 24.0, maxZ: 26.6 },
 ]
 

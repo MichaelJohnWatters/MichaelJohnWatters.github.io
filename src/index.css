@@ -1490,6 +1490,62 @@ html.on-glass .desk-dot {
   color: #e8b34b;
 }
 
+/* Live car tuning panel (top-right, physics mode) */
+.tune {
+  position: fixed;
+  right: 2rem;
+  top: 2rem;
+  z-index: 8388646;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(10, 10, 16, 0.82);
+  border: 1px solid #2c2c36;
+  border-radius: 12px;
+  font-family: 'SF Mono', ui-monospace, Menlo, monospace;
+  color: #cfd2dc;
+  font-size: 11px;
+}
+.tune-cars {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.tune-car {
+  flex: 1;
+  padding: 5px 2px;
+  border: 1px solid #34343f;
+  border-radius: 7px;
+  background: #1a1a22;
+  color: #cfd2dc;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.tune-car.on {
+  border-color: #e8b34b;
+  color: #fff;
+}
+.tune-row {
+  display: grid;
+  grid-template-columns: 46px 1fr 52px;
+  align-items: center;
+  gap: 6px;
+}
+.tune-row span {
+  color: #8a8a96;
+}
+.tune-row b {
+  text-align: right;
+  color: #e8b34b;
+}
+.tune-row input[type='range'] {
+  width: 100%;
+  accent-color: #5ad0e6;
+}
+
 /* Driving gauge (bottom-right): gear, rev bar, speed, clutch tag */
 .gauge {
   position: fixed;

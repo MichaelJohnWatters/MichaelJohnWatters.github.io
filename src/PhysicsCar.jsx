@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useBox, useCylinder, useRaycastVehicle } from '@react-three/cannon'
 import * as THREE from 'three'
 import { CIVIC } from './layout'
+import { GEARMUL } from './cars'
 import { IS_TOUCH } from './touch'
 import {
   engineStart, engineSpeed, engineStop, horn, screechStart, screechStop,
@@ -15,15 +16,10 @@ import {
 // wheels actually slip. Suspension, roll and airtime come for free.
 const CHASSIS = [1.8, 0.7, 4.2]
 const WHEEL_R = 0.34
-// gearbox (mirrors the arcade car)
-const GEARS = [8, 16, 26, 37, 50] // gear-top road speed (m/s): 29/58/94/133/180 km/h
-const GEARMUL = [1.0, 0.82, 0.68, 0.56, 0.46]
-const REV_TOP = 5
-const MASS = 1150 // kg — a real small car; pulling away actually loads the engine
-const FORCE = 9000 // peak wheel force (N) — F=ma against MASS gives sane accel
-const BRAKE_F = 130
+const REV_TOP = 5 // reverse-gear top speed (m/s)
 const ENGINE_BRAKE = 14 // off-throttle drag in gear (revs + speed ease down together)
 const STEER_MAX = 0.55
+const DEFAULT = { mass: 1200, force: 9000, brake: 130, grip: 2.6, gears: [8, 16, 26, 37, 50] }
 const IDLE = 0.12
 const REV_RATE = 4.8
 const clamp = THREE.MathUtils.clamp
@@ -49,20 +45,35 @@ function Wheel({ wheelRef, radius }) {
   )
 }
 
-export default function PhysicsCar({ vehiclesRef, active, onExit }) {
+export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT }) {
   const { camera } = useThree()
+  const prof = useRef(profile)
+  prof.current = profile
+  const mass = profile.mass || DEFAULT.mass
   const chassisRef = useRef()
   const [, chassisApi] = useBox(
-    () => ({ mass: MASS, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
+    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
     chassisRef,
   )
+  // live mass edits from the tuning panel (F=ma changes accel immediately)
+  useEffect(() => {
+    if (chassisApi.mass) chassisApi.mass.set(profile.mass)
+  }, [profile.mass, chassisApi])
+
   const wheels = [useRef(), useRef(), useRef(), useRef()]
+  // SUSPENSION grounded in the car's real mass: a heavier car gets stiffer
+  // springs (holds ride height) and damping toward critical, so it rolls in
+  // corners / dives on the brakes / squats on power like a real one.
+  const spring = mass * 0.045
   const wheelInfo = {
     radius: WHEEL_R, directionLocal: [0, -1, 0], axleLocal: [-1, 0, 0],
-    // suspension scaled to hold ~1150 kg without sagging/bottoming
-    suspensionStiffness: 55, suspensionRestLength: 0.35, frictionSlip: 2.6,
-    dampingRelaxation: 10, dampingCompression: 12, maxSuspensionForce: 200000,
-    rollInfluence: 0.02, maxSuspensionTravel: 0.3,
+    suspensionStiffness: spring,
+    dampingRelaxation: spring * 0.22,
+    dampingCompression: spring * 0.28,
+    maxSuspensionForce: mass * 220,
+    suspensionRestLength: 0.38, maxSuspensionTravel: 0.34,
+    frictionSlip: 2.6, // fixed (can't hot-swap safely); profile.grip drives the slip model
+    rollInfluence: 0.06,
     useCustomSlidingRotationalSpeed: true, customSlidingRotationalSpeed: -30,
   }
   const wx = CHASSIS[0] / 2 - 0.05
@@ -77,11 +88,14 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
     chassisBody: chassisRef, wheels, wheelInfos, indexForwardAxis: 2, indexRightAxis: 0, indexUpAxis: 1,
   }))
 
-  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0 })
+  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, quat: [0, 0, 0, 1] })
   useEffect(() => {
     const q = new THREE.Quaternion(), e = new THREE.Euler()
     const up = chassisApi.position.subscribe((p) => { pose.current.x = p[0]; pose.current.y = p[1]; pose.current.z = p[2] })
-    const uq = chassisApi.quaternion.subscribe((qq) => { q.set(qq[0], qq[1], qq[2], qq[3]); e.setFromQuaternion(q, 'YXZ'); pose.current.heading = e.y })
+    const uq = chassisApi.quaternion.subscribe((qq) => {
+      pose.current.quat = qq
+      q.set(qq[0], qq[1], qq[2], qq[3]); e.setFromQuaternion(q, 'YXZ'); pose.current.heading = e.y
+    })
     const uv = chassisApi.velocity.subscribe((v) => {
       pose.current.fwd = v[0] * Math.sin(pose.current.heading) + v[2] * Math.cos(pose.current.heading)
     })
@@ -99,12 +113,13 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
   const limT = useRef(0)
   const prevClutch = useRef(false)
   const screeching = useRef(false)
+  const steerAngle = useRef(0)
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
 
   const doShift = (d) => {
     if (shiftCd.current > 0) return
-    const g = clamp(gear.current + d, -1, GEARS.length)
+    const g = clamp(gear.current + d, -1, 5)
     if (g !== gear.current) { gear.current = g; shiftCd.current = 0.3; shiftClack() }
   }
 
@@ -155,7 +170,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
   useFrame((_, dt) => {
     const p = pose.current
     const c = vehiclesRef.current[0]
-    if (c) { c.x = p.x; c.z = p.z; c.y = p.y; c.heading = p.heading; c.vel = Math.abs(p.fwd) }
+    if (c) { c.x = p.x; c.z = p.z; c.y = p.y; c.heading = p.heading; c.quat = p.quat; c.vel = Math.abs(p.fwd) }
 
     if (!active) {
       for (let i = 0; i < 4; i++) { vehicleApi.applyEngineForce(0, i); vehicleApi.setBrake(8, i) }
@@ -176,20 +191,25 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
     const neutral = g === 0
     const decoupled = clutchIn || neutral
     const dead = !!c?.blown
+    const GEARS = prof.current.gears
     const gearTop = g === -1 ? REV_TOP : g >= 1 ? GEARS[g - 1] : 1
     const gearMul = g === -1 ? GEARMUL[0] : g >= 1 ? GEARMUL[g - 1] : 0
+    const FORCE = prof.current.force
+    const BRAKE_F = prof.current.brake
     const dir = g === -1 ? -1 : 1
     const v = p.fwd
     let wrRaw = 0
     // are the tyres slipping? big power at low road speed in a low gear, or a
     // clutch-drop launch. Slip → wheels spin free (revs run up, less grip);
     // grip → the ground friction pulls the revs back down to road speed.
+    const grip = prof.current.grip || 2.6
+    const slipSpeed = 3 * (2.6 / grip) // low grip → tyres slip up to a higher speed
     const slipping =
       !decoupled &&
       !stalled.current &&
       !dead &&
       gas > 0 &&
-      (launch.current > 0 || ((g === 1 || g === -1) && Math.abs(v) < 3))
+      (launch.current > 0 || ((g === 1 || g === -1) && Math.abs(v) < slipSpeed))
     let wheelspin = false
 
     // --- ENGINE RPM ---
@@ -242,8 +262,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
         const torque = clamp(1.15 - 0.85 * Math.abs(rpm.current - 0.55), 0.4, 1)
         let f = FORCE * gas * torque * gearMul
         if (launch.current > 0) f *= 1.8
-        // slipping tyres put LESS power down (lost grip = less bite)
-        if (slipping) f *= 0.55
+        // slipping tyres put LESS power down (lower grip = less bite)
+        if (slipping) f *= clamp(grip / 3.7, 0.3, 0.7)
         force = -dir * f // cannon: negative engine force drives +forward
         wheelspin = slipping && rpm.current > 0.7 // screech + smoke
       } else if (!clutchIn && Math.abs(v) > 0.5) {
@@ -252,8 +272,13 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
       }
       if (brakeInput > 0 && Math.abs(v) > 0.3) brake = BRAKE_F * brakeInput
     }
-    vehicleApi.setSteeringValue(-steerInput * STEER_MAX, 0)
-    vehicleApi.setSteeringValue(-steerInput * STEER_MAX, 1)
+    // STEERING: full lock at low speed, progressively tighter as you speed up
+    // (no twitchy darting), and smoothed so inputs ramp in like a real wheel
+    const speedFactor = 1 / (1 + Math.abs(v) * 0.05)
+    const targetSteer = -steerInput * STEER_MAX * speedFactor
+    steerAngle.current += (targetSteer - steerAngle.current) * Math.min(1, dt * 7)
+    vehicleApi.setSteeringValue(steerAngle.current, 0)
+    vehicleApi.setSteeringValue(steerAngle.current, 1)
     vehicleApi.applyEngineForce(force, 2)
     vehicleApi.applyEngineForce(force, 3)
     for (let i = 0; i < 4; i++) vehicleApi.setBrake(brake, i)

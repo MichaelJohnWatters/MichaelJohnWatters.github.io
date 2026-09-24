@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD } from './layout'
 import Monitors from './Monitors'
 
 // Low-poly MAN-CAVE WORKSHOP blockout — ALL DIMENSIONS IN METRES.
@@ -203,6 +203,20 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
       </mesh>
     </group>
   )
+}
+
+// The drivable Civic: its live pose lives in a ref (App owns it) so both
+// the Drive controller and this mesh read the same truth each frame.
+// Mesh nose is local +x; heading's forward is (sin h, cos h) → rotY = h - π/2.
+function CarRig({ carRef, children }) {
+  const g = useRef()
+  useFrame(() => {
+    const c = carRef?.current
+    if (!c || !g.current) return
+    g.current.position.set(c.x, 0, c.z)
+    g.current.rotation.y = c.heading - Math.PI / 2
+  })
+  return <group ref={g}>{children}</group>
 }
 
 // A roller door that ROLLS UP: the slat panel hangs from the drum and its
@@ -427,7 +441,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, carRef }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -547,49 +561,109 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         />
       ))}
 
-      {/* --- The yard outside the doors (visible when they're open) --- */}
+      {/* --- The open world outside: a big night lot with roads --- */}
       <group>
-        {/* asphalt apron */}
-        <mesh rotation-x={-Math.PI / 2} position={[CX, -0.005, (maxZ + YARD.maxZ) / 2]}>
-          <planeGeometry args={[W, YARD.maxZ - maxZ]} />
-          <meshStandardMaterial color="#37373d" />
+        {/* ground: gravel lot everywhere the garage isn't */}
+        <mesh rotation-x={-Math.PI / 2} position={[(WORLD.minX + WORLD.maxX) / 2, -0.02, (WORLD.minZ + WORLD.maxZ) / 2]}>
+          <planeGeometry args={[WORLD.maxX - WORLD.minX, WORLD.maxZ - WORLD.minZ]} />
+          <meshStandardMaterial color="#2b2b30" />
         </mesh>
-        {/* perimeter fence: far end + sides */}
-        <mesh position={[CX, 0.55, YARD.maxZ]}>
-          <boxGeometry args={[W, 1.1, 0.08]} />
-          <meshStandardMaterial color="#42424a" />
-        </mesh>
-        {[minX, maxX].map((x, i) => (
-          <mesh key={i} position={[x, 0.55, (maxZ + YARD.maxZ) / 2]}>
-            <boxGeometry args={[0.08, 1.1, YARD.maxZ - maxZ]} />
-            <meshStandardMaterial color="#42424a" />
+        {/* roads: driveway from the doors + a loop around the lot. Strips
+            of darker asphalt with dashed centrelines — pure dressing. */}
+        {[
+          // [cx, cz, w, d]  (widths along x, depths along z)
+          [0.3, 9.5, 13, 5], // apron/driveway across both doors
+          [0.3, 20.5, 6, 27], // main straight north
+          [0, 27.5, 44, 6], // north straight
+          [0, -12, 44, 6], // south straight (behind the garage)
+          [-19, 7.75, 6, 45.5], // west straight
+          [19, 7.75, 6, 45.5], // east straight
+        ].map(([cx2, cz2, w2, d2], i) => (
+          <mesh key={i} rotation-x={-Math.PI / 2} position={[cx2, -0.005, cz2]}>
+            <planeGeometry args={[w2, d2]} />
+            <meshStandardMaterial color="#35353b" />
           </mesh>
         ))}
-        {/* street lamp — pool of warm light over the apron */}
-        <group position={[5.4, 0, 10.3]}>
-          <mesh position={[0, 1.6, 0]}>
-            <cylinderGeometry args={[0.05, 0.07, 3.2, 8]} />
-            <meshStandardMaterial color="#2e2e34" />
+        {/* dashed centrelines */}
+        {(() => {
+          const dashes = []
+          for (let z = 13; z < 33; z += 2.4) dashes.push([0.3, z, 0.14, 1.1]) // north straight
+          for (let x = -20; x < 21; x += 2.4) {
+            dashes.push([x, 27.5, 1.1, 0.14]) // north loop
+            dashes.push([x, -12, 1.1, 0.14]) // south loop
+          }
+          for (let z = -9; z < 25; z += 2.4) {
+            dashes.push([-19, z, 0.14, 1.1]) // west loop
+            dashes.push([19, z, 0.14, 1.1]) // east loop
+          }
+          return dashes.map(([dx2, dz2, dw2, dd2], i) => (
+            <mesh key={i} rotation-x={-Math.PI / 2} position={[dx2, 0.001, dz2]}>
+              <planeGeometry args={[dw2, dd2]} />
+              <meshStandardMaterial color="#8f8f7a" />
+            </mesh>
+          ))
+        })()}
+        {/* perimeter wall */}
+        {[
+          [(WORLD.minX + WORLD.maxX) / 2, WORLD.minZ, WORLD.maxX - WORLD.minX, 0.25],
+          [(WORLD.minX + WORLD.maxX) / 2, WORLD.maxZ, WORLD.maxX - WORLD.minX, 0.25],
+        ].map(([px2, pz2, pw2, pd2], i) => (
+          <mesh key={'h' + i} position={[px2, 0.7, pz2]}>
+            <boxGeometry args={[pw2, 1.4, pd2]} />
+            <meshStandardMaterial color="#3c3c44" />
           </mesh>
-          <mesh position={[0, 3.2, 0]}>
-            <boxGeometry args={[0.34, 0.12, 0.22]} />
-            <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={1.6} />
+        ))}
+        {[WORLD.minX, WORLD.maxX].map((x, i) => (
+          <mesh key={'v' + i} position={[x, 0.7, (WORLD.minZ + WORLD.maxZ) / 2]}>
+            <boxGeometry args={[0.25, 1.4, WORLD.maxZ - WORLD.minZ]} />
+            <meshStandardMaterial color="#3c3c44" />
           </mesh>
-          {/* the actual light only exists once a door is open (it's unseeable
-              before that, and dynamic lights are the expensive thing) */}
-          {(doors[0] || doors[1]) && (
-            <pointLight position={[0, 3.0, 0]} intensity={1.4} color="#ffd9a0" distance={9} decay={2} />
-          )}
-        </group>
-        {/* wheelie bins by the fence */}
+        ))}
+        {/* street lamps around the lot — lights only outside desk mode */}
+        {[
+          [5.4, 10.3],
+          [-19, 27.5],
+          [19, -12],
+          [-19, -12],
+          [19, 27.5],
+        ].map(([lx2, lz2], i) => (
+          <group key={i} position={[lx2, 0, lz2]}>
+            <mesh position={[0, 1.6, 0]}>
+              <cylinderGeometry args={[0.05, 0.07, 3.2, 8]} />
+              <meshStandardMaterial color="#2e2e34" />
+            </mesh>
+            <mesh position={[0, 3.2, 0]}>
+              <boxGeometry args={[0.34, 0.12, 0.22]} />
+              <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={1.6} />
+            </mesh>
+            {mode !== 'desk' && i < 3 && (
+              <pointLight position={[0, 3.0, 0]} intensity={1.4} color="#ffd9a0" distance={10} decay={2} />
+            )}
+          </group>
+        ))}
+        {/* wheelie bins by the building */}
         {[[-5.6, 10.6], [-4.9, 10.7]].map(([x, z], i) => (
           <mesh key={i} position={[x, 0.55, z]}>
             <boxGeometry args={[0.55, 1.1, 0.55]} />
             <meshStandardMaterial color={i ? '#2c4a35' : '#33343c'} />
           </mesh>
         ))}
+        {/* shipping container across the lot */}
+        <group position={[-17.5, 0, 25.3]} rotation-y={0.15}>
+          <mesh position={[0, 1.3, 0]}>
+            <boxGeometry args={[6, 2.6, 2.5]} />
+            <meshStandardMaterial color="#5a3b32" metalness={0.2} roughness={0.7} />
+          </mesh>
+        </group>
+        {/* a few cones near the driveway */}
+        {[[3.8, 13.5], [5.2, 15.8], [-2.6, 14.6]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.22, z]}>
+            <coneGeometry args={[0.16, 0.45, 10]} />
+            <meshStandardMaterial color="#d9622b" />
+          </mesh>
+        ))}
         {/* night sky — points shader, ignores fog, basically free */}
-        <Stars radius={55} depth={25} count={1800} factor={3.2} fade speed={0.4} />
+        <Stars radius={70} depth={30} count={2200} factor={3.6} fade speed={0.4} />
       </group>
 
       {/* --- Ceiling fixtures: two LIT over the bays, husks elsewhere --- */}
@@ -721,7 +795,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
       </mesh>
 
       {/* --- The bays --- */}
-      <CompleteCar position={CIVIC.pos} rotY={CIVIC.rotY} />
+      <CarRig carRef={carRef}>
+        <CompleteCar />
+      </CarRig>
       <LiftedMx5 />
       <Mx5Parts />
 

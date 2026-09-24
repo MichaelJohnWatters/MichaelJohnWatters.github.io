@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT } from './layout'
 import Monitors from './Monitors'
 
 // Low-poly MAN-CAVE WORKSHOP blockout — ALL DIMENSIONS IN METRES.
@@ -847,10 +847,13 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             </mesh>
           ))
         })()}
-        {/* perimeter wall */}
+        {/* lot perimeter wall — the north side has a GAP where the road
+            leaves for the roundabout */}
         {[
-          [(WORLD.minX + WORLD.maxX) / 2, WORLD.minZ, WORLD.maxX - WORLD.minX, 0.25],
-          [(WORLD.minX + WORLD.maxX) / 2, WORLD.maxZ, WORLD.maxX - WORLD.minX, 0.25],
+          [0, WORLD.minZ, 56.5, 0.25], // south
+          [(-28 + (ROAD.x - 4.2)) / 2, LOT.maxZ, ROAD.x - 4.2 + 28, 0.25], // north-left
+          [(ROAD.x + 4.2 + 28) / 2, LOT.maxZ, 28 - (ROAD.x + 4.2), 0.25], // north-right
+          [0, 561, 40.6, 0.25], // far cap behind the roundabout
         ].map(([px2, pz2, pw2, pd2], i) => (
           <mesh key={'h' + i} position={[px2, 0.7, pz2]}>
             <boxGeometry args={[pw2, 1.4, pd2]} />
@@ -858,10 +861,80 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
           </mesh>
         ))}
         {[WORLD.minX, WORLD.maxX].map((x, i) => (
-          <mesh key={'v' + i} position={[x, 0.7, (WORLD.minZ + WORLD.maxZ) / 2]}>
-            <boxGeometry args={[0.25, 1.4, WORLD.maxZ - WORLD.minZ]} />
+          <mesh key={'v' + i} position={[x, 0.7, (WORLD.minZ + LOT.maxZ) / 2]}>
+            <boxGeometry args={[0.25, 1.4, LOT.maxZ - WORLD.minZ]} />
             <meshStandardMaterial color={daytime ? '#8a8a90' : '#3c3c44'} />
           </mesh>
+        ))}
+        {/* hedges flanking the road corridor */}
+        {[-20, 20].map((x, i) => (
+          <mesh key={'hedge' + i} position={[x, 0.45, (LOT.maxZ + 561) / 2]}>
+            <boxGeometry args={[0.6, 0.9, 561 - LOT.maxZ]} />
+            <meshStandardMaterial color={daytime ? '#3e4f34' : '#242c1f'} />
+          </mesh>
+        ))}
+
+        {/* --- The road north: ~500m straight to a roundabout --- */}
+        <mesh rotation-x={-Math.PI / 2} position={[ROAD.x, -0.005, (ROAD.z0 + ROAD.z1) / 2]}>
+          <planeGeometry args={[ROAD.w, ROAD.z1 - ROAD.z0]} />
+          <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+        </mesh>
+        {(() => {
+          const dashes = []
+          for (let z = 40; z < ROAD.z1 - 4; z += 12) dashes.push(z)
+          return dashes.map((z, i) => (
+            <mesh key={'rd' + i} rotation-x={-Math.PI / 2} position={[ROAD.x, 0.001, z]}>
+              <planeGeometry args={[0.16, 1.6]} />
+              <meshStandardMaterial color="#8f8f7a" />
+            </mesh>
+          ))
+        })()}
+        {/* roundabout: asphalt disc, grass island with a kerb, centre lamp */}
+        <group position={[RBT.x, 0, RBT.z]}>
+          <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
+            <circleGeometry args={[RBT.outerR, 40]} />
+            <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
+            <ringGeometry args={[RBT.islandR, RBT.islandR + 0.5, 32]} />
+            <meshStandardMaterial color={daytime ? '#9a9aa0' : '#55555c'} />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position-y={0.002}>
+            <circleGeometry args={[RBT.islandR, 32]} />
+            <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
+          </mesh>
+          <mesh position={[0, 2.2, 0]}>
+            <cylinderGeometry args={[0.06, 0.09, 4.4, 8]} />
+            <meshStandardMaterial color="#2e2e34" />
+          </mesh>
+          <mesh position={[0, 4.4, 0]}>
+            <boxGeometry args={[0.5, 0.14, 0.5]} />
+            <meshStandardMaterial
+              color="#26262a"
+              emissive="#ffd9a0"
+              emissiveIntensity={daytime ? 0.1 : 1.6}
+            />
+          </mesh>
+          {mode !== 'desk' && !daytime && (
+            <pointLight position={[0, 4.1, 0]} intensity={2} color="#ffd9a0" distance={16} decay={2} />
+          )}
+        </group>
+        {/* road lamps — emissive heads only (the headlights do the work) */}
+        {[74, 154, 234, 314, 394, 474].map((z, i) => (
+          <group key={'rl' + i} position={[i % 2 ? -5.8 : 6.4, 0, z]}>
+            <mesh position={[0, 1.6, 0]}>
+              <cylinderGeometry args={[0.05, 0.07, 3.2, 8]} />
+              <meshStandardMaterial color="#2e2e34" />
+            </mesh>
+            <mesh position={[0, 3.2, 0]}>
+              <boxGeometry args={[0.34, 0.12, 0.22]} />
+              <meshStandardMaterial
+                color="#26262a"
+                emissive="#ffd9a0"
+                emissiveIntensity={daytime ? 0.1 : 1.4}
+              />
+            </mesh>
+          </group>
         ))}
         {/* street lamps around the lot — lights only outside desk mode */}
         {[

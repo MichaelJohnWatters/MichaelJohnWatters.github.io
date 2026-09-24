@@ -24,7 +24,7 @@ function Exposure({ lights, daytime }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -61,7 +61,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} posOutRef={playerPosRef} />
+        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} posOutRef={playerPosRef} torch={torch} />
       )}
       {mode === 'drive' && <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
       {/* the cannon-es physics playground (paused while at the desk) */}
@@ -87,6 +87,7 @@ export default function App() {
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
   const [doors, setDoors] = useState([false, false]) // roller doors open?
   const [nearVehicle, setNearVehicle] = useState(-1)
+  const [torch, setTorch] = useState(false) // hand torch while on foot
   const [driving, setDriving] = useState(0) // which vehicle Drive controls
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
   // Live vehicle poses — they persist wherever you park them. r = the
@@ -239,12 +240,16 @@ export default function App() {
     setMutedUI(isMuted())
   }
 
-  // P picks up the cast phone while exploring.
+  // P picks up the cast phone while exploring; F toggles the hand torch.
   useEffect(() => {
     if (mode !== 'explore') return
     const onKey = (e) => {
-      if (window.__termTyping) return
+      if (window.__termTyping || window.__phoneOpen) return
       if (e.code === 'KeyP') setPhone(true)
+      if (e.code === 'KeyF') {
+        clickDown()
+        setTorch((t) => !t)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -364,6 +369,7 @@ export default function App() {
             onExitDrive={exitDrive}
             spawn={spawn}
             playerPosRef={playerPosRef}
+            torch={torch}
           />
         </ScrollControls>
       </Canvas>
@@ -452,6 +458,15 @@ export default function App() {
                 : 'WASD to walk · click to capture the mouse · esc frees it'}
             </div>
           )}
+          <button
+            className="ctl ctl-cam"
+            onClick={() => {
+              clickDown()
+              setTorch((t) => !t)
+            }}
+          >
+            🔦 {torch ? 'off' : 'torch'} (F)
+          </button>
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
           {isFp && (
             <>

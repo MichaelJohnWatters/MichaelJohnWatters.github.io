@@ -13,9 +13,14 @@ export const DOORS = [
   { x: 2.8, w: 2.7, h: 2.4 }, // parking bay door
 ]
 
-// The world outside the garage: a big night lot you can walk AND drive
-// around. The garage building sits inside it; a perimeter wall bounds it.
-export const WORLD = { minX: -28, maxX: 28, minZ: -18, maxZ: 34 }
+// The world outside the garage: the fenced lot, then a ~500m road north
+// out of it to a roundabout (drive down, loop it, come back).
+export const WORLD = { minX: -28, maxX: 28, minZ: -18, maxZ: 566 }
+export const LOT = { maxZ: 34 } // the walled yard around the garage
+export const ROAD = { x: 0.3, w: 8, z0: 34, z1: 534 }
+export const RBT = { x: 0.3, z: 545, outerR: 16, islandR: 7 }
+// round obstacles (the roundabout island) — checked as circles
+export const CIRCLES = [{ x: RBT.x, z: RBT.z, r: RBT.islandR + 0.4 }]
 
 // (legacy close-yard bound — the lamp/bins cluster still anchors here)
 export const YARD = { maxZ: 11.3 }
@@ -86,6 +91,14 @@ export const COLLIDERS = [
   // outside: lamp post + shipping container (bins are physics props now)
   { minX: 5.25, maxX: 5.55, minZ: 10.15, maxZ: 10.45 },
   { minX: -20.5, maxX: -14.5, minZ: 24.0, maxZ: 26.6 },
+  // lot north wall, split with a gap where the road exits
+  { minX: -28, maxX: -3.9, minZ: 33.85, maxZ: 34.15 },
+  { minX: 4.5, maxX: 28, minZ: 33.85, maxZ: 34.15 },
+  // hedges flanking the road corridor all the way to the roundabout
+  { minX: -20.3, maxX: -19.7, minZ: 34, maxZ: 561 },
+  { minX: 19.7, maxX: 20.3, minZ: 34, maxZ: 561 },
+  // end cap behind the roundabout
+  { minX: -20.3, maxX: 20.3, minZ: 560.8, maxZ: 561.2 },
 ]
 
 // The garage BUILDING as solid geometry for the open world: side + back

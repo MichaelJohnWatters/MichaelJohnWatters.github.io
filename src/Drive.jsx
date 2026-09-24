@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS } from './layout'
+import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS, CIRCLES } from './layout'
 import { engineStart, engineSpeed, engineStop, horn } from './sfx'
 
 // Arcade drive controller for any vehicle. Kinematic: W/S throttle-brake,
@@ -37,6 +37,9 @@ function vehicleBlocked(x, z, r, doors, others) {
   }
   if (x < WORLD.minX + r + 0.2 || x > WORLD.maxX - r - 0.2) return true
   if (z < WORLD.minZ + r + 0.2 || z > WORLD.maxZ - r - 0.2) return true
+  for (const c of CIRCLES) {
+    if (Math.hypot(x - c.x, z - c.z) < r + c.r) return true
+  }
   for (const o of others) {
     if (Math.hypot(x - o.x, z - o.z) < r + o.r) return true
   }

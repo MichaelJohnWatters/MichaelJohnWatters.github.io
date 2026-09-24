@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { GARAGE, COLLIDERS, SEAT, LIFT, SOFA_SEAT, DOORS, WORLD, BUILDING_WALLS } from './layout'
+import { GARAGE, COLLIDERS, SEAT, LIFT, SOFA_SEAT, DOORS, WORLD, BUILDING_WALLS, CIRCLES } from './layout'
 import { footstep } from './sfx'
 import { complete } from './tasks'
 import { IS_TOUCH } from './touch'
@@ -103,6 +103,10 @@ function blocked(x, z, doors, vehicles) {
       return true
     }
   }
+  // round obstacles (roundabout island)
+  for (const c of CIRCLES) {
+    if (Math.hypot(x - c.x, z - c.z) < c.r + RADIUS) return true
+  }
   // the vehicles, wherever they currently are (they drive!)
   if (vehicles) {
     for (const v of vehicles) {
@@ -124,7 +128,7 @@ function blocked(x, z, doors, vehicles) {
 // First-person walker. Mounted in "explore" mode. Spawns beside the desk on
 // the open half of the garage. Desktop: pointer-lock mouse-look. Touch:
 // drag anywhere (off the joystick) to look.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive, posOutRef }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive, posOutRef, torch = false }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -137,6 +141,11 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
   const doorsRef = useRef(doors)
   doorsRef.current = doors
   const nearVehicleRef = useRef(-1) // index of the vehicle in reach, or -1
+  const torchLight = useRef()
+  const torchTarget = useRef()
+  useEffect(() => {
+    if (torchLight.current && torchTarget.current) torchLight.current.target = torchTarget.current
+  }, [torch])
   const bob = useRef(0)
   // Camera yaw — the mouse/touch-drag drives it (starts facing the garage).
   const camYaw = useRef(Math.PI)
@@ -335,6 +344,15 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
       eyeY + Math.sin(pitch),
       pos.current.z + Math.cos(camYaw.current) * Math.cos(pitch),
     )
+    // hand torch: rides just under the eyes, aims where you look
+    if (torchLight.current && torchTarget.current) {
+      torchLight.current.position.set(pos.current.x, eyeY - 0.25, pos.current.z)
+      torchTarget.current.position.set(
+        pos.current.x + Math.sin(camYaw.current) * Math.cos(pitch) * 12,
+        eyeY - 0.25 + Math.sin(pitch) * 12,
+        pos.current.z + Math.cos(camYaw.current) * Math.cos(pitch) * 12,
+      )
+    }
     // Keep the on-glass screens glued: refresh matrices BEFORE drei <Html>
     // computes its CSS transform this frame (see CameraRig, same trick).
     camera.updateMatrixWorld()
@@ -342,11 +360,27 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
   }, -1)
 
   return (
-    <group ref={group}>
-      {/* slightly slimmed to match the tighter collision radius */}
-      <group scale={[0.88, 1, 0.88]}>
-        <StandingFigure />
+    <>
+      <group ref={group}>
+        {/* slightly slimmed to match the tighter collision radius */}
+        <group scale={[0.88, 1, 0.88]}>
+          <StandingFigure />
+        </group>
       </group>
-    </group>
+      {torch && (
+        <>
+          <spotLight
+            ref={torchLight}
+            angle={0.4}
+            penumbra={0.55}
+            intensity={50}
+            distance={26}
+            decay={1.3}
+            color="#fff2d8"
+          />
+          <object3D ref={torchTarget} />
+        </>
+      )}
+    </>
   )
 }

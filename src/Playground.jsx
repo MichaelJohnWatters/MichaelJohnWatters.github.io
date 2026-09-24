@@ -216,7 +216,7 @@ function WorldColliders() {
       ))}
       {/* parked cars — solid so the physics car crashes into them */}
       {PARKED.map((p, i) => (
-        <Fence key={'p' + i} position={[p.x, 0.6, p.z]} args={[2, 1.2, 4.4]} />
+        <Fence key={'p' + i} position={[p.x, 0.6, p.z]} args={[4.4, 1.2, 2]} />
       ))}
     </>
   )

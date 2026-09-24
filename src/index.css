@@ -1508,10 +1508,21 @@ html.on-glass .desk-dot {
   color: #cfd2dc;
   font-size: 11px;
 }
+.tune-pick {
+  width: 200px;
+}
+.tune-label {
+  font-size: 10px;
+  color: #8a8a96;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
 .tune-cars {
   display: flex;
   gap: 4px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 .tune-car {
   flex: 1;

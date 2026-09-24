@@ -220,8 +220,8 @@ export function engineStart(kind = 'car') {
   engine = { o1, o2, sub, lfo, lp, ng, out, base: bike ? 70 : 42, span: bike ? 230 : 150, chop: bike ? 30 : 16, chopSpan: bike ? 120 : 74 }
   out.gain.linearRampToValueAtTime(0.5, ac.currentTime + 0.4)
 }
-export function engineSpeed(rpm) {
-  // rpm: 0..1 (idle → redline)
+export function engineSpeed(rpm, cut = false) {
+  // rpm: 0..1 (idle → redline). cut = rev-limiter fuel cut (duck the note).
   if (!engine) return
   const r = Math.max(0, Math.min(1, rpm))
   const f = engine.base + r * engine.span
@@ -230,8 +230,8 @@ export function engineSpeed(rpm) {
   engine.sub.frequency.value = f * 0.5
   engine.lfo.frequency.value = engine.chop + r * engine.chopSpan // firing rate climbs with revs
   engine.lp.frequency.value = 400 + r * 3200 // opens up = brighter at revs
-  engine.ng.gain.value = 0.012 + r * 0.03
-  engine.out.gain.value = 0.32 + r * 0.24
+  engine.ng.gain.value = cut ? 0.04 : 0.012 + r * 0.03
+  engine.out.gain.value = cut ? 0.05 : 0.32 + r * 0.24 // fuel cut = the note drops out
 }
 export function engineStop() {
   if (!engine) return
@@ -286,6 +286,70 @@ export function screechStop() {
       s.src.stop()
     } catch {}
   }, 160)
+}
+
+// Engine stall — a dying descending sputter + a soft cough.
+export function stallSound() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  // pitch sagging away as it dies
+  const o = ac.createOscillator()
+  o.type = 'sawtooth'
+  o.frequency.setValueAtTime(150, t)
+  o.frequency.exponentialRampToValueAtTime(30, t + 0.45)
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 500
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0.16, t)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.5)
+  o.connect(lp)
+  lp.connect(g)
+  g.connect(master)
+  o.start(t)
+  o.stop(t + 0.5)
+  // a little cough of noise
+  const buf = ac.createBuffer(1, (ac.sampleRate * 0.2) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2)
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const bp = ac.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 240
+  const ng = ac.createGain()
+  ng.gain.value = 0.1
+  src.connect(bp)
+  bp.connect(ng)
+  ng.connect(master)
+  src.start(t)
+}
+
+// Starter motor — a chugging crank when you turn the key.
+export function starter() {
+  const ac = ensureCtx()
+  const t = ac.currentTime
+  const dur = 0.7
+  const buf = ac.createBuffer(1, (ac.sampleRate * dur) | 0, ac.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) {
+    const chug = 0.4 + 0.6 * (Math.sin((i / ac.sampleRate) * 2 * Math.PI * 9) > 0 ? 1 : 0.2)
+    d[i] = (Math.random() * 2 - 1) * 0.7 * chug
+  }
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const bp = ac.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 170
+  bp.Q.value = 1.1
+  const g = ac.createGain()
+  g.gain.value = 0.13
+  g.gain.setValueAtTime(0.13, t + dur - 0.12)
+  g.gain.linearRampToValueAtTime(0, t + dur)
+  src.connect(bp)
+  bp.connect(g)
+  g.connect(master)
+  src.start(t)
 }
 
 // Engine blow-up — a low boom + a metallic noise burst (money-shift grenade).

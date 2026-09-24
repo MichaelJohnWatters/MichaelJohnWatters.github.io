@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD } from './layout'
+import { WORLD, LOT, ROAD } from './layout'
 import { impact } from './sfx'
 
 // The Bruno-Simon-style physics playground (cannon-es in a web worker).
@@ -202,11 +202,16 @@ export default function Playground({ vehiclesRef, playerPosRef, paused }) {
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused}>
       <Ground />
-      {/* perimeter keeps the toys in the lot */}
+      {/* perimeter keeps the toys in — with a gap where the road exits, so
+          you CAN boot a barrel all the way to the roundabout */}
       <Fence position={[0, 1, WORLD.minZ]} args={[WORLD.maxX - WORLD.minX, 2, 0.3]} />
-      <Fence position={[0, 1, WORLD.maxZ]} args={[WORLD.maxX - WORLD.minX, 2, 0.3]} />
-      <Fence position={[WORLD.minX, 1, 8]} args={[0.3, 2, WORLD.maxZ - WORLD.minZ]} />
-      <Fence position={[WORLD.maxX, 1, 8]} args={[0.3, 2, WORLD.maxZ - WORLD.minZ]} />
+      <Fence position={[(-28 + ROAD.x - 4.2) / 2, 1, LOT.maxZ]} args={[ROAD.x - 4.2 + 28, 2, 0.3]} />
+      <Fence position={[(ROAD.x + 4.2 + 28) / 2, 1, LOT.maxZ]} args={[28 - (ROAD.x + 4.2), 2, 0.3]} />
+      <Fence position={[WORLD.minX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
+      <Fence position={[WORLD.maxX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
+      <Fence position={[-20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
+      <Fence position={[20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
+      <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
       {/* pushers */}
       <VehiclePusher vehiclesRef={vehiclesRef} idx={0} args={[1.8, 1.2, 4.3]} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
@@ -205,6 +205,136 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
   )
 }
 
+// Soft radial glow texture for the neon's fake bloom (built once).
+let _neonGlow = null
+function neonGlowTex() {
+  if (_neonGlow) return _neonGlow
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')
+  const rg = g.createRadialGradient(64, 64, 4, 64, 64, 64)
+  rg.addColorStop(0, 'rgba(255,45,149,0.55)')
+  rg.addColorStop(0.5, 'rgba(255,45,149,0.16)')
+  rg.addColorStop(1, 'rgba(255,45,149,0)')
+  g.fillStyle = rg
+  g.fillRect(0, 0, 128, 128)
+  _neonGlow = new THREE.CanvasTexture(c)
+  return _neonGlow
+}
+
+// Wall art, drawn once to canvas textures — garage culture, not a résumé.
+// Lit by the scene like real paper (dims with the lights).
+function makeArtTexture(kind) {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = kind === 'rules' ? 300 : 340
+  const g = c.getContext('2d')
+  if (kind === 'blueprint') {
+    // MX-5 NA side profile, white line-art on blueprint blue
+    g.fillStyle = '#123156'
+    g.fillRect(0, 0, 256, 340)
+    g.strokeStyle = 'rgba(255,255,255,0.25)'
+    g.lineWidth = 1
+    for (let i = 16; i < 256; i += 24) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 340); g.stroke() }
+    for (let i = 16; i < 340; i += 24) { g.beginPath(); g.moveTo(0, i); g.lineTo(256, i); g.stroke() }
+    g.strokeStyle = '#eef4ff'
+    g.lineWidth = 2.5
+    // body
+    g.beginPath()
+    g.moveTo(22, 200)
+    g.lineTo(30, 178) // nose
+    g.lineTo(78, 170) // bonnet w/ pop-up bump
+    g.lineTo(84, 162)
+    g.lineTo(92, 162)
+    g.lineTo(98, 170)
+    g.lineTo(118, 168)
+    g.lineTo(138, 140) // windscreen
+    g.lineTo(168, 140) // roofline (top down!)... soft top up
+    g.lineTo(196, 168)
+    g.lineTo(228, 174)
+    g.lineTo(234, 196)
+    g.lineTo(228, 204)
+    g.lineTo(22, 204)
+    g.closePath()
+    g.stroke()
+    // wheels
+    for (const wx of [72, 192]) {
+      g.beginPath(); g.arc(wx, 204, 22, 0, Math.PI * 2); g.stroke()
+      g.beginPath(); g.arc(wx, 204, 9, 0, Math.PI * 2); g.stroke()
+    }
+    g.font = '16px ui-monospace, monospace'
+    g.fillStyle = '#eef4ff'
+    g.fillText('EUNOS ROADSTER — NA', 40, 262)
+    g.font = '11px ui-monospace, monospace'
+    g.fillText('scale 1:24 · project car', 66, 282)
+  } else if (kind === 'race') {
+    // retro racing print: bold stripes + number roundel
+    g.fillStyle = '#e8e0cf'
+    g.fillRect(0, 0, 256, 340)
+    const stripes = ['#b23b3b', '#e8b34b', '#2f6fb0']
+    stripes.forEach((col, i) => {
+      g.fillStyle = col
+      g.save()
+      g.translate(0, 60 + i * 34)
+      g.rotate(-0.12)
+      g.fillRect(-20, 0, 320, 22)
+      g.restore()
+    })
+    g.fillStyle = '#e8e0cf'
+    g.beginPath()
+    g.arc(128, 190, 52, 0, Math.PI * 2)
+    g.fill()
+    g.strokeStyle = '#1a1a1e'
+    g.lineWidth = 5
+    g.beginPath()
+    g.arc(128, 190, 52, 0, Math.PI * 2)
+    g.stroke()
+    g.fillStyle = '#1a1a1e'
+    g.font = '900 58px system-ui, sans-serif'
+    g.textAlign = 'center'
+    g.fillText('27', 128, 210)
+    g.font = '800 22px system-ui, sans-serif'
+    g.fillText('MIDNIGHT', 128, 285)
+    g.fillText('GARAGE', 128, 310)
+    g.textAlign = 'left'
+  } else {
+    // house rules sign
+    g.fillStyle = '#20201f'
+    g.fillRect(0, 0, 256, 300)
+    g.strokeStyle = '#8a8a7a'
+    g.lineWidth = 4
+    g.strokeRect(9, 9, 238, 282)
+    g.fillStyle = '#e8e0cf'
+    g.font = '800 26px system-ui, sans-serif'
+    g.fillText('GARAGE RULES', 30, 52)
+    g.font = '15px ui-monospace, monospace'
+    const rules = [
+      '1. lights off when you leave',
+      '2. tools go back on the board',
+      '3. the sofa is for race day',
+      '4. close the doors after',
+      "5. don't tell anyone the",
+      '   phone code',
+    ]
+    rules.forEach((r, i) => g.fillText(r, 26, 96 + i * 30))
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.anisotropy = 4
+  return t
+}
+
+function WallArt({ kind, pos, rotY = 0, w = 0.78, h = 1.04 }) {
+  const tex = useMemo(() => makeArtTexture(kind), [kind])
+  return (
+    <group position={pos} rotation-y={rotY}>
+      <mesh>
+        <planeGeometry args={[w, h]} />
+        <meshStandardMaterial map={tex} />
+      </mesh>
+    </group>
+  )
+}
+
 // A drivable vehicle: its live pose lives in App's vehicles ref so the
 // Drive controller and this mesh read the same truth each frame. `nose`
 // corrects for the mesh's forward axis (car nose = +x → -π/2; bike = +z
@@ -216,7 +346,7 @@ function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, children }) {
     if (!c || !g.current) return
     g.current.position.set(c.x, 0, c.z)
     g.current.rotation.y = c.heading + nose
-    g.current.rotation.z = lean ? -(c.lean || 0) : 0
+    g.current.rotation.z = lean ? c.lean || 0 : 0
   })
   return <group ref={g}>{children}</group>
 }
@@ -300,6 +430,17 @@ function CaveCorner() {
       </group>
       {/* neon sign on the right wall — the man-cave glow */}
       <group position={[CAVE.neon.x, CAVE.neon.y, CAVE.neon.z]}>
+        {/* fake bloom: additive radial glow behind the tubes */}
+        <mesh rotation-y={-Math.PI / 2} position={[-0.1, -0.1, 0]}>
+          <planeGeometry args={[3.6, 1.9]} />
+          <meshBasicMaterial
+            map={neonGlowTex()}
+            transparent
+            opacity={0.85}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
         <mesh rotation-y={-Math.PI / 2}>
           <boxGeometry args={[1.9, 0.09, 0.06]} />
           <meshStandardMaterial color="#ff2d95" emissive="#ff2d95" emissiveIntensity={2.2} toneMapped={false} />
@@ -777,6 +918,10 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           <meshStandardMaterial color="#5f4633" />
         </mesh>
       ))}
+      {/* wall art — garage culture (blueprint, race print, house rules) */}
+      <WallArt kind="blueprint" pos={[-4.35, 1.75, -2.985]} />
+      <WallArt kind="race" pos={[0.3, 1.75, 6.985]} rotY={Math.PI} />
+      <WallArt kind="rules" pos={[-6.485, 1.75, 0.35]} rotY={Math.PI / 2} w={0.66} h={0.78} />
       {/* the phone prop itself lives in Monitors (it has a live lock screen) */}
       <Monitors mode={mode} onZoom={onZoom} switchesRef={switchesRef} onToggleLights={onToggleLights} fp={fp} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doorRefs={doorRefs} doors={doors} onDoorToggle={onDoorToggle} />
       <mesh position={[0, 0.75, -2.35]} castShadow>

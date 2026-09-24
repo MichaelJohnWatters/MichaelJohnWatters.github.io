@@ -61,6 +61,7 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true
       if (e.code === 'KeyE') onExit?.()
+      if (e.code === 'KeyF') window.dispatchEvent(new Event('vehicle-flash'))
     }
     const up = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = false

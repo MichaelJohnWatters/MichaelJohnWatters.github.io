@@ -338,12 +338,35 @@ function WallArt({ kind, pos, rotY = 0, w = 0.78, h = 1.04 }) {
 // Headlights. Lamp meshes glow faintly parked, fully when driven — and the
 // driven vehicle gets a real spotlight beam (only ever ONE active, cheap).
 // Local axes: the Civic's nose is +x, the bikes' is +z.
+// F (or the HUD button) fires 'vehicle-flash': two quick high-beam pulses.
+function useFlash(lightRef, on, base) {
+  useEffect(() => {
+    if (!on) return
+    const flash = () => {
+      const s = lightRef.current
+      if (!s) return
+      let i = 0
+      const iv = setInterval(() => {
+        s.intensity = i % 2 === 0 ? base * 2.6 : base
+        i++
+        if (i > 3) {
+          clearInterval(iv)
+          s.intensity = base
+        }
+      }, 130)
+    }
+    window.addEventListener('vehicle-flash', flash)
+    return () => window.removeEventListener('vehicle-flash', flash)
+  }, [on, base, lightRef])
+}
+
 function CarLights({ on }) {
   const l = useRef()
   const t = useRef()
   useEffect(() => {
     if (l.current && t.current) l.current.target = t.current
   }, [on])
+  useFlash(l, on, 95)
   return (
     <group>
       {[0.55, -0.55].map((z, i) => (
@@ -362,11 +385,11 @@ function CarLights({ on }) {
           <spotLight
             ref={l}
             position={[2.2, 0.7, 0]}
-            angle={0.62}
-            penumbra={0.6}
-            intensity={40}
-            distance={24}
-            decay={1.5}
+            angle={0.66}
+            penumbra={0.55}
+            intensity={95}
+            distance={32}
+            decay={1.2}
             color="#ffeecb"
           />
           <object3D ref={t} position={[13, 0.1, 0]} />
@@ -382,6 +405,7 @@ function BikeLight({ on }) {
   useEffect(() => {
     if (l.current && t.current) l.current.target = t.current
   }, [on])
+  useFlash(l, on, 80)
   return (
     <group>
       <mesh position={[0, 0.88, 0.72]} rotation-x={Math.PI / 2}>
@@ -398,11 +422,11 @@ function BikeLight({ on }) {
           <spotLight
             ref={l}
             position={[0, 0.9, 0.8]}
-            angle={0.5}
-            penumbra={0.6}
-            intensity={32}
-            distance={22}
-            decay={1.5}
+            angle={0.55}
+            penumbra={0.55}
+            intensity={80}
+            distance={30}
+            decay={1.2}
             color="#ffeecb"
           />
           <object3D ref={t} position={[0, 0.05, 12]} />

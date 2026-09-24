@@ -4,17 +4,15 @@ import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS } from './layout'
 import { engineStart, engineSpeed, engineStop } from './sfx'
 
-// Arcade drive controller for the Civic. Kinematic: W/S throttle-brake,
+// Arcade drive controller for any vehicle. Kinematic: W/S throttle-brake,
 // A/D steer (authority scales with speed), gentle drag, circle-vs-AABB
-// collisions with a soft bounce. Chase camera. The car pose lives in
-// carRef (App owns it) so it persists when you get out.
-const TOP = 11 // m/s (~40 km/h — lot speed)
-const TOP_REV = 4
-const ACCEL = 7
-const BRAKE = 14
+// collisions with a soft bounce. Chase camera. Poses live in App's
+// vehicles ref so they persist where you park.
+const PARAMS = {
+  car: { top: 11, rev: 4, accel: 7, brake: 14, steer: 1.9, r: 0.95, camD: 6, camH: 2.8, pitch: 1 },
+  bike: { top: 15, rev: 3, accel: 10, brake: 16, steer: 2.7, r: 0.45, camD: 4.5, camH: 2.1, pitch: 1.9 },
+}
 const DRAG = 2.2
-const STEER = 1.9 // rad/s at full authority
-const CAR_R = 0.95 // collision circle radius
 
 const clamp = THREE.MathUtils.clamp
 const tmpCam = new THREE.Vector3()
@@ -23,30 +21,34 @@ function hitsBox(x, z, b, r) {
   return x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r
 }
 
-// The car collides with: interior clutter, the building's side/back walls,
-// the front wall EXCEPT open doorways, and the world perimeter.
-function carBlocked(x, z, doors) {
-  for (const b of COLLIDERS) if (hitsBox(x, z, b, CAR_R)) return true
-  for (const b of BUILDING_WALLS) if (hitsBox(x, z, b, CAR_R)) return true
-  if (z > GARAGE.maxZ - 0.1 - CAR_R && z < GARAGE.maxZ + 0.1 + CAR_R) {
+// Vehicles collide with: interior clutter, the building's side/back walls,
+// the front wall EXCEPT open doorways, the world perimeter, and each other.
+function vehicleBlocked(x, z, r, doors, others) {
+  for (const b of COLLIDERS) if (hitsBox(x, z, b, r)) return true
+  for (const b of BUILDING_WALLS) if (hitsBox(x, z, b, r)) return true
+  if (z > GARAGE.maxZ - 0.1 - r && z < GARAGE.maxZ + 0.1 + r) {
     let inDoor = false
     for (let i = 0; i < DOORS.length; i++) {
       const d = DOORS[i]
-      if (doors?.[i] && x > d.x - d.w / 2 + CAR_R && x < d.x + d.w / 2 - CAR_R) inDoor = true
+      if (doors?.[i] && x > d.x - d.w / 2 + r && x < d.x + d.w / 2 - r) inDoor = true
     }
     if (!inDoor && x > GARAGE.minX && x < GARAGE.maxX) return true
   }
-  if (x < WORLD.minX + CAR_R + 0.2 || x > WORLD.maxX - CAR_R - 0.2) return true
-  if (z < WORLD.minZ + CAR_R + 0.2 || z > WORLD.maxZ - CAR_R - 0.2) return true
+  if (x < WORLD.minX + r + 0.2 || x > WORLD.maxX - r - 0.2) return true
+  if (z < WORLD.minZ + r + 0.2 || z > WORLD.maxZ - r - 0.2) return true
+  for (const o of others) {
+    if (Math.hypot(x - o.x, z - o.z) < r + o.r) return true
+  }
   return false
 }
 
-export default function Drive({ carRef, doors, onExit, joyRef }) {
+export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef }) {
   const { camera } = useThree()
   const keys = useRef({ f: false, b: false, l: false, r: false })
   const speed = useRef(0)
   const doorsRef = useRef(doors)
   doorsRef.current = doors
+  const P = PARAMS[vehiclesRef.current[index]?.kind] || PARAMS.car
 
   useEffect(() => {
     engineStart()
@@ -79,41 +81,46 @@ export default function Drive({ carRef, doors, onExit, joyRef }) {
   }, [onExit])
 
   useFrame((_, dt) => {
-    const c = carRef.current
+    const c = vehiclesRef.current[index]
+    if (!c) return
+    const others = vehiclesRef.current.filter((_, i) => i !== index)
     const k = keys.current
     const joy = joyRef?.current || { x: 0, y: 0 }
     const throttle = (k.f ? 1 : 0) - (k.b ? 1 : 0) - joy.y
     const steerIn = (k.r ? 1 : 0) - (k.l ? 1 : 0) + joy.x
 
     let v = speed.current
-    if (throttle > 0) v += ACCEL * throttle * dt
-    else if (throttle < 0) v += (v > 0 ? -BRAKE : ACCEL * throttle) * dt
+    if (throttle > 0) v += P.accel * throttle * dt
+    else if (throttle < 0) v += (v > 0 ? -P.brake : P.accel * throttle) * dt
     // drag toward rest
     v -= Math.sign(v) * Math.min(Math.abs(v), DRAG * dt)
-    v = clamp(v, -TOP_REV, TOP)
+    v = clamp(v, -P.rev, P.top)
 
     // steer authority ramps with speed (no tank-turning at standstill);
-    // steering flips with reverse, like a real car
+    // steering flips with reverse, like a real vehicle
     const auth = clamp(Math.abs(v) / 3, 0, 1)
-    c.heading -= steerIn * STEER * auth * Math.sign(v) * dt
+    const steer = steerIn * auth * Math.sign(v)
+    c.heading -= steer * P.steer * dt
+    // bikes lean into the corner with speed
+    c.lean = THREE.MathUtils.lerp(c.lean || 0, steer * clamp(Math.abs(v) / P.top, 0, 1) * 0.42, 1 - Math.pow(0.001, dt))
 
     const nx = c.x + Math.sin(c.heading) * v * dt
     const nz = c.z + Math.cos(c.heading) * v * dt
     // axis-separated so scraping a wall slides along it
-    if (!carBlocked(nx, c.z, doorsRef.current)) c.x = nx
+    if (!vehicleBlocked(nx, c.z, P.r, doorsRef.current, others)) c.x = nx
     else v *= -0.2
-    if (!carBlocked(c.x, nz, doorsRef.current)) c.z = nz
+    if (!vehicleBlocked(c.x, nz, P.r, doorsRef.current, others)) c.z = nz
     else v *= -0.2
     speed.current = v
-    engineSpeed(Math.abs(v) / TOP)
+    engineSpeed((Math.abs(v) / P.top) * P.pitch)
 
     // chase camera
     const a = 1 - Math.pow(0.001, dt)
     camera.position.lerp(
       tmpCam.set(
-        c.x - Math.sin(c.heading) * 6,
-        2.8,
-        c.z - Math.cos(c.heading) * 6,
+        c.x - Math.sin(c.heading) * P.camD,
+        P.camH,
+        c.z - Math.cos(c.heading) * P.camD,
       ),
       a,
     )

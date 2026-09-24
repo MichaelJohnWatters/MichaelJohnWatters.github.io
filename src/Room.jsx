@@ -205,16 +205,18 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
   )
 }
 
-// The drivable Civic: its live pose lives in a ref (App owns it) so both
-// the Drive controller and this mesh read the same truth each frame.
-// Mesh nose is local +x; heading's forward is (sin h, cos h) → rotY = h - π/2.
-function CarRig({ carRef, children }) {
+// A drivable vehicle: its live pose lives in App's vehicles ref so the
+// Drive controller and this mesh read the same truth each frame. `nose`
+// corrects for the mesh's forward axis (car nose = +x → -π/2; bike = +z
+// → 0). Bikes also lean into corners (pose.lean, set by Drive).
+function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, children }) {
   const g = useRef()
   useFrame(() => {
-    const c = carRef?.current
+    const c = vehiclesRef?.current?.[idx]
     if (!c || !g.current) return
     g.current.position.set(c.x, 0, c.z)
-    g.current.rotation.y = c.heading - Math.PI / 2
+    g.current.rotation.y = c.heading + nose
+    g.current.rotation.z = lean ? -(c.lean || 0) : 0
   })
   return <group ref={g}>{children}</group>
 }
@@ -441,7 +443,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, carRef }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -795,9 +797,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
       </mesh>
 
       {/* --- The bays --- */}
-      <CarRig carRef={carRef}>
+      <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2}>
         <CompleteCar />
-      </CarRig>
+      </VehicleRig>
       <LiftedMx5 />
       <Mx5Parts />
 
@@ -805,7 +807,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
       <Workbench />
       <Shelves />
       {BIKES.map((b, i) => (
-        <Motorbike key={i} position={b.pos} rotY={b.rotY} color={i === 0 ? '#b03030' : '#2a2a30'} />
+        <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
+          <Motorbike color={i === 0 ? '#b03030' : '#2a2a30'} />
+        </VehicleRig>
       ))}
       <CaveCorner />
 

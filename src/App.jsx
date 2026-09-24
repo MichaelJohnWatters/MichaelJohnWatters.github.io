@@ -7,7 +7,7 @@ import Player from './Player'
 import Drive from './Drive'
 import Joystick from './Joystick'
 import Phone from './Phone'
-import { CIVIC } from './layout'
+import { CIVIC, BIKES } from './layout'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -23,7 +23,7 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, carRef, onNearCar, onDrive, onExitDrive, spawn }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -46,14 +46,14 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} carRef={carRef} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} carRef={carRef} onNearCar={onNearCar} onDrive={onDrive} />
+        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} />
       )}
-      {mode === 'drive' && <Drive carRef={carRef} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
+      {mode === 'drive' && <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
     </>
   )
 }
@@ -73,22 +73,28 @@ export default function App() {
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
   const [doors, setDoors] = useState([false, false]) // roller doors open?
-  const [nearCar, setNearCar] = useState(false)
+  const [nearVehicle, setNearVehicle] = useState(-1)
+  const [driving, setDriving] = useState(0) // which vehicle Drive controls
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
-  // The Civic's live pose — persists wherever you park it. Heading 0 =
-  // nose toward its roller door.
-  const carRef = useRef({ x: CIVIC.pos[0], z: CIVIC.pos[2], heading: 0 })
+  // Live vehicle poses — they persist wherever you park them. r = the
+  // circle other things collide with. Civic heading 0 = nose to its door.
+  const vehiclesRef = useRef([
+    { kind: 'car', x: CIVIC.pos[0], z: CIVIC.pos[2], heading: 0, lean: 0, r: 1.5 },
+    { kind: 'bike', x: BIKES[0].pos[0], z: BIKES[0].pos[2], heading: BIKES[0].rotY, lean: 0, r: 0.6 },
+    { kind: 'bike', x: BIKES[1].pos[0], z: BIKES[1].pos[2], heading: BIKES[1].rotY, lean: 0, r: 0.6 },
+  ])
 
-  const enterDrive = () => {
+  const enterDrive = (idx) => {
     clickDown()
     complete('drive') // whiteboard task
-    setNearCar(false)
+    setDriving(idx)
+    setNearVehicle(-1)
     setPhone(false)
     setMode('drive')
   }
   const exitDrive = () => {
     clickDown()
-    const c = carRef.current
+    const c = vehiclesRef.current[driving]
     // step out beside the driver's door
     setSpawn([c.x + Math.cos(c.heading) * 2.0, 0, c.z - Math.sin(c.heading) * 2.0])
     setMode('explore')
@@ -322,8 +328,9 @@ export default function App() {
             onNearSofa={setNearSofa}
             doors={doors}
             onDoorToggle={toggleDoor}
-            carRef={carRef}
-            onNearCar={setNearCar}
+            vehiclesRef={vehiclesRef}
+            driving={driving}
+            onNearVehicle={setNearVehicle}
             onDrive={enterDrive}
             onExitDrive={exitDrive}
             spawn={spawn}
@@ -393,9 +400,10 @@ export default function App() {
             <div className="aim-label show sit-label" onClick={sofaToggle}>
               {IS_TOUCH ? 'tap to sit on the sofa' : 'press E to sit on the sofa'}
             </div>
-          ) : nearCar ? (
-            <div className="aim-label show sit-label" onClick={enterDrive}>
-              {IS_TOUCH ? 'tap to drive the civic' : 'press E to drive the civic'}
+          ) : nearVehicle >= 0 ? (
+            <div className="aim-label show sit-label" onClick={() => enterDrive(nearVehicle)}>
+              {(IS_TOUCH ? 'tap to ' : 'press E to ') +
+                (vehiclesRef.current[nearVehicle]?.kind === 'bike' ? 'ride the bike' : 'drive the civic')}
             </div>
           ) : (
             <div className="explore-hint">
@@ -417,7 +425,7 @@ export default function App() {
       {mode === 'drive' && (
         <>
           <button className="ctl ctl-back" onClick={exitDrive}>
-            🚗 get out (E)
+            {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
           <div className="explore-hint">
             {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · E to get out'}

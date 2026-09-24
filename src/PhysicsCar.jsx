@@ -66,12 +66,13 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   // corners / dives on the brakes / squats on power like a real one.
   const wheelInfo = {
     radius: WHEEL_R, directionLocal: [0, -1, 0], axleLocal: [-1, 0, 0],
-    // cannon's stable range: stiff-ish spring, well-damped. A heavier car gets a
-    // proportionally stiffer spring so it still holds ride height, but the
-    // damping ratio stays in the sane band so it can't wobble itself loose at speed.
+    // cannon's stable range: stiff-ish spring, well-damped. Stiffness scales
+    // with mass so a heavier car holds ride height; damping scales WITH it too
+    // (anchored at the 1200 kg Civic) so the damping ratio stays constant — the
+    // heavy car isn't left relatively under-damped and wobbly at speed.
     suspensionStiffness: mass / 40,
-    dampingRelaxation: 2.3,
-    dampingCompression: 4.4,
+    dampingRelaxation: 2.3 * (mass / 1200),
+    dampingCompression: 4.4 * (mass / 1200),
     maxSuspensionForce: 1e5,
     suspensionRestLength: 0.38, maxSuspensionTravel: 0.34,
     // cannon's own tyre friction handles grip (drives well/stable). A gentle
@@ -92,19 +93,24 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     chassisBody: chassisRef, wheels, wheelInfos, indexForwardAxis: 2, indexRightAxis: 0, indexUpAxis: 1,
   }))
 
-  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, vx: 0, vz: 0, yaw: 0, quat: [0, 0, 0, 1] })
+  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, vx: 0, vy: 0, vz: 0, yaw: 0, angv: [0, 0, 0], quat: [0, 0, 0, 1] })
   useEffect(() => {
-    const q = new THREE.Quaternion(), e = new THREE.Euler()
+    const q = new THREE.Quaternion(), fwd = new THREE.Vector3()
     const up = chassisApi.position.subscribe((p) => { pose.current.x = p[0]; pose.current.y = p[1]; pose.current.z = p[2] })
     const uq = chassisApi.quaternion.subscribe((qq) => {
       pose.current.quat = qq
-      q.set(qq[0], qq[1], qq[2], qq[3]); e.setFromQuaternion(q, 'YXZ'); pose.current.heading = e.y
+      // heading from the projected forward vector — a YXZ euler .y flips by ±π at
+      // the pitch/roll ~90° singularity (airborne / on its roof), which snapped
+      // the camera and drift sign; the forward vector stays continuous.
+      q.set(qq[0], qq[1], qq[2], qq[3])
+      fwd.set(0, 0, 1).applyQuaternion(q)
+      pose.current.heading = Math.atan2(fwd.x, fwd.z)
     })
     const uv = chassisApi.velocity.subscribe((v) => {
-      pose.current.vx = v[0]; pose.current.vz = v[2]
+      pose.current.vx = v[0]; pose.current.vy = v[1]; pose.current.vz = v[2]
       pose.current.fwd = v[0] * Math.sin(pose.current.heading) + v[2] * Math.cos(pose.current.heading)
     })
-    const ua = chassisApi.angularVelocity.subscribe((a) => { pose.current.yaw = a[1] })
+    const ua = chassisApi.angularVelocity.subscribe((a) => { pose.current.angv = a; pose.current.yaw = a[1] })
     return () => { up(); uq(); uv(); ua() }
   }, [chassisApi])
 
@@ -249,7 +255,9 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
         stalled.current = true; stallSound(); engineStop()
         if (screeching.current) { screechStop(); screeching.current = false }
       }
-      if (wrRaw > 1.4) {
+      // money-shift: only grenade the box if you're driving THROUGH the over-rev
+      // (gas on). An off-throttle mis-downshift just flares the revs / engine-brakes.
+      if (wrRaw > 1.4 && gas > 0) {
         c.blown = true; explode(); engineStop()
         if (screeching.current) { screechStop(); screeching.current = false }
       }
@@ -275,10 +283,11 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
         if (slipping) f *= clamp(grip / 3.0, 0.5, 0.85)
         force = -dir * f // cannon: negative engine force drives +forward
         wheelspin = slipping && rpm.current > 0.7 // screech + smoke
-      } else if (!clutchIn) {
-        // off throttle & in gear: above idle speed the engine BRAKES; below it
+      } else if (!clutchIn && gas === 0) {
+        // OFF throttle & in gear: above idle speed the engine BRAKES; below it
         // the engine IDLE keeps the car creeping (no stall once you're rolling).
-        // From a dead stop (v~0) the stall logic still wins unless you clutch.
+        // (On throttle at/above the gear's top we fall through both branches and
+        // coast on the limiter — no more braking while you're flooring it.)
         const idleSpeed = 2.2
         if (Math.abs(v) > idleSpeed) brake = ENGINE_BRAKE
         else if (Math.abs(v) > 0.4) force = -dir * FORCE * 0.05 * gearMul // idle creep
@@ -306,38 +315,56 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     const balance = prof.current.balance ?? 0.55
     // DRIFT: tail-happiness from the car's grip balance. Grippy cars (high
     // balance, e.g. Civic 0.55) barely slide; neutral/tail-happy cars (MX-5
-    // 0.5, V8 0.42) break the rear loose on power.
-    const driftiness = clamp((0.62 - balance) * 5, 0.08, 1.4)
+    // 0.5, V8 0.42) break the rear loose on power. At balance ≥ 0.62 → 0 = full
+    // grip, no artificial slide (top of the slider is meaningful, not dead).
+    const driftiness = clamp((0.62 - balance) * 5, 0, 1.4)
     const onPower = gas > 0 && !clutchIn && !stalled.current && !dead
-    // Commit to a slide: enough speed to be stable, steering loaded, on the
-    // throttle. The front tyres keep full grip, so opposite lock catches it.
-    const drifting = onPower && P2.fwd > 5 && Math.abs(steerAngle.current) > 0.05
+    const grounded = P2.y < 1.6 // airborne off a ramp lifts the chassis well past rest
     // live slip angle = how far the car's travelling sideways vs where it points
     let slipA = Math.atan2(P2.vx, P2.vz) - P2.heading
     while (slipA > Math.PI) slipA -= 2 * Math.PI
     while (slipA < -Math.PI) slipA += 2 * Math.PI
     const slipDeg = Math.abs(slipA) * 180 / Math.PI
-    if (drifting && chassisApi.applyLocalImpulse) {
-      // Kick the rear axle out in the direction that amplifies the turn, hard
-      // enough to overcome rear grip. Crucially the kick TAPERS to zero as the
-      // slide reaches a target angle, so it initiates AND settles a drift
-      // instead of running away into a spin (real tyres self-limit past peak).
-      const targetSlip = 22 + driftiness * 22 // Civic ~26° · MX-5 ~35° · V8 ~53°
+    const targetSlip = 22 + driftiness * 22 // Civic ~26° · MX-5 ~35° · V8 ~53°
+    // Commit to a slide: enough speed to be stable, steering loaded, on the
+    // throttle, wheels on the ground. Front tyres keep grip so lock catches it.
+    const drifting = onPower && grounded && P2.fwd > 5 && Math.abs(steerAngle.current) > 0.05
+    if (drifting && driftiness > 0 && chassisApi.applyLocalImpulse) {
+      // Kick the rear axle out to SUSTAIN the slide, tapering to zero as it
+      // reaches the target angle (so it settles instead of spinning). Direction
+      // follows the ESTABLISHED slide (slipA), not the steering — so catching it
+      // with opposite lock no longer flips the kick into the slide, and the kick
+      // eases right off while you're counter-steering to recover.
       const slipFade = clamp(1 - slipDeg / targetSlip, 0, 1)
-      const commit = clamp(Math.abs(steerAngle.current) / STEER_MAX, 0, 1) * (wheelspin ? 1 : 0.6)
-      const mag = -Math.sign(steerAngle.current) * driftiness * commit * slipFade * mass * 32 * dt
+      const initiating = slipDeg < 5
+      const slideSign = initiating ? -Math.sign(steerAngle.current) : Math.sign(slipA)
+      const counterSteer = !initiating && Math.sign(steerAngle.current) === Math.sign(slipA)
+      // gate on throttle, not wheelspin (which only exists in 1st/reverse), so
+      // the on-power drift keeps authority in the gears where you sustain it.
+      const commit = clamp(Math.abs(steerAngle.current) / STEER_MAX, 0, 1) * (counterSteer ? 0.15 : 1)
+      const mag = slideSign * driftiness * commit * slipFade * mass * 20 * dt
       chassisApi.applyLocalImpulse([mag, 0, 0], [0, -0.1, -1.75])
     }
-    // STABILITY: a spin is a yaw rate beyond any intentional turn. The ceiling
-    // opens up while you're committed to a slide (tail can hang out) and clamps
-    // back tight off the throttle — lift and it snaps straight, floor it and it
-    // hangs. Only the part above the cap is bled off, so nothing loops.
-    const MAX_YAW = drifting ? 2.6 : 1.2
-    if (Math.abs(P2.yaw) > MAX_YAW && chassisApi.applyTorque) {
-      const over = P2.yaw - Math.sign(P2.yaw) * MAX_YAW
-      chassisApi.applyTorque([0, -over * mass * 14 * dt, 0])
+    // STABILITY: a spin is yaw beyond the intended slide. While the slide is
+    // under control (slip within the drift envelope) allow a big yaw rate;
+    // otherwise clamp hard — so a real power-on spin still gets caught. We bleed
+    // the yaw ANGULAR VELOCITY directly (frame-rate independent); the old
+    // applyTorque was double-dt-scaled and effectively inert.
+    const controlled = drifting && slipDeg < targetSlip * 1.25
+    const MAX_YAW = controlled ? 2.8 : 1.5
+    if (Math.abs(P2.yaw) > MAX_YAW && chassisApi.angularVelocity) {
+      const keep = clamp(1 - dt * 25, 0, 1) // remove the overrun fast but smoothly
+      const bled = Math.sign(P2.yaw) * MAX_YAW + (P2.yaw - Math.sign(P2.yaw) * MAX_YAW) * keep
+      chassisApi.angularVelocity.set(P2.angv[0], bled, P2.angv[2])
     }
-    if (typeof window !== 'undefined') window.__car = P2 // self-test hook
+    if (import.meta.env.DEV) {
+      window.__car = P2 // self-test hooks (dev only — stripped from production)
+      window.__place = (x, z, vz) => {
+        chassisApi.position.set(x, 1.2, z); chassisApi.quaternion.set(0, 0, 0, 1)
+        chassisApi.velocity.set(0, 0, vz); chassisApi.angularVelocity.set(0, 0, 0)
+        gear.current = 3; stalled.current = false; rpm.current = 0.6
+      }
+    }
 
     // engine sound with rev-limiter fuel cut
     const atLimit = !dead && !stalled.current && rpm.current >= 0.985 && wrRaw <= 1.05

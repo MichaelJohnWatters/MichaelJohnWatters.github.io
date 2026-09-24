@@ -101,7 +101,7 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
   }, [isBike])
 
   useEffect(() => {
-    engineStart()
+    engineStart(isBike ? 'bike' : 'car')
     const map = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r' }
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true

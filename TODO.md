@@ -72,10 +72,15 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
       speed-scaled steering, soft-bounce collisions), chase cam, synthesized
       engine that follows speed, car pose persists where you park, get
       in/out with E, 9th whiteboard task
-- [ ] **Car physics v2**: suspension (body roll/pitch on accel + corners),
-      wheel spin + steering visuals, tyre screech sfx, handbrake drift,
-      maybe skid marks. Consider a proper vehicle model (raycast vehicle)
-      if we go .glb cars.
+- [~] **Car physics v2 — real raycast vehicle** (🔧 physics toggle, default
+      off). STAGE 1 DONE: cannon RaycastVehicle Civic — real wheel torque,
+      suspension, tyre friction, collides with world; behind a toggle so
+      arcade stays default. src/PhysicsCar.jsx.
+      STAGE 2 (todo): port the gearbox/clutch/stall/rev-limiter onto it;
+      tune feel (spawn heading, straight-line stability, engine force,
+      frictionSlip); spin the visible wheels + body roll/pitch on the
+      visual; wheelspin smoke/screech hooked to slip; then consider making
+      it the default / retiring the kinematic model.
 - [ ] Mixamo character (walk/idle) replaces the blockout figure
 - [ ] Garage set dressing pass: project posters on walls, nicer low-poly
       .glbs piece by piece

@@ -52,7 +52,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   const mass = profile.mass || DEFAULT.mass
   const chassisRef = useRef()
   const [, chassisApi] = useBox(
-    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.8, allowSleep: false }),
+    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
     chassisRef,
   )
   // live mass edits from the tuning panel (F=ma changes accel immediately)
@@ -64,18 +64,20 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   // SUSPENSION grounded in the car's real mass: a heavier car gets stiffer
   // springs (holds ride height) and damping toward critical, so it rolls in
   // corners / dives on the brakes / squats on power like a real one.
-  const spring = mass * 0.045
   const wheelInfo = {
     radius: WHEEL_R, directionLocal: [0, -1, 0], axleLocal: [-1, 0, 0],
-    suspensionStiffness: spring,
-    dampingRelaxation: spring * 0.22,
-    dampingCompression: spring * 0.28,
-    maxSuspensionForce: mass * 220,
+    // cannon's stable range: stiff-ish spring, well-damped. A heavier car gets a
+    // proportionally stiffer spring so it still holds ride height, but the
+    // damping ratio stays in the sane band so it can't wobble itself loose at speed.
+    suspensionStiffness: mass / 40,
+    dampingRelaxation: 2.3,
+    dampingCompression: 4.4,
+    maxSuspensionForce: 1e5,
     suspensionRestLength: 0.38, maxSuspensionTravel: 0.34,
-    // low base friction — our own slip-angle tyre model (in useFrame) provides
-    // the lateral grip, so understeer/oversteer/drift can emerge
-    frictionSlip: 1.4,
-    rollInfluence: 0.05,
+    // cannon's own tyre friction handles grip (drives well/stable). A gentle
+    // wheelspin kick adds some tail-out without the unstable custom model.
+    frictionSlip: 2.4,
+    rollInfluence: 0.04,
     useCustomSlidingRotationalSpeed: true, customSlidingRotationalSpeed: -30,
   }
   const wx = CHASSIS[0] / 2 - 0.05
@@ -265,7 +267,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       if (gas > 0 && !clutchIn && Math.abs(v) < gearTop * 1.02) {
         const torque = clamp(1.15 - 0.85 * Math.abs(rpm.current - 0.55), 0.4, 1)
         let f = FORCE * gas * torque * gearMul
-        if (launch.current > 0) f *= 1.8
+        if (launch.current > 0) f *= 1.3
         // slipping = a bit less bite, but keep enough to keep the rears lit
         if (slipping) f *= clamp(grip / 3.0, 0.5, 0.85)
         force = -dir * f // cannon: negative engine force drives +forward
@@ -297,38 +299,21 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     if (spin && !screeching.current) { screechStart(); screeching.current = true }
     else if (!spin && screeching.current) { screechStop(); screeching.current = false }
 
-    // --- TYRE MODEL: lateral grip from slip angle + a friction circle, so
-    // understeer / power-oversteer / drift EMERGE (cannon's RaycastVehicle
-    // can't trade longitudinal grip for lateral). Bicycle model: one lateral
-    // force at the front axle, one at the rear.
     const P2 = pose.current
-    if (P2.fwd > 0.8 && chassisApi.applyImpulse) {
-      const fwx = Math.sin(P2.heading)
-      const fwz = Math.cos(P2.heading)
-      const rgx = Math.cos(P2.heading) // car's right vector
-      const rgz = -Math.sin(P2.heading)
-      const vLat = P2.vx * rgx + P2.vz * rgz
-      const speed = Math.max(4, Math.abs(P2.fwd)) // clamp keeps slip sane at low speed
-      const a = wf + 0.2 // axle distance from CoG
-      const slipF = Math.atan2(vLat + P2.yaw * a, speed) + steerAngle.current // fronts are steered
-      const slipR = Math.atan2(vLat - P2.yaw * a, speed)
-      const C = mass * 9 // cornering stiffness (N per rad)
-      const base = mass * 11 // peak lateral grip per axle (N)
-      const balance = prof.current.balance ?? 0.55 // >0.5 = grippier rear (safe/understeery)
-      const throttleUse = clamp(Math.abs(force) / (FORCE * 0.9), 0, 1)
-      const brakeUse = clamp(brake / BRAKE_F, 0, 1)
-      const gripF = base * (2 * (1 - balance)) * (1 - brakeUse * 0.25)
-      // rear grip never collapses fully (floor) → no snap spins
-      const gripR = base * (2 * balance) * Math.max(0.5, 1 - throttleUse * 0.3 - (spin ? 0.2 : 0))
-      // fade the whole model in with speed — kills the low-speed spin
-      const fade = clamp((Math.abs(P2.fwd) - 1.5) / 4, 0, 1)
-      const fF = clamp(-C * slipF, -gripF, gripF) * fade
-      const fR = clamp(-C * slipR, -gripR, gripR) * fade
-      chassisApi.applyImpulse([rgx * fF * dt, 0, rgz * fF * dt], [P2.x + fwx * a, P2.y, P2.z + fwz * a])
-      chassisApi.applyImpulse([rgx * fR * dt, 0, rgz * fR * dt], [P2.x - fwx * a, P2.y, P2.z - fwz * a])
-      // yaw damper: bleed off spin the tyres aren't catching (self-corrects)
-      if (chassisApi.applyTorque) chassisApi.applyTorque([0, -P2.yaw * mass * 2.2 * dt, 0])
+    // STABILITY: a spin is a yaw rate far beyond any intentional turn. Leave
+    // normal cornering (|yaw| ≤ MAX_YAW) completely free; only bleed the part
+    // above the cap, hard, so a kerb/prop/power-slide can't loop the car.
+    const MAX_YAW = 1.2 // rad/s — above any real cornering (full-lock @ 7 m/s ≈ 1.4)
+    if (Math.abs(P2.yaw) > MAX_YAW && chassisApi.applyTorque) {
+      const over = P2.yaw - Math.sign(P2.yaw) * MAX_YAW
+      chassisApi.applyTorque([0, -over * mass * 14 * dt, 0])
     }
+    // gentle power-oversteer: when the rears light up, nudge the tail out
+    if (spin && P2.fwd > 3 && chassisApi.applyLocalImpulse) {
+      const kick = steerInput * clamp(P2.fwd / 12, 0, 1) * mass * 0.03
+      chassisApi.applyLocalImpulse([kick, 0, 0], [0, -0.1, -1.7])
+    }
+    if (typeof window !== 'undefined') window.__car = P2 // self-test hook
 
     // engine sound with rev-limiter fuel cut
     const atLimit = !dead && !stalled.current && rpm.current >= 0.985 && wrRaw <= 1.05

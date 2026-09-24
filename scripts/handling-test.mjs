@@ -1,0 +1,26 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu'] })
+const page = await b.newPage()
+const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,120)))
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise(r=>setTimeout(r,4500))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(d=>getComputedStyle(d).overflowY==='auto'); el.scrollTop=el.scrollHeight })
+await new Promise(r=>setTimeout(r,2500))
+await page.mouse.move(100,400)
+await page.evaluate(() => document.querySelector('.ctl-step')?.click())
+await new Promise(r=>setTimeout(r,800))
+await page.keyboard.press('KeyE'); await new Promise(r=>setTimeout(r,600))
+await page.keyboard.press('KeyI'); await new Promise(r=>setTimeout(r,300))
+const car = () => page.evaluate(()=>window.__car ? {x:+window.__car.x.toFixed(1), z:+window.__car.z.toFixed(1), h:+window.__car.heading.toFixed(2), fwd:+window.__car.fwd.toFixed(1), yaw:+window.__car.yaw.toFixed(2)} : null)
+// clutch launch
+await page.keyboard.down('ShiftLeft'); await page.keyboard.press('ArrowUp'); await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,700)); await page.keyboard.up('ShiftLeft')
+await new Promise(r=>setTimeout(r,500))
+console.log('=== STRAIGHT (W only, heading should stay ~constant) ===')
+for(let s=0;s<5;s++){ await new Promise(r=>setTimeout(r,350)); const rpm=await page.evaluate(()=>parseInt(document.getElementById('rpm-fill')?.style.width)); if(rpm>92)await page.keyboard.press('ArrowUp'); console.log(await car()) }
+console.log('=== TURN (W+D, heading should rotate smoothly, yaw bounded) ===')
+await page.keyboard.down('KeyD')
+for(let s=0;s<6;s++){ await new Promise(r=>setTimeout(r,350)); console.log(await car()) }
+await page.keyboard.up('KeyD'); await page.keyboard.up('KeyW')
+console.log('errors', errs.slice(0,3))
+await b.close()

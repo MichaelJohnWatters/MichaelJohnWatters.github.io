@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS, CIRCLES } from './layout'
+import { IS_TOUCH } from './touch'
 import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, shiftClack } from './sfx'
 
 // Arcade drive controller with a simulated manual gearbox + clutch.
@@ -11,20 +12,22 @@ import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, 
 // vehicles ref so they persist where you park.
 const PARAMS = {
   car: {
-    gears: [5, 11, 18, 26, 34], // top speed (m/s) per gear 1..5 (~122 km/h)
-    gearMul: [1.0, 0.72, 0.55, 0.44, 0.36], // low gears pull harder
-    accel: 11, brake: 16, rev: 5, steer: 1.8, r: 0.95,
+    // taller gears + gentler accel so the revs BUILD in gear (not snap to
+    // the limiter). Top ~130 km/h in 5th.
+    gears: [8, 15, 22, 29, 36], // top speed (m/s) per gear 1..5
+    gearMul: [1.0, 0.75, 0.58, 0.46, 0.38], // low gears pull harder
+    accel: 6, brake: 14, rev: 5, steer: 1.8, r: 0.95,
     camD: 6.5, camH: 2.9, eyeY: 1.02, eyeOff: 1.2,
   },
   bike: {
-    gears: [7, 15, 24, 34, 44], // ~158 km/h flat out
-    gearMul: [1.1, 0.8, 0.62, 0.5, 0.42],
-    accel: 15, brake: 18, rev: 4, steer: 2.6, r: 0.45,
+    gears: [10, 19, 28, 37, 46], // ~165 km/h flat out
+    gearMul: [1.1, 0.82, 0.64, 0.52, 0.44],
+    accel: 8, brake: 16, rev: 4, steer: 2.6, r: 0.45,
     camD: 5, camH: 2.1, eyeY: 1.34, eyeOff: -0.05,
   },
 }
-const DRAG = 2.0
-const REV_RATE = 3.0 // how fast the engine free-revs with the clutch in
+const DRAG = 1.6
+const REV_RATE = 2.4 // how fast the engine free-revs with the clutch in
 
 const clamp = THREE.MathUtils.clamp
 const tmpCam = new THREE.Vector3()
@@ -185,8 +188,9 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     v -= Math.sign(v) * Math.min(Math.abs(v), DRAG * dt)
     v = clamp(v, -P.rev, topSpeed)
 
-    // --- AUTO-SHIFT (engaged, rolling forward) ---
-    if (!clutchIn && shiftCd.current <= 0 && v > 0.3) {
+    // --- AUTO-SHIFT: touch only (no shift keys). Desktop is fully manual:
+    // wind it out, upshift yourself, downshift for corners. ---
+    if (IS_TOUCH && !clutchIn && shiftCd.current <= 0 && v > 0.3) {
       if (rpm.current > 0.94 && g < P.gears.length) doShift(1)
       else if (rpm.current < 0.33 && g > 1) doShift(-1)
     }

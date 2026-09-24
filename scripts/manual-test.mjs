@@ -1,0 +1,20 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu'] })
+const page = await b.newPage()
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise((r) => setTimeout(r, 4500))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(d=>getComputedStyle(d).overflowY==='auto'); el.scrollTop=el.scrollHeight })
+await new Promise((r) => setTimeout(r, 2500))
+await page.mouse.move(100,400)
+await page.evaluate(() => document.querySelector('.ctl-step')?.click())
+await new Promise((r) => setTimeout(r, 700))
+await page.keyboard.press('KeyE') // get in civic (spawn is beside it)
+await new Promise(r=>setTimeout(r,800))
+const read = () => page.evaluate(() => ({ gear: document.getElementById('gear-num')?.textContent, spd: +document.getElementById('spd-num')?.textContent, rpm: parseInt(document.getElementById('rpm-fill')?.style.width) }))
+console.log('in car:', await read())
+// floor it, sample rev climb every 400ms — should climb gradually then PIN at limiter in gear 1 (no auto upshift into a wall, but door is closed so it'll also hit door). Let's just watch rpm rate in first 1.2s before any wall.
+await page.keyboard.down('KeyW')
+for (let i=0;i<6;i++){ await new Promise(r=>setTimeout(r,200)); console.log("t+"+((i+1)*200), await read()) }
+await page.keyboard.up('KeyW')
+await b.close()

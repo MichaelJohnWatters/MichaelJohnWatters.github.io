@@ -146,52 +146,106 @@ export function horn(kind = 'car') {
   }
 }
 
-// Car engine: a looping saw hum whose pitch/level follow speed.
+// Car engine — a synthesized four-stroke, not a drone. The realism comes
+// from an LFO that "chops" the amplitude at the firing rate (that pulsing
+// brap), riding on two detuned saws + a sub, plus a whiff of noise for
+// grit, all under a lowpass that opens as you rev.
 let engine = null
-export function engineStart() {
+export function engineStart(kind = 'car') {
   const ac = ensureCtx()
   if (engine) return
-  const o = ac.createOscillator()
-  o.type = 'sawtooth'
-  o.frequency.value = 55
+  const bike = kind === 'bike'
+  const out = ac.createGain()
+  out.gain.value = 0
+  out.connect(master)
+
+  // core rumble: two slightly-detuned saws + a sub octave
+  const o1 = ac.createOscillator()
+  o1.type = 'sawtooth'
+  o1.frequency.value = 48
   const o2 = ac.createOscillator()
-  o2.type = 'square'
-  o2.frequency.value = 27.5
+  o2.type = 'sawtooth'
+  o2.frequency.value = 48
+  o2.detune.value = -14
+  const sub = ac.createOscillator()
+  sub.type = 'triangle'
+  sub.frequency.value = 24
+
   const lp = ac.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.value = 320
-  const g = ac.createGain()
-  g.gain.value = 0.0
-  o.connect(lp)
+  lp.frequency.value = 500
+  lp.Q.value = 5
+
+  // firing "chop": an LFO drives a gain so the tone pulses like cylinders
+  // firing — the rate climbs with revs (set in engineSpeed)
+  const chop = ac.createGain()
+  chop.gain.value = 0.55
+  const lfo = ac.createOscillator()
+  lfo.type = 'sawtooth'
+  lfo.frequency.value = 20
+  const lfoDepth = ac.createGain()
+  lfoDepth.gain.value = 0.4
+  lfo.connect(lfoDepth)
+  lfoDepth.connect(chop.gain)
+
+  // grit: quiet bandpassed noise
+  const nbuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate)
+  const nd = nbuf.getChannelData(0)
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
+  const noise = ac.createBufferSource()
+  noise.buffer = nbuf
+  noise.loop = true
+  const nbp = ac.createBiquadFilter()
+  nbp.type = 'bandpass'
+  nbp.frequency.value = 700
+  nbp.Q.value = 0.7
+  const ng = ac.createGain()
+  ng.gain.value = 0.015
+
+  o1.connect(lp)
   o2.connect(lp)
-  lp.connect(g)
-  g.connect(master)
-  o.start()
+  sub.connect(lp)
+  lp.connect(chop)
+  chop.connect(out)
+  noise.connect(nbp)
+  nbp.connect(ng)
+  ng.connect(out)
+
+  o1.start()
   o2.start()
-  engine = { o, o2, g, lp }
-  // idle rumble fades in
-  g.gain.linearRampToValueAtTime(0.05, ac.currentTime + 0.4)
+  sub.start()
+  lfo.start()
+  noise.start()
+  // bikes: higher-pitched, revvier, a bit more grit
+  engine = { o1, o2, sub, lfo, lp, ng, out, base: bike ? 70 : 42, span: bike ? 230 : 150, chop: bike ? 30 : 16, chopSpan: bike ? 120 : 74 }
+  out.gain.linearRampToValueAtTime(0.5, ac.currentTime + 0.4)
 }
 export function engineSpeed(rpm) {
-  // rpm: 0..1 (0 = idle, 1 = redline). Wide sweep so it screams at redline.
+  // rpm: 0..1 (idle → redline)
   if (!engine) return
   const r = Math.max(0, Math.min(1, rpm))
-  engine.o.frequency.value = 42 + r * 250
-  engine.o2.frequency.value = 21 + r * 120
-  engine.g.gain.value = 0.045 + r * 0.075
-  if (engine.lp) engine.lp.frequency.value = 300 + r * 1400 // open up at revs
+  const f = engine.base + r * engine.span
+  engine.o1.frequency.value = f
+  engine.o2.frequency.value = f
+  engine.sub.frequency.value = f * 0.5
+  engine.lfo.frequency.value = engine.chop + r * engine.chopSpan // firing rate climbs with revs
+  engine.lp.frequency.value = 400 + r * 3200 // opens up = brighter at revs
+  engine.ng.gain.value = 0.012 + r * 0.03
+  engine.out.gain.value = 0.32 + r * 0.24
 }
 export function engineStop() {
   if (!engine) return
   const ac = ensureCtx()
-  engine.g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3)
+  engine.out.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3)
   const e = engine
   engine = null
   screechStop()
   setTimeout(() => {
     try {
-      e.o.stop()
+      e.o1.stop()
       e.o2.stop()
+      e.sub.stop()
+      e.lfo.stop()
     } catch {}
   }, 400)
 }

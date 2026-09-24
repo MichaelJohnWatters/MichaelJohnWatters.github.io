@@ -12,8 +12,8 @@ import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, 
 // vehicles ref so they persist where you park.
 const PARAMS = {
   car: {
-    // widely-spread progressive gears: short 1st, big gaps up top
-    gears: [5, 13, 24, 36, 50], // top speed (m/s) per gear 1..5 (~180 km/h)
+    // widely-spread progressive gears; 1st long enough that low speed = low revs
+    gears: [8, 16, 26, 37, 50], // top speed (m/s) per gear 1..5: 29/58/94/133/180 km/h
     gearMul: [1.0, 0.82, 0.68, 0.56, 0.46], // upper gears still pull properly
     accel: 9.5, brake: 15, rev: 5, steer: 1.8, r: 0.95, grip: 7, // grip = traction limit (m/s²)
     camD: 6.5, camH: 2.9, eyeY: 1.02, eyeOff: 1.2,

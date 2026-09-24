@@ -16,11 +16,13 @@ import {
 const CHASSIS = [1.8, 0.7, 4.2]
 const WHEEL_R = 0.34
 // gearbox (mirrors the arcade car)
-const GEARS = [5, 13, 24, 36, 50] // gear-top road speed (m/s, ~180 km/h)
+const GEARS = [8, 16, 26, 37, 50] // gear-top road speed (m/s): 29/58/94/133/180 km/h
 const GEARMUL = [1.0, 0.82, 0.68, 0.56, 0.46]
 const REV_TOP = 5
-const FORCE = 2600 // base engine force to the wheels
-const BRAKE_F = 42
+const MASS = 1150 // kg — a real small car; pulling away actually loads the engine
+const FORCE = 9000 // peak wheel force (N) — F=ma against MASS gives sane accel
+const BRAKE_F = 130
+const ENGINE_BRAKE = 14 // off-throttle drag in gear (revs + speed ease down together)
 const STEER_MAX = 0.55
 const IDLE = 0.12
 const REV_RATE = 4.8
@@ -51,14 +53,15 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
   const { camera } = useThree()
   const chassisRef = useRef()
   const [, chassisApi] = useBox(
-    () => ({ mass: 150, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.55, allowSleep: false }),
+    () => ({ mass: MASS, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
     chassisRef,
   )
   const wheels = [useRef(), useRef(), useRef(), useRef()]
   const wheelInfo = {
     radius: WHEEL_R, directionLocal: [0, -1, 0], axleLocal: [-1, 0, 0],
-    suspensionStiffness: 30, suspensionRestLength: 0.35, frictionSlip: 2.4,
-    dampingRelaxation: 2.4, dampingCompression: 3.6, maxSuspensionForce: 100000,
+    // suspension scaled to hold ~1150 kg without sagging/bottoming
+    suspensionStiffness: 55, suspensionRestLength: 0.35, frictionSlip: 2.6,
+    dampingRelaxation: 10, dampingCompression: 12, maxSuspensionForce: 200000,
     rollInfluence: 0.02, maxSuspensionTravel: 0.3,
     useCustomSlidingRotationalSpeed: true, customSlidingRotationalSpeed: -30,
   }
@@ -193,18 +196,24 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
     if (dead || stalled.current) {
       rpm.current = Math.max(0, rpm.current - 0.6 * dt)
     } else if (decoupled) {
+      // clutch in / neutral: throttle free-revs it, snaps back down on release
       const target = gas > 0 ? 1.0 : IDLE
-      rpm.current += (target - rpm.current) * (gas > 0 ? REV_RATE : 1.8) * dt
+      rpm.current += (target - rpm.current) * (gas > 0 ? REV_RATE : 3.5) * dt
       if (rpm.current > 0.98 && gas > 0) rpm.current = 0.95 + Math.random() * 0.04
       rpm.current = clamp(rpm.current, IDLE, 1.02)
     } else {
       wrRaw = Math.abs(v) / gearTop
-      // slipping = weak coupling (revs free-run); gripping = strong coupling
-      // so tyre friction drags the revs down toward the road speed
-      const couple = slipping ? 1.0 : Math.abs(v) < 1.2 ? 8 : 3.4
-      rpm.current += (wrRaw - rpm.current) * couple * dt
-      rpm.current += gas * (slipping ? 1.8 : 0.8) * dt // throttle revs it (more when slipping)
-      rpm.current -= 0.35 * dt
+      if (slipping) {
+        // tyres slipping: engine spins free of the road (revs run up)
+        rpm.current += (wrRaw - rpm.current) * 1.0 * dt
+        rpm.current += gas * 1.6 * dt
+        rpm.current -= 0.4 * dt
+      } else {
+        // GRIP: the engine is locked to the wheels — revs ARE the road speed.
+        // They rise only as fast as the car accelerates and fall as it slows
+        // (no throttle-revving on top).
+        rpm.current += (wrRaw - rpm.current) * 6 * dt
+      }
       if (rpm.current > 1.02 && wrRaw <= 1.05) rpm.current = 1.0 + Math.random() * 0.02
       rpm.current = clamp(rpm.current, 0, 1.6)
       if (!IS_TOUCH && launch.current <= 0 && rpm.current < 0.09) {
@@ -237,6 +246,9 @@ export default function PhysicsCar({ vehiclesRef, active, onExit }) {
         if (slipping) f *= 0.55
         force = -dir * f // cannon: negative engine force drives +forward
         wheelspin = slipping && rpm.current > 0.7 // screech + smoke
+      } else if (!clutchIn && Math.abs(v) > 0.5) {
+        // off throttle & in gear: engine braking — the car (and revs) ease down
+        brake = ENGINE_BRAKE
       }
       if (brakeInput > 0 && Math.abs(v) > 0.3) brake = BRAKE_F * brakeInput
     }

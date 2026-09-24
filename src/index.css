@@ -624,6 +624,10 @@ body {
   top: 2rem;
   right: 2rem;
 }
+.ctl-cam {
+  top: 2rem;
+  right: 9.5rem;
+}
 .ctl-mute {
   bottom: 2rem;
   right: 2rem;
@@ -633,6 +637,23 @@ body {
   bottom: 2rem;
   right: 5.2rem;
   padding: 0.5rem 0.7rem;
+}
+.ctl-day {
+  bottom: 2rem;
+  right: 8.4rem;
+  padding: 0.5rem 0.7rem;
+}
+
+/* Daytime: the sky IS the page background (the canvas is transparent).
+   html, body AND #root all carry the night colour — override all three. */
+html.daytime,
+html.daytime body,
+html.daytime #root {
+  background: linear-gradient(#7fa9d4 0%, #a9c6de 55%, #c4d8e8 100%) !important;
+}
+html.daytime.lights-off .whiteboard,
+html.daytime.lights-off .postit {
+  filter: none; /* daylight through the skylights — paper stays readable */
 }
 
 /* --- Retro browser window --- */

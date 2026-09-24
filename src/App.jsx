@@ -14,39 +14,48 @@ import { complete, onComplete } from './tasks'
 import { TV_PRESETS, ytSearch } from './content'
 
 // Global brightness: lights-on raises the tone-mapping exposure — the one
-// knob that brightens every surface uniformly.
-function Exposure({ lights }) {
+// knob that brightens every surface uniformly. Daytime overrides.
+function Exposure({ lights, daytime }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
-    gl.toneMappingExposure = lights ? 1.75 : 1.0
-  }, [gl, lights])
+    gl.toneMappingExposure = daytime ? 1.5 : lights ? 1.75 : 1.0
+  }, [gl, lights, daytime])
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
-      <fog attach="fog" args={['#0a0a0f', 14, 52]} />
-      <Exposure lights={lights} />
+      <fog attach="fog" args={[daytime ? '#a9c6de' : '#0a0a0f', 14, daytime ? 90 : 52]} />
+      <Exposure lights={lights} daytime={daytime} />
 
       {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
-          "lights on" and moody night mode (monitors + neon only). */}
-      <hemisphereLight intensity={lights ? 1.4 : 0.2} color="#4a5570" groundColor="#26262e" />
-      <directionalLight position={[4, 7, 2]} intensity={lights ? 0.9 : 0.14} color="#8a94b0" />
-      {lights && <ambientLight intensity={0.3} color="#5a627a" />}
+          "lights on" and moody night mode (monitors + neon only). The
+          ☀️/🌙 toggle overrides the whole WORLD to daylight. */}
+      <hemisphereLight
+        intensity={daytime ? 1.6 : lights ? 1.4 : 0.2}
+        color={daytime ? '#bdd7ee' : '#4a5570'}
+        groundColor={daytime ? '#8f8f80' : '#26262e'}
+      />
+      <directionalLight
+        position={daytime ? [18, 28, 12] : [4, 7, 2]}
+        intensity={daytime ? 2.2 : lights ? 0.9 : 0.14}
+        color={daytime ? '#fff3dd' : '#8a94b0'}
+      />
+      {(lights || daytime) && <ambientLight intensity={daytime ? 0.5 : 0.3} color="#5a627a" />}
       {/* Monitor glow pools — only in night mode (with the workshop lights on
           they wash out anyway; skipping them halves the dynamic light count) */}
-      {!lights && (
+      {!lights && !daytime && (
         <>
           <pointLight position={[-0.33, 1.35, -2.15]} intensity={3.5} color="#7fb3ff" distance={5.5} decay={2} />
           <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -67,6 +76,7 @@ export default function App() {
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
   const [muted, setMutedUI] = useState(false)
   const [lights, setLights] = useState(true) // workshop lights on by default
+  const [daytime, setDaytime] = useState(false) // ☀️ world time-of-day
   const [toast, setToast] = useState(null) // task-complete popup
   const [tv, setTv] = useState(null) // cave TV: casting videoId, or null = off
   const [phone, setPhone] = useState(false) // the cast-remote phone overlay
@@ -196,6 +206,9 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('lights-off', !lights)
   }, [lights])
+  useEffect(() => {
+    document.documentElement.classList.toggle('daytime', daytime)
+  }, [daytime])
 
   // L toggles the workshop lights from anywhere.
   useEffect(() => {
@@ -328,6 +341,7 @@ export default function App() {
             onZoomExit={() => setZoomScreen(null)}
             joyRef={joyRef}
             lights={lights}
+            daytime={daytime}
             onToggleLights={toggleLights}
             tv={tv}
             tvMuted={muted}
@@ -365,6 +379,16 @@ export default function App() {
       </button>
       <button className="ctl ctl-lights" onClick={toggleLights} title="toggle lights (L)">
         {lights ? '💡' : '🌙'}
+      </button>
+      <button
+        className="ctl ctl-day"
+        onClick={() => {
+          clickDown()
+          setDaytime((d) => !d)
+        }}
+        title="toggle day / night"
+      >
+        {daytime ? '☀️' : '🌃'}
       </button>
       {mode === 'desk' && !IS_TOUCH && <div id="desk-dot" className="crosshair desk-dot" />}
       {mode === 'desk' && (
@@ -444,8 +468,14 @@ export default function App() {
           >
             💡 flash (F)
           </button>
+          <button
+            className="ctl ctl-cam"
+            onClick={() => window.dispatchEvent(new Event('drive-cam'))}
+          >
+            👁 view (V)
+          </button>
           <div className="explore-hint">
-            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · F flash · E to get out'}
+            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · V view · F flash · E to get out'}
           </div>
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>

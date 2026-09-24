@@ -685,7 +685,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1 }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1 }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -782,13 +782,13 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
             <planeGeometry args={[2.7, 1.9]} />
             <meshStandardMaterial color="#26262c" />
           </mesh>
-          {/* night-sky glass — glows moonlight-blue, brighter in the dark */}
+          {/* sky glass — moonlight-blue at night, blazing daylight by day */}
           <mesh rotation-x={Math.PI / 2} position={[0, ceiling - 0.03, 0]}>
             <planeGeometry args={[2.4, 1.6]} />
             <meshStandardMaterial
-              color="#0e1a2e"
-              emissive="#4a6a9e"
-              emissiveIntensity={lights ? 0.45 : 1.25}
+              color={daytime ? '#cfe4f4' : '#0e1a2e'}
+              emissive={daytime ? '#e8f4ff' : '#4a6a9e'}
+              emissiveIntensity={daytime ? 2.0 : lights ? 0.45 : 1.25}
             />
           </mesh>
         </group>
@@ -810,7 +810,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         {/* ground: gravel lot everywhere the garage isn't */}
         <mesh rotation-x={-Math.PI / 2} position={[(WORLD.minX + WORLD.maxX) / 2, -0.02, (WORLD.minZ + WORLD.maxZ) / 2]}>
           <planeGeometry args={[WORLD.maxX - WORLD.minX, WORLD.maxZ - WORLD.minZ]} />
-          <meshStandardMaterial color="#2b2b30" />
+          <meshStandardMaterial color={daytime ? '#77776e' : '#2b2b30'} />
         </mesh>
         {/* roads: driveway from the doors + a loop around the lot. Strips
             of darker asphalt with dashed centrelines — pure dressing. */}
@@ -825,7 +825,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         ].map(([cx2, cz2, w2, d2], i) => (
           <mesh key={i} rotation-x={-Math.PI / 2} position={[cx2, -0.005, cz2]}>
             <planeGeometry args={[w2, d2]} />
-            <meshStandardMaterial color="#35353b" />
+            <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
           </mesh>
         ))}
         {/* dashed centrelines */}
@@ -854,13 +854,13 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
         ].map(([px2, pz2, pw2, pd2], i) => (
           <mesh key={'h' + i} position={[px2, 0.7, pz2]}>
             <boxGeometry args={[pw2, 1.4, pd2]} />
-            <meshStandardMaterial color="#3c3c44" />
+            <meshStandardMaterial color={daytime ? '#8a8a90' : '#3c3c44'} />
           </mesh>
         ))}
         {[WORLD.minX, WORLD.maxX].map((x, i) => (
           <mesh key={'v' + i} position={[x, 0.7, (WORLD.minZ + WORLD.maxZ) / 2]}>
             <boxGeometry args={[0.25, 1.4, WORLD.maxZ - WORLD.minZ]} />
-            <meshStandardMaterial color="#3c3c44" />
+            <meshStandardMaterial color={daytime ? '#8a8a90' : '#3c3c44'} />
           </mesh>
         ))}
         {/* street lamps around the lot — lights only outside desk mode */}
@@ -878,9 +878,13 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
             </mesh>
             <mesh position={[0, 3.2, 0]}>
               <boxGeometry args={[0.34, 0.12, 0.22]} />
-              <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={1.6} />
+              <meshStandardMaterial
+                color="#26262a"
+                emissive="#ffd9a0"
+                emissiveIntensity={daytime ? 0.1 : 1.6}
+              />
             </mesh>
-            {mode !== 'desk' && i < 3 && (
+            {mode !== 'desk' && !daytime && i < 3 && (
               <pointLight position={[0, 3.0, 0]} intensity={1.4} color="#ffd9a0" distance={10} decay={2} />
             )}
           </group>
@@ -907,7 +911,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, onToggleLig
           </mesh>
         ))}
         {/* night sky — points shader, ignores fog, basically free */}
-        <Stars radius={70} depth={30} count={2200} factor={3.6} fade speed={0.4} />
+        {!daytime && <Stars radius={70} depth={30} count={2200} factor={3.6} fade speed={0.4} />}
       </group>
 
       {/* --- Ceiling fixtures: two LIT over the bays, husks elsewhere --- */}

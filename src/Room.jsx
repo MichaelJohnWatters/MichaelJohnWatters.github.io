@@ -252,6 +252,44 @@ function LampLights({ active }) {
   )
 }
 
+// Tyre smoke off the REAR wheels while the wheels are spinning (c.wheelspin).
+// Puffs spawn low behind the car and bloom/rise, driven each frame.
+function TyreSmoke({ vehiclesRef }) {
+  const grp = useRef()
+  const puffs = useRef([])
+  const t = useRef(0)
+  const N = 8
+  useFrame((_, dt) => {
+    const c = vehiclesRef.current?.[0]
+    const on = !!c?.wheelspin
+    if (grp.current) grp.current.visible = on
+    if (!on || !grp.current) return
+    t.current += dt
+    const fx = Math.sin(c.heading)
+    const fz = Math.cos(c.heading)
+    // sit at the rear axle
+    grp.current.position.set(c.x - fx * 1.3, 0, c.z - fz * 1.3)
+    puffs.current.forEach((m, i) => {
+      if (!m) return
+      const ph = (t.current * 1.1 + i / N) % 1
+      const side = i % 2 ? 0.7 : -0.7 // both rear corners
+      m.position.set(-fz * side - fx * ph * 1.5, 0.25 + ph * 1.4, fx * side - fz * ph * 1.5)
+      m.scale.setScalar(0.25 + ph * 1.0)
+      m.material.opacity = 0.5 * (1 - ph)
+    })
+  })
+  return (
+    <group ref={grp} visible={false}>
+      {Array.from({ length: N }).map((_, i) => (
+        <mesh key={i} ref={(el) => (puffs.current[i] = el)}>
+          <sphereGeometry args={[0.3, 8, 8]} />
+          <meshStandardMaterial color="#c9c9cf" transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 // Blown engine: smoke billowing + fire licking from the front of the car.
 // Driven each frame by vehiclesRef[0].blown (no React churn).
 function Wreck({ vehiclesRef }) {
@@ -1208,6 +1246,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
         <CarLights on={headlights === 0} />
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />
+      <TyreSmoke vehiclesRef={vehiclesRef} />
       <LiftedMx5 />
       <Mx5Parts />
 

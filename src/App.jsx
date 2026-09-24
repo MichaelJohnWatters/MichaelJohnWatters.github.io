@@ -520,11 +520,27 @@ export default function App() {
               </div>
             </div>
           </div>
-          <div className="explore-hint">
-            {IS_TOUCH
-              ? 'stick drives · auto gears'
-              : 'WASD drive · ⇧ clutch · ↑↓ gears · rev + drop the clutch to launch · V F H · E out'}
-          </div>
+          {IS_TOUCH ? (
+            <div className="explore-hint">stick drives · auto gears · tap buttons for view/horn</div>
+          ) : (
+            <div className="drive-help">
+              <div className="drive-help-row">
+                <span><kbd>I</kbd> start engine</span>
+                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive / brake</span>
+                <span><kbd>⇧</kbd> clutch</span>
+                <span><kbd>↑</kbd><kbd>↓</kbd> shift up / down</span>
+              </div>
+              <div className="drive-help-row">
+                <span><kbd>V</kbd> view</span>
+                <span><kbd>F</kbd> lights</span>
+                <span><kbd>H</kbd> horn</span>
+                <span><kbd>E</kbd> get out</span>
+              </div>
+              <div className="drive-help-tip">
+                pull away → <b>I</b> start · <b>↑</b> into 1st · hold <b>⇧</b> · rev with <b>W</b> · drop <b>⇧</b>
+              </div>
+            </div>
+          )}
           {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>
       )}

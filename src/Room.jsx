@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT, PARKED } from './layout'
 import Monitors from './Monitors'
 import { SHAPES } from './cars'
 
@@ -1264,6 +1264,10 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />
       <TyreSmoke vehiclesRef={vehiclesRef} />
+      {/* cars parked out in the lot — a row of different classes */}
+      {PARKED.map((p, i) => (
+        <CompleteCar key={i} position={[p.x, 0, p.z]} rotY={p.rotY} color={p.color} type={p.type} />
+      ))}
       <LiftedMx5 />
       <Mx5Parts />
 

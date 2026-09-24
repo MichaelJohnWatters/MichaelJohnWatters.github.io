@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES } from './layout'
+import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES, PARKED } from './layout'
 import { impact } from './sfx'
 import PhysicsCar from './PhysicsCar'
 
@@ -213,6 +213,10 @@ function WorldColliders() {
       ))}
       {CIRCLES.map((c, i) => (
         <IslandCollider key={i} position={[c.x, 0.4, c.z]} r={c.r} />
+      ))}
+      {/* parked cars — solid so the physics car crashes into them */}
+      {PARKED.map((p, i) => (
+        <Fence key={'p' + i} position={[p.x, 0.6, p.z]} args={[2, 1.2, 4.4]} />
       ))}
     </>
   )

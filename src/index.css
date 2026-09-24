@@ -1534,11 +1534,11 @@ html.on-glass .desk-dot {
   color: #e8b34b;
 }
 
-/* Live car tuning panel (top-right, physics mode) */
+/* Live car tuning panel (top-left, below the back button; desktop only) */
 .tune {
   position: fixed;
-  right: 2rem;
-  top: 2rem;
+  left: 2rem;
+  top: 5rem;
   z-index: 8388646;
   width: 210px;
   display: flex;
@@ -1554,6 +1554,13 @@ html.on-glass .desk-dot {
 }
 .tune-pick {
   width: 200px;
+}
+/* never on touch — the phone HUD stays clean (belt-and-suspenders to the JS gate) */
+@media (pointer: coarse) {
+  .tune,
+  .tune-pick {
+    display: none !important;
+  }
 }
 .tune-label {
   font-size: 10px;

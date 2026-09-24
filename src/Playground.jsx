@@ -69,7 +69,7 @@ function Barrel({ position, color }) {
     position,
     args: [0.3, 0.3, 0.85, 10],
     angularDamping: 0.25,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -86,7 +86,7 @@ function Crate({ position }) {
     position,
     args: [0.55, 0.55, 0.55],
     angularDamping: 0.3,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -103,7 +103,7 @@ function Tyre({ position }) {
     position,
     args: [0.34, 0.34, 0.25, 12],
     angularDamping: 0.2,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -120,7 +120,7 @@ function Cone({ position }) {
     position,
     args: [0.03, 0.17, 0.45, 8],
     angularDamping: 0.3,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -137,7 +137,7 @@ function Bin({ position, color }) {
     position,
     args: [0.55, 1.1, 0.55],
     angularDamping: 0.3,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -154,7 +154,7 @@ function Pin({ position }) {
     position,
     args: [0.08, 0.12, 0.52, 8],
     angularDamping: 0.2,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (
@@ -172,7 +172,7 @@ function Ball({ position }) {
     args: [0.24],
     angularDamping: 0.1,
     linearDamping: 0.05,
-    allowSleep: true,
+    allowSleep: false,
     onCollide: thud,
   }))
   return (

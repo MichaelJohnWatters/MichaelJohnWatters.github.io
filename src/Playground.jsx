@@ -36,7 +36,7 @@ function VehiclePusher({ vehiclesRef, idx, args }) {
   const prev = useRef(null)
   useFrame((_, dt) => {
     const c = vehiclesRef.current[idx]
-    if (!c) return
+    if (!c || !api?.quaternion) return
     if (prev.current && dt > 0) {
       api.velocity.set((c.x - prev.current.x) / dt, 0, (c.z - prev.current.z) / dt)
     }
@@ -54,7 +54,7 @@ function PlayerPusher({ playerPosRef }) {
   const prev = useRef(null)
   useFrame((_, dt) => {
     const p = playerPosRef?.current
-    if (!p) return
+    if (!p || !api?.position) return
     if (prev.current && dt > 0) {
       api.velocity.set((p.x - prev.current.x) / dt, 0, (p.z - prev.current.z) / dt)
     }
@@ -222,10 +222,51 @@ function IslandCollider({ position, r }) {
   return <mesh ref={ref} visible={false} />
 }
 
-export default function Playground({ vehiclesRef, playerPosRef, paused, physicsMode, carActive, onExitDrive }) {
+// visible static box (ramp / speed bump) the car drives over — the suspension
+// compresses, the body pitches, and off the ramp you get airtime
+function StaticBox({ position, rotation = [0, 0, 0], args, color = '#4a4a52' }) {
+  const [ref] = useBox(() => ({ type: 'Static', position, rotation, args }))
+  return (
+    <mesh ref={ref} position={position} rotation={rotation}>
+      <boxGeometry args={args} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  )
+}
+
+// A little test course down the long road: speed bumps, then a launch ramp.
+function RoadCourse() {
+  return (
+    <>
+      {[70, 77, 84].map((z) => (
+        <StaticBox key={z} position={[ROAD.x, 0.11, z]} args={[7.6, 0.22, 0.7]} color="#c9a23a" />
+      ))}
+      {/* launch ramp (rises toward the roundabout) */}
+      <StaticBox position={[ROAD.x, 0.5, 150]} rotation={[0.24, 0, 0]} args={[7, 0.5, 7]} color="#55555e" />
+      {/* a scatter of rubble just past it */}
+      {[[-1.5, 168], [1.2, 171], [0, 174], [-1.8, 176]].map(([x, z], i) => (
+        <RubbleBlock key={i} position={[ROAD.x + x, 0.4, z]} />
+      ))}
+    </>
+  )
+}
+function RubbleBlock({ position }) {
+  const [ref] = useBox(() => ({
+    mass: 0.6, position, args: [0.5, 0.5, 0.5], angularDamping: 0.3, allowSleep: false, onCollide: thud,
+  }))
+  return (
+    <mesh ref={ref}>
+      <boxGeometry args={[0.5, 0.5, 0.5]} />
+      <meshStandardMaterial color="#7a7168" roughness={0.9} />
+    </mesh>
+  )
+}
+
+export default function Playground({ vehiclesRef, playerPosRef, paused, physicsMode, carActive, onExitDrive, carProfile, carKey }) {
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused}>
       <WorldColliders />
+      <RoadCourse />
       <Ground />
       {/* perimeter keeps the toys in — with a gap where the road exits, so
           you CAN boot a barrel all the way to the roundabout */}
@@ -240,7 +281,7 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, physicsM
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
       {physicsMode ? (
-        <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} />
+        <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} />
       ) : (
         <VehiclePusher vehiclesRef={vehiclesRef} idx={0} args={[1.8, 1.2, 4.3]} />
       )}

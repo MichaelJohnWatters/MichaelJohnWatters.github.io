@@ -580,14 +580,21 @@ function BikeLight({ on }) {
 // Drive controller and this mesh read the same truth each frame. `nose`
 // corrects for the mesh's forward axis (car nose = +x → -π/2; bike = +z
 // → 0). Bikes also lean into corners (pose.lean, set by Drive).
-function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, drop = 0, children }) {
+function VehicleRig({ vehiclesRef, idx, nose = 0, lean = false, drop = 0, physCar = false, children }) {
   const g = useRef()
+  const q = useMemo(() => new THREE.Quaternion(), [])
+  const nq = useMemo(() => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), nose), [nose])
   useFrame(() => {
     const c = vehiclesRef?.current?.[idx]
     if (!c || !g.current) return
     g.current.position.set(c.x, (c.y || 0) + drop, c.z) // c.y lifts on jumps; drop aligns body to the physics wheels
-    g.current.rotation.y = c.heading + nose
-    g.current.rotation.z = lean ? c.lean || 0 : 0
+    if (physCar && c.quat) {
+      // follow the FULL chassis orientation → visible body roll / dive / squat / airtime
+      q.set(c.quat[0], c.quat[1], c.quat[2], c.quat[3])
+      g.current.quaternion.copy(q).multiply(nq)
+    } else {
+      g.current.rotation.set(0, c.heading + nose, lean ? c.lean || 0 : 0)
+    }
   })
   return <group ref={g}>{children}</group>
 }
@@ -825,7 +832,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0' }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1246,8 +1253,8 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       </mesh>
 
       {/* --- The bays --- */}
-      <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2} drop={physicsMode ? -0.5 : 0}>
-        <CompleteCar wheels={!physicsMode} />
+      <VehicleRig vehiclesRef={vehiclesRef} idx={0} nose={-Math.PI / 2} drop={physicsMode ? -0.5 : 0} physCar={physicsMode}>
+        <CompleteCar wheels={!physicsMode} color={carColor} />
         <CarLights on={headlights === 0} />
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />

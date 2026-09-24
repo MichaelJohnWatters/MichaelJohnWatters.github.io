@@ -9,6 +9,7 @@ import Playground from './Playground'
 import Joystick from './Joystick'
 import Phone from './Phone'
 import { CIVIC, BIKES } from './layout'
+import { CARS, TUNE } from './cars'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -24,7 +25,7 @@ function Exposure({ lights, daytime }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carIndex }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   return (
     <>
@@ -57,7 +58,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -77,6 +78,8 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         physicsMode={physicsMode}
         carActive={carPhysicsDrive}
         onExitDrive={onExitDrive}
+        carProfile={carProfile}
+        carKey={`${carIndex}-${carProfile.grip}`}
       />
     </>
   )
@@ -100,7 +103,12 @@ export default function App() {
   const [doors, setDoors] = useState([false, true]) // roller doors open? (Civic's bay open to start)
   const [nearVehicle, setNearVehicle] = useState(-1)
   const [torch, setTorch] = useState(false) // hand torch while on foot
-  const [physicsMode, setPhysicsMode] = useState(false) // Civic on real raycast physics
+  const [physicsMode, setPhysicsMode] = useState(true) // real raycast physics (default)
+  const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
+  const [carIndex, setCarIndex] = useState(0)
+  const carProfile = cars[carIndex]
+  const tuneCar = (field, value) =>
+    setCars((cs) => cs.map((c, i) => (i === carIndex ? { ...c, [field]: value } : c)))
   const [driving, setDriving] = useState(0) // which vehicle Drive controls
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
   // Live vehicle poses — they persist wherever you park them. r = the
@@ -387,6 +395,8 @@ export default function App() {
             playerPosRef={playerPosRef}
             torch={torch}
             physicsMode={physicsMode}
+            carProfile={carProfile}
+            carIndex={carIndex}
           />
         </ScrollControls>
       </Canvas>
@@ -544,6 +554,43 @@ export default function App() {
               </div>
             </div>
           </div>
+          {physicsMode && driving === 0 && (
+            <div className="tune">
+              <div className="tune-cars">
+                {cars.map((car, i) => (
+                  <button
+                    key={car.name}
+                    className={'tune-car' + (i === carIndex ? ' on' : '')}
+                    onClick={() => {
+                      clickDown()
+                      setCarIndex(i)
+                    }}
+                  >
+                    {car.name}
+                  </button>
+                ))}
+              </div>
+              {[
+                ['mass', 'weight', 'kg'],
+                ['force', 'power', 'N'],
+                ['grip', 'grip', ''],
+                ['brake', 'brakes', ''],
+              ].map(([field, label, unit]) => (
+                <label key={field} className="tune-row">
+                  <span>{label}</span>
+                  <input
+                    type="range"
+                    min={TUNE[field][0]}
+                    max={TUNE[field][1]}
+                    step={TUNE[field][2]}
+                    value={carProfile[field]}
+                    onChange={(e) => tuneCar(field, +e.target.value)}
+                  />
+                  <b>{carProfile[field]}{unit}</b>
+                </label>
+              ))}
+            </div>
+          )}
           {physicsMode && driving === 0 ? (
             <div className="drive-help">
               <div className="drive-help-row">
@@ -554,7 +601,7 @@ export default function App() {
                 <span><kbd>H</kbd> horn · <kbd>F</kbd> lights · <kbd>E</kbd> out</span>
               </div>
               <div className="drive-help-tip">
-                🔧 <b>real physics</b> — raycast wheels, suspension, real tyre grip
+                🔧 <b>{carProfile.name}</b> — real physics · tune it below
               </div>
             </div>
           ) : IS_TOUCH ? (

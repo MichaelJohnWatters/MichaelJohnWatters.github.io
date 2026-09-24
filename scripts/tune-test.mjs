@@ -1,0 +1,28 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu'] })
+const page = await b.newPage()
+const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,140)))
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil: 'domcontentloaded' })
+await new Promise((r) => setTimeout(r, 4500))
+console.log('phys btn (should be physics by default):', await page.evaluate(()=>document.querySelector('.ctl-phys')?.textContent))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(d=>getComputedStyle(d).overflowY==='auto'); el.scrollTop=el.scrollHeight })
+await new Promise((r) => setTimeout(r, 2500))
+await page.mouse.move(100,400)
+await page.evaluate(() => document.querySelector('.ctl-step')?.click())
+await new Promise((r) => setTimeout(r, 800))
+await page.keyboard.press('KeyE'); await new Promise(r=>setTimeout(r,900))
+const panel = await page.evaluate(()=>({ tune: !!document.querySelector('.tune'), cars: [...document.querySelectorAll('.tune-car')].map(b=>b.textContent), rows: document.querySelectorAll('.tune-row').length }))
+console.log('tuning panel:', JSON.stringify(panel))
+// switch to MX-5
+await page.evaluate(()=>[...document.querySelectorAll('.tune-car')][1]?.click())
+await new Promise(r=>setTimeout(r,400))
+console.log('active car:', await page.evaluate(()=>document.querySelector('.tune-car.on')?.textContent))
+// start + launch + drive briefly
+await page.keyboard.press('KeyI'); await new Promise(r=>setTimeout(r,300))
+await page.keyboard.down('ShiftLeft'); await page.keyboard.press('ArrowUp'); await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,600)); await page.keyboard.up('ShiftLeft')
+for(let s=0;s<5;s++){ await new Promise(r=>setTimeout(r,500)); const rpm=await page.evaluate(()=>parseInt(document.getElementById('rpm-fill')?.style.width)); const g=await page.evaluate(()=>document.getElementById('gear-num')?.textContent); const spd=await page.evaluate(()=>+document.getElementById('spd-num')?.textContent); if(rpm>92&&g!=='5')await page.keyboard.press('ArrowUp'); console.log('drive',s,'g'+g,'spd'+spd) }
+await page.keyboard.up('KeyW')
+const fps = await page.evaluate(() => new Promise((res)=>{let n=0;const t0=performance.now();const t=()=>(performance.now()-t0<2000?(n++,requestAnimationFrame(t)):res(Math.round(n/2)));requestAnimationFrame(t)}))
+console.log('fps:',fps,'errors:',errs.slice(0,3))
+await b.close()

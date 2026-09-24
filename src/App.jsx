@@ -464,6 +464,25 @@ export default function App() {
           <button className="ctl ctl-back" onClick={sitDown}>
             ↩ back to desk
           </button>
+          {physicsMode && !IS_TOUCH && (
+            <div className="tune tune-pick">
+              <div className="tune-label">car to drive</div>
+              <div className="tune-cars">
+                {cars.map((car, i) => (
+                  <button
+                    key={car.name}
+                    className={'tune-car' + (i === carIndex ? ' on' : '')}
+                    onClick={() => {
+                      clickDown()
+                      setCarIndex(i)
+                    }}
+                  >
+                    {car.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {sofa ? (
             <div className="aim-label show sit-label" onClick={sofaToggle}>
               {IS_TOUCH ? 'tap to stand up' : 'press E to stand up'}

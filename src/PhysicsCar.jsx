@@ -120,6 +120,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   const prevClutch = useRef(false)
   const screeching = useRef(false)
   const steerAngle = useRef(0)
+  const camLook = useRef(new THREE.Vector3())
+  const camReady = useRef(false)
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
 
@@ -181,6 +183,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     if (!active) {
       for (let i = 0; i < 4; i++) { vehicleApi.applyEngineForce(0, i); vehicleApi.setBrake(8, i) }
       if (c) c.wheelspin = false
+      camReady.current = false // re-snap the chase cam next time we get in
       return
     }
 
@@ -360,11 +363,18 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       }
     }
 
-    // chase camera
+    // chase camera. The look target is smoothed too — snapping it to the raw
+    // 60 Hz physics pose would judder the whole view on a 120 Hz display.
     const fx = Math.sin(p.heading)
     const fz = Math.cos(p.heading)
+    if (!camReady.current) {
+      camReady.current = true
+      camera.position.set(p.x - fx * 7, p.y + 3.2, p.z - fz * 7)
+      camLook.current.set(p.x, p.y + 0.6, p.z)
+    }
     camera.position.lerp(tmp.set(p.x - fx * 7, p.y + 3.2, p.z - fz * 7), 1 - Math.pow(0.0016, dt))
-    camera.lookAt(p.x, p.y + 0.6, p.z)
+    camLook.current.lerp(tmp.set(p.x, p.y + 0.6, p.z), 1 - Math.exp(-dt * 26))
+    camera.lookAt(camLook.current)
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
   })

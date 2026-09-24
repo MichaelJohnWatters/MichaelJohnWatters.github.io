@@ -300,18 +300,39 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     else if (!spin && screeching.current) { screechStop(); screeching.current = false }
 
     const P2 = pose.current
-    // STABILITY: a spin is a yaw rate far beyond any intentional turn. Leave
-    // normal cornering (|yaw| ≤ MAX_YAW) completely free; only bleed the part
-    // above the cap, hard, so a kerb/prop/power-slide can't loop the car.
-    const MAX_YAW = 1.2 // rad/s — above any real cornering (full-lock @ 7 m/s ≈ 1.4)
+    const balance = prof.current.balance ?? 0.55
+    // DRIFT: tail-happiness from the car's grip balance. Grippy cars (high
+    // balance, e.g. Civic 0.55) barely slide; neutral/tail-happy cars (MX-5
+    // 0.5, V8 0.42) break the rear loose on power.
+    const driftiness = clamp((0.62 - balance) * 5, 0.08, 1.4)
+    const onPower = gas > 0 && !clutchIn && !stalled.current && !dead
+    // Commit to a slide: enough speed to be stable, steering loaded, on the
+    // throttle. The front tyres keep full grip, so opposite lock catches it.
+    const drifting = onPower && P2.fwd > 5 && Math.abs(steerAngle.current) > 0.05
+    // live slip angle = how far the car's travelling sideways vs where it points
+    let slipA = Math.atan2(P2.vx, P2.vz) - P2.heading
+    while (slipA > Math.PI) slipA -= 2 * Math.PI
+    while (slipA < -Math.PI) slipA += 2 * Math.PI
+    const slipDeg = Math.abs(slipA) * 180 / Math.PI
+    if (drifting && chassisApi.applyLocalImpulse) {
+      // Kick the rear axle out in the direction that amplifies the turn, hard
+      // enough to overcome rear grip. Crucially the kick TAPERS to zero as the
+      // slide reaches a target angle, so it initiates AND settles a drift
+      // instead of running away into a spin (real tyres self-limit past peak).
+      const targetSlip = 22 + driftiness * 22 // Civic ~26° · MX-5 ~35° · V8 ~53°
+      const slipFade = clamp(1 - slipDeg / targetSlip, 0, 1)
+      const commit = clamp(Math.abs(steerAngle.current) / STEER_MAX, 0, 1) * (wheelspin ? 1 : 0.6)
+      const mag = -Math.sign(steerAngle.current) * driftiness * commit * slipFade * mass * 32 * dt
+      chassisApi.applyLocalImpulse([mag, 0, 0], [0, -0.1, -1.75])
+    }
+    // STABILITY: a spin is a yaw rate beyond any intentional turn. The ceiling
+    // opens up while you're committed to a slide (tail can hang out) and clamps
+    // back tight off the throttle — lift and it snaps straight, floor it and it
+    // hangs. Only the part above the cap is bled off, so nothing loops.
+    const MAX_YAW = drifting ? 2.6 : 1.2
     if (Math.abs(P2.yaw) > MAX_YAW && chassisApi.applyTorque) {
       const over = P2.yaw - Math.sign(P2.yaw) * MAX_YAW
       chassisApi.applyTorque([0, -over * mass * 14 * dt, 0])
-    }
-    // gentle power-oversteer: when the rears light up, nudge the tail out
-    if (spin && P2.fwd > 3 && chassisApi.applyLocalImpulse) {
-      const kick = steerInput * clamp(P2.fwd / 12, 0, 1) * mass * 0.03
-      chassisApi.applyLocalImpulse([kick, 0, 0], [0, -0.1, -1.7])
     }
     if (typeof window !== 'undefined') window.__car = P2 // self-test hook
 

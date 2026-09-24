@@ -1,8 +1,9 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD, LOT, ROAD } from './layout'
+import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES } from './layout'
 import { impact } from './sfx'
+import PhysicsCar from './PhysicsCar'
 
 // The Bruno-Simon-style physics playground (cannon-es in a web worker).
 // The hand-rolled vehicle sim stays in charge of driving — vehicles and
@@ -198,9 +199,33 @@ const PINS = (() => {
   return out
 })()
 
-export default function Playground({ vehiclesRef, playerPosRef, paused }) {
+// Static boxes for the garage's solid walls (so the physics car crashes into
+// them), plus the roundabout island as a static cylinder.
+function WorldColliders() {
+  return (
+    <>
+      {BUILDING_WALLS.map((b, i) => (
+        <Fence
+          key={i}
+          position={[(b.minX + b.maxX) / 2, 1.2, (b.minZ + b.maxZ) / 2]}
+          args={[b.maxX - b.minX, 2.4, b.maxZ - b.minZ]}
+        />
+      ))}
+      {CIRCLES.map((c, i) => (
+        <IslandCollider key={i} position={[c.x, 0.4, c.z]} r={c.r} />
+      ))}
+    </>
+  )
+}
+function IslandCollider({ position, r }) {
+  const [ref] = useCylinder(() => ({ type: 'Static', position, args: [r, r, 0.8, 16] }))
+  return <mesh ref={ref} visible={false} />
+}
+
+export default function Playground({ vehiclesRef, playerPosRef, paused, physicsMode, carActive, onExitDrive }) {
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused}>
+      <WorldColliders />
       <Ground />
       {/* perimeter keeps the toys in — with a gap where the road exits, so
           you CAN boot a barrel all the way to the roundabout */}
@@ -212,8 +237,13 @@ export default function Playground({ vehiclesRef, playerPosRef, paused }) {
       <Fence position={[-20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
       <Fence position={[20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
       <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
-      {/* pushers */}
-      <VehiclePusher vehiclesRef={vehiclesRef} idx={0} args={[1.8, 1.2, 4.3]} />
+      {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
+          raycast vehicle (physics mode) */}
+      {physicsMode ? (
+        <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} />
+      ) : (
+        <VehiclePusher vehiclesRef={vehiclesRef} idx={0} args={[1.8, 1.2, 4.3]} />
+      )}
       <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={2} args={[0.7, 1.2, 2.2]} />
       <PlayerPusher playerPosRef={playerPosRef} />

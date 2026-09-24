@@ -67,9 +67,15 @@ readable in-session); Cloudflare Worker search proxy scaffolded (worker/).
 - [ ] **MX-5 build minigame**: crosshair-interact with scattered parts →
       progress on status.sh + new whiteboard tasks → car assembles on the
       lift → lower it. (The crosshair + tasks systems are ready for this.)
-- [ ] **Drive the Civic** (or finished MX-5): arcade controller, chase cam,
-      roller doors open as the finale. PREREQ: camera owner/state machine
-      (desk↔explore↔drive transitions; fixes back-to-desk clipping too)
+- [x] **Drive the Civic** — SHIPPED: open world lot (56x52m) with loop
+      roads + driveway, arcade kinematic controller (throttle/brake/steer,
+      speed-scaled steering, soft-bounce collisions), chase cam, synthesized
+      engine that follows speed, car pose persists where you park, get
+      in/out with E, 9th whiteboard task
+- [ ] **Car physics v2**: suspension (body roll/pitch on accel + corners),
+      wheel spin + steering visuals, tyre screech sfx, handbrake drift,
+      maybe skid marks. Consider a proper vehicle model (raycast vehicle)
+      if we go .glb cars.
 - [ ] Mixamo character (walk/idle) replaces the blockout figure
 - [ ] Garage set dressing pass: project posters on walls, nicer low-poly
       .glbs piece by piece

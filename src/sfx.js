@@ -91,6 +91,53 @@ export function taskDing() {
   })
 }
 
+// Car engine: a looping saw hum whose pitch/level follow speed.
+let engine = null
+export function engineStart() {
+  const ac = ensureCtx()
+  if (engine) return
+  const o = ac.createOscillator()
+  o.type = 'sawtooth'
+  o.frequency.value = 55
+  const o2 = ac.createOscillator()
+  o2.type = 'square'
+  o2.frequency.value = 27.5
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 320
+  const g = ac.createGain()
+  g.gain.value = 0.0
+  o.connect(lp)
+  o2.connect(lp)
+  lp.connect(g)
+  g.connect(master)
+  o.start()
+  o2.start()
+  engine = { o, o2, g }
+  // idle rumble fades in
+  g.gain.linearRampToValueAtTime(0.05, ac.currentTime + 0.4)
+}
+export function engineSpeed(v) {
+  // v: 0..1 of top speed
+  if (!engine) return
+  engine.o.frequency.value = 55 + v * 105
+  engine.o2.frequency.value = 27.5 + v * 50
+  engine.g.gain.value = 0.05 + v * 0.06
+}
+export function engineStop() {
+  if (!engine) return
+  const ac = ensureCtx()
+  engine.g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3)
+  const e = engine
+  engine = null
+  setTimeout(() => {
+    try {
+      e.o.stop()
+      e.o2.stop()
+    } catch {}
+  }, 400)
+}
+
 // Roller-door motor: low mechanical rumble + slat rattle for ~2.2s.
 export function doorMotor() {
   const ac = ensureCtx()

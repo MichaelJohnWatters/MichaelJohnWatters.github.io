@@ -13,7 +13,11 @@ export const DOORS = [
   { x: 2.8, w: 2.7, h: 2.4 }, // parking bay door
 ]
 
-// The yard outside the roller doors (walkable once a door is open).
+// The world outside the garage: a big night lot you can walk AND drive
+// around. The garage building sits inside it; a perimeter wall bounds it.
+export const WORLD = { minX: -28, maxX: 28, minZ: -18, maxZ: 34 }
+
+// (legacy close-yard bound — the lamp/bins cluster still anchors here)
 export const YARD = { maxZ: 11.3 }
 
 // Two-post car lift (the MX-5 project car lives up here).
@@ -61,8 +65,8 @@ export const SOFA_SEAT = { x: 4.9, z: -1.1, standZ: -2.45 }
 export const COLLIDERS = [
   // desk + monitors
   { minX: -1.0, maxX: 1.0, minZ: -3.0, maxZ: -2.15 },
-  // Civic FN4 (rotated: 1.77 wide in x, 4.27 long in z)
-  { minX: 2.8 - 1.0, maxX: 2.8 + 1.0, minZ: 2.2 - 2.25, maxZ: 2.2 + 2.25 },
+  // (the Civic is NOT here — it moves; Player/Drive collide with its live
+  // position as a circle)
   // lift posts (the raised MX-5 tub is overhead — walk under it)
   { minX: -3.75, maxX: -3.15, minZ: 1.7, maxZ: 2.3 },
   { minX: -1.25, maxX: -0.65, minZ: 1.7, maxZ: 2.3 },
@@ -80,4 +84,16 @@ export const COLLIDERS = [
   // man-cave corner: couch (fridge now in the front-right corner)
   { minX: 3.9, maxX: 5.9, minZ: -1.8, maxZ: -0.7 },
   { minX: 5.75, maxX: 6.5, minZ: 5.8, maxZ: 6.6 },
+  // outside: lamp post + bins cluster + shipping container
+  { minX: 5.25, maxX: 5.55, minZ: 10.15, maxZ: 10.45 },
+  { minX: -5.95, maxX: -4.55, minZ: 10.3, maxZ: 11.0 },
+  { minX: -20.5, maxX: -14.5, minZ: 24.0, maxZ: 26.6 },
+]
+
+// The garage BUILDING as solid geometry for the open world: side + back
+// walls (the front wall with its door openings is handled specially).
+export const BUILDING_WALLS = [
+  { minX: GARAGE.minX - 0.15, maxX: GARAGE.minX + 0.05, minZ: GARAGE.minZ - 0.15, maxZ: GARAGE.maxZ }, // left
+  { minX: GARAGE.maxX - 0.05, maxX: GARAGE.maxX + 0.15, minZ: GARAGE.minZ - 0.15, maxZ: GARAGE.maxZ }, // right
+  { minX: GARAGE.minX, maxX: GARAGE.maxX, minZ: GARAGE.minZ - 0.15, maxZ: GARAGE.minZ + 0.05 }, // back
 ]

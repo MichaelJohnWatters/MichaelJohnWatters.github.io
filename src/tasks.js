@@ -12,6 +12,7 @@ export const TASKS = [
   { id: 'cv', label: 'grab the CV' },
   { id: 'tv', label: 'watch some telly' },
   { id: 'garage', label: 'open the garage door' },
+  { id: 'drive', label: 'take the civic for a spin' },
 ]
 
 const KEY = 'garage-tasks-v1'

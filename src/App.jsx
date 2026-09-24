@@ -4,8 +4,10 @@ import { ScrollControls } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
+import Drive from './Drive'
 import Joystick from './Joystick'
 import Phone from './Phone'
+import { CIVIC } from './layout'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -21,13 +23,13 @@ function Exposure({ lights }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, carRef, onNearCar, onDrive, onExitDrive, spawn }) {
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
-      <fog attach="fog" args={['#0a0a0f', 12, 30]} />
+      <fog attach="fog" args={['#0a0a0f', 14, 52]} />
       <Exposure lights={lights} />
 
       {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
@@ -44,13 +46,14 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         </>
       )}
       {/* No Environment IBL — it floods the night scene with daylight. */}
-      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} carRef={carRef} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} />
+        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} carRef={carRef} onNearCar={onNearCar} onDrive={onDrive} />
       )}
+      {mode === 'drive' && <Drive carRef={carRef} doors={doors} onExit={onExitDrive} joyRef={joyRef} />}
     </>
   )
 }
@@ -70,6 +73,26 @@ export default function App() {
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
   const [doors, setDoors] = useState([false, false]) // roller doors open?
+  const [nearCar, setNearCar] = useState(false)
+  const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
+  // The Civic's live pose — persists wherever you park it. Heading 0 =
+  // nose toward its roller door.
+  const carRef = useRef({ x: CIVIC.pos[0], z: CIVIC.pos[2], heading: 0 })
+
+  const enterDrive = () => {
+    clickDown()
+    complete('drive') // whiteboard task
+    setNearCar(false)
+    setPhone(false)
+    setMode('drive')
+  }
+  const exitDrive = () => {
+    clickDown()
+    const c = carRef.current
+    // step out beside the driver's door
+    setSpawn([c.x + Math.cos(c.heading) * 2.0, 0, c.z - Math.sin(c.heading) * 2.0])
+    setMode('explore')
+  }
   const [tvVol, setTvVol] = useState(70) // TV volume, driven from the phone
 
   // Drive the embed's player via the IFrame API postMessage channel
@@ -235,6 +258,7 @@ export default function App() {
     clickDown()
     setSeated(false)
     setZoomScreen(null)
+    setSpawn([0.9, 0, 0.4]) // beside the desk
     complete('stepaway') // whiteboard task
     setMode('explore')
     // Capture the mouse NOW — we're inside the click's user activation,
@@ -298,6 +322,11 @@ export default function App() {
             onNearSofa={setNearSofa}
             doors={doors}
             onDoorToggle={toggleDoor}
+            carRef={carRef}
+            onNearCar={setNearCar}
+            onDrive={enterDrive}
+            onExitDrive={exitDrive}
+            spawn={spawn}
           />
         </ScrollControls>
       </Canvas>
@@ -364,6 +393,10 @@ export default function App() {
             <div className="aim-label show sit-label" onClick={sofaToggle}>
               {IS_TOUCH ? 'tap to sit on the sofa' : 'press E to sit on the sofa'}
             </div>
+          ) : nearCar ? (
+            <div className="aim-label show sit-label" onClick={enterDrive}>
+              {IS_TOUCH ? 'tap to drive the civic' : 'press E to drive the civic'}
+            </div>
           ) : (
             <div className="explore-hint">
               {IS_TOUCH
@@ -378,6 +411,18 @@ export default function App() {
               <div id="aim-label" className="aim-label" />
             </>
           )}
+        </>
+      )}
+
+      {mode === 'drive' && (
+        <>
+          <button className="ctl ctl-back" onClick={exitDrive}>
+            🚗 get out (E)
+          </button>
+          <div className="explore-hint">
+            {IS_TOUCH ? 'stick drives · push up to go' : 'WASD to drive · E to get out'}
+          </div>
+          {IS_TOUCH && <Joystick vecRef={joyRef} />}
         </>
       )}
     </>

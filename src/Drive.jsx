@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS } from './layout'
@@ -9,8 +9,9 @@ import { engineStart, engineSpeed, engineStop } from './sfx'
 // collisions with a soft bounce. Chase camera. Poses live in App's
 // vehicles ref so they persist where you park.
 const PARAMS = {
-  car: { top: 11, rev: 4, accel: 7, brake: 14, steer: 1.9, r: 0.95, camD: 6, camH: 2.8, pitch: 1 },
-  bike: { top: 15, rev: 3, accel: 10, brake: 16, steer: 2.7, r: 0.45, camD: 4.5, camH: 2.1, pitch: 1.9 },
+  // car "cockpit" is a bonnet cam — just ahead of the windshield box
+  car: { top: 11, rev: 4, accel: 7, brake: 14, steer: 1.9, r: 0.95, camD: 6, camH: 2.8, pitch: 1, eyeY: 1.02, eyeOff: 1.2 },
+  bike: { top: 15, rev: 3, accel: 10, brake: 16, steer: 2.7, r: 0.45, camD: 4.5, camH: 2.1, pitch: 1.9, eyeY: 1.34, eyeOff: -0.05 },
 }
 const DRAG = 2.2
 
@@ -49,6 +50,22 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
   const doorsRef = useRef(doors)
   doorsRef.current = doors
   const P = PARAMS[vehiclesRef.current[index]?.kind] || PARAMS.car
+  const isBike = vehiclesRef.current[index]?.kind === 'bike'
+  const [cockpit, setCockpit] = useState(false)
+
+  // V/C (or the HUD button's event) toggles chase ↔ cockpit
+  useEffect(() => {
+    const toggle = () => setCockpit((v) => !v)
+    const onKey = (e) => {
+      if (e.code === 'KeyV' || e.code === 'KeyC') toggle()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('drive-cam', toggle)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('drive-cam', toggle)
+    }
+  }, [])
 
   useEffect(() => {
     engineStart()
@@ -120,17 +137,20 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     speed.current = v
     engineSpeed((Math.abs(v) / P.top) * P.pitch)
 
-    // chase camera
-    const a = 1 - Math.pow(0.001, dt)
-    camera.position.lerp(
-      tmpCam.set(
-        c.x - Math.sin(c.heading) * P.camD,
-        P.camH,
-        c.z - Math.cos(c.heading) * P.camD,
-      ),
-      a,
-    )
-    camera.lookAt(c.x, 1.0, c.z)
+    const fx = Math.sin(c.heading)
+    const fz = Math.cos(c.heading)
+    if (cockpit) {
+      // first person: eyes in the seat, locked to the vehicle
+      camera.position.set(c.x + fx * P.eyeOff, P.eyeY, c.z + fz * P.eyeOff)
+      camera.lookAt(c.x + fx * 14, P.eyeY - 0.2, c.z + fz * 14)
+      // riders lean WITH the bike
+      if (isBike) camera.rotateZ((c.lean || 0) * 0.8)
+    } else {
+      // chase camera
+      const a = 1 - Math.pow(0.001, dt)
+      camera.position.lerp(tmpCam.set(c.x - fx * P.camD, P.camH, c.z - fz * P.camD), a)
+      camera.lookAt(c.x, 1.0, c.z)
+    }
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
   }, -1)

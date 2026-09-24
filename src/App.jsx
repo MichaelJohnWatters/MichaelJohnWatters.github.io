@@ -85,7 +85,7 @@ export default function App() {
   const [phone, setPhone] = useState(false) // the cast-remote phone overlay
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
-  const [doors, setDoors] = useState([false, false]) // roller doors open?
+  const [doors, setDoors] = useState([false, true]) // roller doors open? (Civic's bay open to start)
   const [nearVehicle, setNearVehicle] = useState(-1)
   const [torch, setTorch] = useState(false) // hand torch while on foot
   const [driving, setDriving] = useState(0) // which vehicle Drive controls
@@ -504,6 +504,7 @@ export default function App() {
             📯 horn (H)
           </button>
           {/* gearbox HUD — Drive writes into these each frame (no re-render) */}
+          <div id="rev-warn" className="rev-warn" />
           <div className="gauge">
             <div className="gauge-gear">
               <span id="gear-num">1</span>

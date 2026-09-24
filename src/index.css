@@ -1511,6 +1511,37 @@ html.clutch-in .clutch-tag {
   opacity: 1;
 }
 
+/* over-rev / blown warning banner (centre, above the gauge) */
+.rev-warn {
+  position: fixed;
+  right: 2rem;
+  bottom: 10.5rem;
+  z-index: 8388646;
+  font-family: 'SF Mono', ui-monospace, Menlo, monospace;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-align: right;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  min-height: 18px;
+}
+.rev-warn.redline {
+  color: #ffb14e;
+}
+.rev-warn.danger {
+  color: #ff4e45;
+  animation: revflash 0.18s steps(2) infinite;
+}
+.rev-warn.blown {
+  color: #ff4e45;
+  font-size: 17px;
+}
+@keyframes revflash {
+  0% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
 /* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
 .cave-tv {
   width: 400px;

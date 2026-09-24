@@ -45,7 +45,7 @@ function Wheel({ wheelRef, radius }) {
   )
 }
 
-export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT }) {
+export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef }) {
   const { camera } = useThree()
   const prof = useRef(profile)
   prof.current = profile
@@ -198,11 +198,24 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     ignCd.current = Math.max(0, ignCd.current - dt)
     limT.current += dt
     const k = keys.current
-    const gas = k.f ? 1 : 0
-    const brakeInput = k.b ? 1 : 0
-    const steerInput = (k.r ? 1 : 0) - (k.l ? 1 : 0)
-    const clutchIn = k.clutch
+    // touch: joystick up = throttle, down = brake, x = steer (blended with any
+    // keys). Desktop keys stay 0/1. Touch is auto-clutch (see auto-box below).
+    const joy = joyRef?.current || { x: 0, y: 0 }
+    const gas = clamp((k.f ? 1 : 0) + Math.max(0, -joy.y), 0, 1)
+    const brakeInput = clamp((k.b ? 1 : 0) + Math.max(0, joy.y), 0, 1)
+    const steerInput = clamp((k.r ? 1 : 0) - (k.l ? 1 : 0) + joy.x, -1, 1)
+    const clutchIn = k.clutch // (never set on touch — no shift key)
     let g = gear.current
+    // AUTOMATIC transmission on touch (no shift keys): pull away in 1st, upshift
+    // near the top of a gear, downshift when lugging; brake at a stop → reverse.
+    if (IS_TOUCH && !c?.blown && !stalled.current && shiftCd.current <= 0) {
+      const spd = Math.abs(p.fwd)
+      if (spd < 0.8 && brakeInput > 0.6 && g >= 0) { gear.current = -1; shiftCd.current = 0.4; shiftClack() }
+      else if (spd < 0.8 && gas > 0.3 && g === -1) { gear.current = 1; shiftCd.current = 0.4; shiftClack() }
+      else if (g >= 1 && rpm.current > 0.9 && g < 5) doShift(1)
+      else if (g >= 1 && rpm.current < 0.35 && g > 1) doShift(-1)
+      g = gear.current
+    }
     const neutral = g === 0
     const decoupled = clutchIn || neutral
     const dead = !!c?.blown

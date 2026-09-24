@@ -853,6 +853,46 @@ html.daytime.lights-off .postit {
 }
 
 /* Virtual joystick (touch explore mode) */
+/* Rotate-to-landscape gate — only on touch devices held in portrait. Desktop
+   (fine pointer) never sees it, even in a tall/narrow window. */
+.rotate-gate {
+  display: none;
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-gate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9000000; /* above everything, incl. the drive HUD */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    text-align: center;
+    padding: 2rem;
+    background: #0a0a0f;
+    color: #eafffb;
+    font-family: 'DejaVu Sans Mono', 'SF Mono', Menlo, monospace;
+  }
+  .rotate-gate p {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+  .rotate-gate small {
+    color: rgba(180, 210, 205, 0.75);
+    font-size: 0.9rem;
+  }
+}
+.rotate-gate-icon {
+  font-size: 3.2rem;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(90deg); }
+}
+
 .joystick {
   position: fixed;
   z-index: 8388646;

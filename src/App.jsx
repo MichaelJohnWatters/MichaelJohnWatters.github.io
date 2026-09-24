@@ -76,11 +76,10 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         vehiclesRef={vehiclesRef}
         playerPosRef={playerPosRef}
         paused={mode === 'desk'}
-        physicsMode={physicsMode}
         carActive={carPhysicsDrive}
         onExitDrive={onExitDrive}
         carProfile={carProfile}
-        carKey={`${carIndex}-${carProfile.grip}`}
+        joyRef={joyRef}
       />
     </>
   )
@@ -104,7 +103,9 @@ export default function App() {
   const [doors, setDoors] = useState([false, true]) // roller doors open? (Civic's bay open to start)
   const [nearVehicle, setNearVehicle] = useState(-1)
   const [torch, setTorch] = useState(false) // hand torch while on foot
-  const [physicsMode, setPhysicsMode] = useState(true) // real raycast physics (default)
+  // the car is always the real raycast-physics car now (desktop: manual gearbox;
+  // touch: joystick + automatic). No more arcade/legacy car mode or toggle.
+  const physicsMode = true
   const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
   const [carIndex, setCarIndex] = useState(0)
   const carProfile = cars[carIndex]
@@ -350,6 +351,13 @@ export default function App() {
 
   return (
     <>
+      {/* Mobile is a landscape experience (wide screens + driving HUD). In
+          portrait on a touch device, prompt a rotate and block interaction. */}
+      <div className="rotate-gate">
+        <div className="rotate-gate-icon">📱↻</div>
+        <p>Rotate your device</p>
+        <small>this world runs in landscape</small>
+      </div>
       <Canvas
         dpr={[1, 1.25]}
         camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}
@@ -429,16 +437,6 @@ export default function App() {
       >
         {daytime ? '☀️' : '🌃'}
       </button>
-      <button
-        className="ctl ctl-phys"
-        onClick={() => {
-          clickDown()
-          setPhysicsMode((p) => !p)
-        }}
-        title="Civic: arcade vs real physics (experimental)"
-      >
-        {physicsMode ? '🔧 physics' : '🎮 arcade'}
-      </button>
       {mode === 'desk' && !IS_TOUCH && <div id="desk-dot" className="crosshair desk-dot" />}
       {mode === 'desk' && (
         <>
@@ -465,7 +463,7 @@ export default function App() {
           <button className="ctl ctl-back" onClick={sitDown}>
             ↩ back to desk
           </button>
-          {physicsMode && !IS_TOUCH && (
+          {!IS_TOUCH && (
             <div className="tune tune-pick">
               <div className="tune-label">car to drive</div>
               <div className="tune-cars">
@@ -574,7 +572,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          {physicsMode && driving === 0 && (
+          {!IS_TOUCH && driving === 0 && (
             <div className="tune">
               <div className="tune-cars">
                 {cars.map((car, i) => (
@@ -612,7 +610,9 @@ export default function App() {
               ))}
             </div>
           )}
-          {physicsMode && driving === 0 ? (
+          {IS_TOUCH ? (
+            <div className="explore-hint">stick drives · auto gears · tap buttons for view/horn</div>
+          ) : driving === 0 ? (
             <div className="drive-help">
               <div className="drive-help-row">
                 <span><kbd>I</kbd> start</span>
@@ -625,8 +625,6 @@ export default function App() {
                 🔧 <b>{carProfile.name}</b> — real physics · tune it below
               </div>
             </div>
-          ) : IS_TOUCH ? (
-            <div className="explore-hint">stick drives · auto gears · tap buttons for view/horn</div>
           ) : (
             <div className="drive-help">
               <div className="drive-help-row">

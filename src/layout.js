@@ -99,8 +99,8 @@ export const COLLIDERS = [
   // outside: lamp post + shipping container (bins are physics props now)
   { minX: 5.25, maxX: 5.55, minZ: 10.15, maxZ: 10.45 },
   { minX: -20.5, maxX: -14.5, minZ: 24.0, maxZ: 26.6 },
-  // the parked cars (nose +x → length runs along x, side-by-side along z)
-  ...PARKED.map((p) => ({ minX: p.x - 2.3, maxX: p.x + 2.3, minZ: p.z - 1.0, maxZ: p.z + 1.0 })),
+  // (parked cars are now drivable — their colliders are added dynamically per
+  //  IDLE car so the one you're driving has a clear spot; see Playground/Player)
   // lot north wall, split with a gap where the road exits
   { minX: -28, maxX: -3.9, minZ: 33.85, maxZ: 34.15 },
   { minX: 4.5, maxX: 28, minZ: 33.85, maxZ: 34.15 },

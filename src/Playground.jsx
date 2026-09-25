@@ -201,7 +201,7 @@ const PINS = (() => {
 
 // Static boxes for the garage's solid walls (so the physics car crashes into
 // them), plus the roundabout island as a static cylinder.
-function WorldColliders() {
+function WorldColliders({ idleCars = [] }) {
   return (
     <>
       {BUILDING_WALLS.map((b, i) => (
@@ -214,9 +214,15 @@ function WorldColliders() {
       {CIRCLES.map((c, i) => (
         <IslandCollider key={i} position={[c.x, 0.4, c.z]} r={c.r} />
       ))}
-      {/* parked cars — solid so the physics car crashes into them */}
-      {PARKED.map((p, i) => (
-        <Fence key={'p' + i} position={[p.x, 0.6, p.z]} args={[4.4, 1.2, 2]} />
+      {/* IDLE parked cars are solid (the driven car crashes into them) — but the
+          one you're driving has NO collider here, so teleporting into its spot
+          doesn't eject the chassis. Keyed by slot so they remount when swapped. */}
+      {idleCars.map((c) => (
+        <Fence
+          key={'car' + c.i}
+          position={[c.home[0], 0.6, c.home[1]]}
+          args={Math.abs(Math.cos(c.home[2])) > 0.5 ? [4.4, 1.2, 2] : [2, 1.2, 4.4]}
+        />
       ))}
     </>
   )
@@ -266,13 +272,13 @@ function RubbleBlock({ position }) {
   )
 }
 
-export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, joyRef, auto }) {
+export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, carSpawn, idleCars, joyRef, auto }) {
   // low contact friction + slight restitution so a glancing wall/kerb hit SLIDES
   // the car along instead of grabbing it to a dead stop (tyre traction is the
   // raycast wheels' frictionSlip, independent of this).
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused} defaultContactMaterial={{ friction: 0.08, restitution: 0.12 }}>
-      <WorldColliders />
+      <WorldColliders idleCars={idleCars} />
       <RoadCourse />
       <Ground />
       {/* perimeter keeps the toys in — with a gap where the road exits, so
@@ -287,7 +293,7 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
-      <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} joyRef={joyRef} auto={auto} />
+      <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} spawn={carSpawn} joyRef={joyRef} auto={auto} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={2} args={[0.7, 1.2, 2.2]} />
       <PlayerPusher playerPosRef={playerPosRef} />

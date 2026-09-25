@@ -39,7 +39,21 @@ export const CARS = [
     balance: 0.42, // tail-happy — lift the rear grip, easy to drift
     gears: [11, 21, 33, 47, 62], // ~223 km/h
   },
+  {
+    name: 'SUV',
+    type: 'suv',
+    color: '#48604a',
+    mass: 2050, // heavy + tall, softer springs, planted but lazy
+    force: 11500,
+    brake: 145,
+    grip: 2.5, // grippy/safe (won't slide easily)
+    balance: 0.58, // nose-heavy understeer
+    gears: [9, 18, 29, 41, 55], // ~198 km/h
+  },
 ]
+
+// which tuning profile (index into CARS) each body class drives with
+export const TYPE_PROFILE = { hatch: 0, roadster: 1, muscle: 2, suv: 3 }
 
 // Body proportions per class of vehicle (metres). Shared by the driven car
 // and the parked cars so each type reads at a glance.

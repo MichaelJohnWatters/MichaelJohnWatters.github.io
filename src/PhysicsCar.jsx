@@ -25,14 +25,14 @@ const REV_RATE = 4.8
 const clamp = THREE.MathUtils.clamp
 const tmp = new THREE.Vector3()
 
-function Wheel({ wheelRef, radius }) {
+function Wheel({ wheelRef, radius, hidden = false }) {
   useCylinder(
     () => ({ mass: 1, type: 'Kinematic', material: 'wheel', collisionFilterGroup: 0, args: [radius, radius, 0.4, 16] }),
     wheelRef,
   )
   // VISIBLE — the raycast vehicle steers (front) and spins these for real
   return (
-    <group ref={wheelRef}>
+    <group ref={wheelRef} visible={!hidden}>
       <mesh rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[radius, radius, 0.32, 18]} />
         <meshStandardMaterial color="#15151a" />
@@ -45,14 +45,14 @@ function Wheel({ wheelRef, radius }) {
   )
 }
 
-export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef, auto = false, spawn }) {
+export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef, auto = false, spawn, idx = 0, chassis = CHASSIS, home = [CIVIC.pos[0], CIVIC.pos[2]], showWheels = true }) {
   const { camera } = useThree()
   const prof = useRef(profile)
   prof.current = profile
   const mass = profile.mass || DEFAULT.mass
   const chassisRef = useRef()
   const [, chassisApi] = useBox(
-    () => ({ mass, args: CHASSIS, position: [CIVIC.pos[0], 1, CIVIC.pos[2]], angularDamping: 0.6, allowSleep: false }),
+    () => ({ mass, args: chassis, position: [home[0], 1, home[1]], angularDamping: 0.6, allowSleep: false }),
     chassisRef,
   )
   // live mass edits from the tuning panel (F=ma changes accel immediately)
@@ -111,8 +111,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     rollInfluence: 0.04,
     useCustomSlidingRotationalSpeed: true, customSlidingRotationalSpeed: -30,
   }
-  const wx = CHASSIS[0] / 2 - 0.05
-  const wf = CHASSIS[2] / 2 - 0.7
+  const wx = chassis[0] / 2 - 0.05
+  const wf = chassis[2] / 2 - 0.7
   const wheelInfos = [
     { ...wheelInfo, chassisConnectionPointLocal: [-wx, -0.2, wf], isFrontWheel: true },
     { ...wheelInfo, chassisConnectionPointLocal: [wx, -0.2, wf], isFrontWheel: true },
@@ -123,7 +123,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     chassisBody: chassisRef, wheels, wheelInfos, indexForwardAxis: 2, indexRightAxis: 0, indexUpAxis: 1,
   }))
 
-  const pose = useRef({ x: CIVIC.pos[0], y: 1, z: CIVIC.pos[2], heading: 0, fwd: 0, vx: 0, vy: 0, vz: 0, yaw: 0, angv: [0, 0, 0], quat: [0, 0, 0, 1] })
+  const pose = useRef({ x: home[0], y: 1, z: home[1], heading: 0, fwd: 0, vx: 0, vy: 0, vz: 0, yaw: 0, angv: [0, 0, 0], quat: [0, 0, 0, 1] })
   useEffect(() => {
     const q = new THREE.Quaternion(), fwd = new THREE.Vector3()
     const up = chassisApi.position.subscribe((p) => { pose.current.x = p[0]; pose.current.y = p[1]; pose.current.z = p[2] })
@@ -175,9 +175,9 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     // desktop: engine OFF in neutral (press I). touch: auto-running in 1st.
     if (autoRef.current) { engineStart('car'); gear.current = 1; stalled.current = false; rpm.current = IDLE }
     else { gear.current = 0; stalled.current = true; rpm.current = 0 }
-    if (vehiclesRef.current[0]) { vehiclesRef.current[0].blown = false; vehiclesRef.current[0].wheelspin = false }
+    if (vehiclesRef.current[idx]) { vehiclesRef.current[idx].blown = false; vehiclesRef.current[idx].wheelspin = false }
     const ignite = () => {
-      const c = vehiclesRef.current[0]
+      const c = vehiclesRef.current[idx]
       if (!c || c.blown || !stalled.current || ignCd.current > 0) return
       ignCd.current = 1.2
       starter()
@@ -238,7 +238,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
 
   useFrame((_, dt) => {
     const p = pose.current
-    const c = vehiclesRef.current[0]
+    const c = vehiclesRef.current[idx]
     if (c) { c.x = p.x; c.z = p.z; c.y = p.y; c.heading = p.heading; c.quat = p.quat; c.vel = Math.abs(p.fwd) }
 
     if (!active) {
@@ -491,10 +491,12 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   return (
     <group ref={vehicleRef}>
       <mesh ref={chassisRef} visible={false}>
-        <boxGeometry args={CHASSIS} />
+        <boxGeometry args={chassis} />
       </mesh>
+      {/* invisible for the bike — its own model (Motorbike) shows the 2 wheels,
+          but the raycast vehicle still needs these wheel refs */}
       {wheels.map((r, i) => (
-        <Wheel key={i} wheelRef={r} radius={WHEEL_R} />
+        <Wheel key={i} wheelRef={r} radius={WHEEL_R} hidden={!showWheels} />
       ))}
     </group>
   )

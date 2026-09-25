@@ -55,6 +55,11 @@ export const CARS = [
 // which tuning profile (index into CARS) each body class drives with
 export const TYPE_PROFILE = { hatch: 0, roadster: 1, muscle: 2, suv: 3 }
 
+// tuning for the OPTIONAL physics bike (toggle). A raycast vehicle can't lean, so
+// on physics it rides like a light, narrow car. Track kept moderate so it's stable.
+export const BIKE = { name: 'Bike', type: 'bike', color: '#c62828', mass: 240, force: 5200, brake: 120, grip: 2.9, balance: 0.5, gears: [10, 20, 32, 45, 58] }
+export const BIKE_CHASSIS = [0.9, 0.7, 2.2]
+
 // Body proportions per class of vehicle (metres). Shared by the driven car
 // and the parked cars so each type reads at a glance.
 //   len, wid  = footprint · bodyH/bodyY = main hull · cabin* = greenhouse

@@ -681,6 +681,10 @@ body {
   top: 5rem;
   right: 2rem;
 }
+.ctl-bikephys {
+  top: 8rem;
+  right: 2rem;
+}
 
 /* Daytime: the sky IS the page background (the canvas is transparent).
    html, body AND #root all carry the night colour — override all three. */

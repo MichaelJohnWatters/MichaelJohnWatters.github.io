@@ -9,7 +9,7 @@ import Playground from './Playground'
 import Joystick from './Joystick'
 import Phone from './Phone'
 import { CIVIC, BIKES, PARKED } from './layout'
-import { CARS, TUNE, TYPE_PROFILE } from './cars'
+import { CARS, TUNE, TYPE_PROFILE, BIKE, BIKE_CHASSIS } from './cars'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -51,8 +51,9 @@ function SkyBody({ daytime }) {
   )
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
+  const bikePhysicsDrive = bikePhysics && mode === 'drive' && driving === 1
   return (
     <>
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
@@ -94,7 +95,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <Lightformer intensity={0.7} color="#6a6fa0" position={[-10, 3, 5]} scale={[7, 7, 1]} />
         <Lightformer intensity={0.6} color="#4a4360" position={[0, -5, 0]} scale={[16, 16, 1]} rotation={[Math.PI / 2, 0, 0]} />
       </Environment>
-      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} idleCars={idleCars} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} idleCars={idleCars} bikePhysics={bikePhysics} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -102,7 +103,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} idleCars={idleCars} onNearCar={onNearCar} onEnterCar={onEnterCar} posOutRef={playerPosRef} torch={torch} />
       )}
       {/* kinematic controller drives everything EXCEPT the physics Civic */}
-      {mode === 'drive' && !carPhysicsDrive && (
+      {mode === 'drive' && !carPhysicsDrive && !bikePhysicsDrive && (
         <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} auto={auto} />
       )}
       {/* the cannon-es physics playground (paused while at the desk) — also
@@ -118,6 +119,8 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         idleCars={idleCars}
         joyRef={joyRef}
         auto={auto}
+        bikePhysics={bikePhysics}
+        bikeActive={bikePhysicsDrive}
       />
     </>
   )
@@ -145,6 +148,7 @@ export default function App() {
   // automatic (no shift keys); desktop is manual by default but can toggle to auto.
   const physicsMode = true
   const [autoBox, setAutoBox] = useState(true) // automatic by default (toggle to manual)
+  const [bikePhysics, setBikePhysics] = useState(false) // bike on raycast physics vs arcade
   const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
   // Every drivable car physically in the world: the bay Civic + the 4 parked
   // ones. Exactly one (carSlot) is the live raycast-physics car; the rest render
@@ -492,6 +496,7 @@ export default function App() {
             onNearCar={setNearCar}
             onEnterCar={enterCar}
             auto={autoBox}
+            bikePhysics={bikePhysics}
           />
         </ScrollControls>
       </Canvas>
@@ -650,6 +655,19 @@ export default function App() {
               title="gearbox: automatic (no clutch/shifting) or manual"
             >
               {autoBox ? '⚙ auto' : '🖐 manual'}
+            </button>
+          )}
+          {/* bike-only: toggle between arcade handling (leans) and raycast physics */}
+          {driving === 1 && (
+            <button
+              className="ctl ctl-bikephys"
+              onClick={() => {
+                clickDown()
+                setBikePhysics((p) => !p)
+              }}
+              title="bike: arcade (leans) vs real raycast physics (experimental)"
+            >
+              {bikePhysics ? '🔬 physics' : '🏍 arcade'}
             </button>
           )}
           {/* gearbox HUD — Drive writes into these each frame (no re-render) */}

@@ -934,7 +934,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch', idleCars = [] }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch', idleCars = [], bikePhysics = false }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1374,7 +1374,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       <Workbench />
       <Shelves />
       {BIKES.map((b, i) => (
-        <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
+        <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean physCar={bikePhysics}>
           <Motorbike vehiclesRef={vehiclesRef} idx={i + 1} color="#c62828" />
           <Rider vehiclesRef={vehiclesRef} idx={i + 1} active={headlights === i + 1} />
           <BikeLight on={headlights === i + 1} />

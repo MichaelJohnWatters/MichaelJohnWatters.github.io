@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES, PARKED } from './layout'
+import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES, PARKED, BIKES } from './layout'
+import { BIKE, BIKE_CHASSIS } from './cars'
 import { impact } from './sfx'
 import PhysicsCar from './PhysicsCar'
 
@@ -298,7 +299,7 @@ function RubbleBlock({ position }) {
   )
 }
 
-export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, carSpawn, idleCars, joyRef, auto }) {
+export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, carSpawn, idleCars, joyRef, auto, bikePhysics, bikeActive }) {
   // low contact friction + slight restitution so a glancing wall/kerb hit SLIDES
   // the car along instead of grabbing it to a dead stop (tyre traction is the
   // raycast wheels' frictionSlip, independent of this).
@@ -320,8 +321,23 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
       <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} spawn={carSpawn} joyRef={joyRef} auto={auto} />
-      <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
-      <VehiclePusher vehiclesRef={vehiclesRef} idx={2} args={[0.7, 1.2, 2.2]} />
+      {/* the bike: real raycast vehicle (toggle on) or a kinematic pusher (arcade) */}
+      {bikePhysics ? (
+        <PhysicsCar
+          vehiclesRef={vehiclesRef}
+          idx={1}
+          active={bikeActive}
+          onExit={onExitDrive}
+          profile={BIKE}
+          chassis={BIKE_CHASSIS}
+          home={[BIKES[0].pos[0], BIKES[0].pos[2]]}
+          showWheels={false}
+          joyRef={joyRef}
+          auto={auto}
+        />
+      ) : (
+        <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
+      )}
       <PlayerPusher playerPosRef={playerPosRef} />
       {/* lot props — kept light now that the road has a full course (perf) */}
       {[[3.8, 12.5], [5.2, 13.8], [-2.6, 13.2], [-4.2, 12.2]].map(([x, z], i) => (

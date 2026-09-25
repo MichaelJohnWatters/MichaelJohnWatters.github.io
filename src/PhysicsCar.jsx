@@ -60,6 +60,21 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     if (chassisApi.mass) chassisApi.mass.set(profile.mass)
   }, [profile.mass, chassisApi])
 
+  // PARKED = handbrake on. When you're not driving, let the chassis sleep: a
+  // walking player is a KINEMATIC proxy and can't wake a sleeping body, so it
+  // can't shove the car. Getting in wakes it; another car ramming it (a dynamic
+  // body) still wakes it — which is the realistic bit.
+  useEffect(() => {
+    if (!chassisApi.allowSleep) return
+    if (active) {
+      chassisApi.allowSleep.set(false)
+      chassisApi.wakeUp()
+    } else {
+      chassisApi.allowSleep.set(true)
+      chassisApi.sleepTimeLimit?.set?.(0.4) // settle then lock quickly
+    }
+  }, [active, chassisApi])
+
   const wheels = [useRef(), useRef(), useRef(), useRef()]
   // SUSPENSION grounded in the car's real mass: a heavier car gets stiffer
   // springs (holds ride height) and damping toward critical, so it rolls in

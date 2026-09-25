@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { ScrollControls, Environment, Lightformer } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
@@ -20,9 +20,35 @@ import { TV_PRESETS, ytSearch } from './content'
 function Exposure({ lights, daytime }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
-    gl.toneMappingExposure = daytime ? 1.5 : lights ? 1.9 : 1.35
+    gl.toneMappingExposure = daytime ? 1.5 : lights ? 1.95 : 1.65
   }, [gl, lights, daytime])
   return null
+}
+
+// A glowing sun (day) / moon (dusk) disc in the sky. Follows the camera
+// horizontally so it reads as a distant celestial body, sits in the key light's
+// direction, and ignores fog so it stays crisp on the horizon.
+function SkyBody({ daytime }) {
+  const ref = useRef()
+  const off = daytime ? [150, 235, 100] : [175, 145, 100] // ~ the directional light dir, far out
+  useFrame(({ camera }) => {
+    if (ref.current) ref.current.position.set(camera.position.x + off[0], off[1], camera.position.z + off[2])
+  })
+  const color = daytime ? '#fff2c8' : '#e7ecff'
+  const r = daytime ? 15 : 11
+  return (
+    <group ref={ref}>
+      <mesh>
+        <sphereGeometry args={[r, 32, 32]} />
+        <meshBasicMaterial color={color} toneMapped={false} fog={false} />
+      </mesh>
+      {/* soft glow halo */}
+      <mesh>
+        <sphereGeometry args={[r * 2.3, 24, 24]} />
+        <meshBasicMaterial color={color} transparent opacity={daytime ? 0.14 : 0.1} toneMapped={false} fog={false} depthWrite={false} />
+      </mesh>
+    </group>
+  )
 }
 
 function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carIndex, auto }) {
@@ -32,24 +58,25 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       {/* No scene background: the canvas stays TRANSPARENT so the screen UIs
           (which sit behind it — blending occlusion) show through their holes.
           The page CSS supplies the same #0a0a0f behind everything. */}
-      <fog attach="fog" args={[daytime ? '#a9c6de' : '#13161f', 14, daytime ? 90 : 68]} />
+      <fog attach="fog" args={[daytime ? '#a9c6de' : '#3b3352', 14, daytime ? 90 : 80]} />
       <Exposure lights={lights} daytime={daytime} />
+      <SkyBody daytime={daytime} />
 
-      {/* WORKSHOP LIGHTING — the wall switch (or L / 💡) toggles between
-          "lights on" and moody night mode (monitors + neon only). The
-          ☀️/🌙 toggle overrides the whole WORLD to daylight. */}
+      {/* LIGHTING — default mood is DUSK (warm low sun + dusky-blue sky). The
+          wall switch (or L / 💡) toggles the shop work-lights; the ☀️/🌃 toggle
+          overrides the whole WORLD to full daylight. */}
       <hemisphereLight
-        intensity={daytime ? 1.6 : lights ? 1.55 : 0.55}
-        color={daytime ? '#bdd7ee' : '#586688'}
-        groundColor={daytime ? '#8f8f80' : '#2b2c36'}
+        intensity={daytime ? 1.6 : lights ? 1.7 : 1.05}
+        color={daytime ? '#bdd7ee' : '#7182b8'}
+        groundColor={daytime ? '#8f8f80' : '#6a4c40'}
       />
       <directionalLight
-        position={daytime ? [18, 28, 12] : [4, 7, 2]}
-        intensity={daytime ? 2.2 : lights ? 1.05 : 0.4}
-        color={daytime ? '#fff3dd' : '#98a2c0'}
+        position={daytime ? [18, 28, 12] : [16, 13, 9]}
+        intensity={daytime ? 2.2 : lights ? 1.4 : 0.95}
+        color={daytime ? '#fff3dd' : '#c3cdec'}
       />
-      {/* soft fill — always on at night too, so nothing sits in pure black */}
-      <ambientLight intensity={daytime ? 0.5 : lights ? 0.3 : 0.24} color="#5a627a" />
+      {/* soft warm fill so nothing sits in pure black (dusk tone at night) */}
+      <ambientLight intensity={daytime ? 0.5 : lights ? 0.42 : 0.36} color={daytime ? '#5a627a' : '#6a5f74'} />
       {/* Monitor glow pools — only in night mode (with the workshop lights on
           they wash out anyway; skipping them halves the dynamic light count) */}
       {!lights && !daytime && (
@@ -58,14 +85,14 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
           <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
         </>
       )}
-      {/* A DIM, night-toned reflection environment built from Lightformers (no
-          HDRI file, no daylight flood) — just enough for the car paint, glass and
-          metal to catch cool/neon highlights. Kept low via environmentIntensity. */}
-      <Environment resolution={128} environmentIntensity={daytime ? 0.6 : 0.32} background={false}>
-        <Lightformer intensity={1.2} color="#8ea0c8" position={[0, 6, -9]} scale={[14, 6, 1]} />
-        <Lightformer intensity={0.7} color="#5a6a90" position={[-9, 3, 5]} scale={[7, 7, 1]} />
-        <Lightformer intensity={0.9} color="#c79663" position={[9, 3, 5]} scale={[7, 7, 1]} />
-        <Lightformer intensity={0.5} color="#3a4260" position={[0, -5, 0]} scale={[14, 14, 1]} rotation={[Math.PI / 2, 0, 0]} />
+      {/* Reflection environment from Lightformers (no HDRI file, no flood) —
+          dusk tones: cool sky above, warm sun-side glow so paint/glass/metal
+          catch a twilight sheen. */}
+      <Environment resolution={128} environmentIntensity={daytime ? 0.6 : 0.5} background={false}>
+        <Lightformer intensity={1.4} color="#9fb0d8" position={[0, 7, -9]} scale={[16, 7, 1]} />
+        <Lightformer intensity={1.6} color="#ffb072" position={[10, 4, 6]} scale={[8, 8, 1]} />
+        <Lightformer intensity={0.7} color="#6a6fa0" position={[-10, 3, 5]} scale={[7, 7, 1]} />
+        <Lightformer intensity={0.6} color="#4a4360" position={[0, -5, 0]} scale={[16, 16, 1]} rotation={[Math.PI / 2, 0, 0]} />
       </Environment>
       <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} />
       {mode === 'desk' && (
@@ -564,6 +591,10 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
+          {/* reset/flip the car upright — shown on both (desktop also has R key) */}
+          {driving === 0 && (
+            <button className="ctl ctl-drive ctl-reset" title="flip the car back upright (R)" aria-label="reset car" onClick={() => window.dispatchEvent(new Event('car-reset'))}>↻</button>
+          )}
           {/* on-screen action buttons: mobile only (desktop uses F / V / H keys) */}
           {IS_TOUCH && (
             <>

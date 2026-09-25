@@ -55,7 +55,9 @@ body,
      so the canvas fills the screen exactly instead of running off the bottom
      behind the toolbar (with 100% as the fallback for old browsers). */
   height: 100dvh;
-  background: #0a0a0f;
+  /* the "sky" behind the transparent canvas — a DUSK gradient (indigo overhead →
+     warm horizon). Daytime overrides it (html.daytime below). */
+  background: linear-gradient(#161a34 0%, #2b2748 40%, #4a3552 70%, #6e4a48 100%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* keep scroll/pinch but KILL double-tap-to-zoom — it fights the
      double-tap lean-in and shifts the whole page on iOS */
@@ -643,6 +645,10 @@ body {
 .ctl-honk {
   top: 1rem;
   right: 7rem;
+}
+.ctl-reset {
+  top: 1rem;
+  right: 10rem;
 }
 .ctl-mute {
   bottom: 2rem;

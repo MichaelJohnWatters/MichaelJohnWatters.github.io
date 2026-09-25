@@ -144,7 +144,7 @@ export default function App() {
   // the car is always the real raycast-physics car now. Transmission: mobile is
   // automatic (no shift keys); desktop is manual by default but can toggle to auto.
   const physicsMode = true
-  const [autoBox, setAutoBox] = useState(IS_TOUCH)
+  const [autoBox, setAutoBox] = useState(true) // automatic by default (toggle to manual)
   const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
   // Every drivable car physically in the world: the bay Civic + the 4 parked
   // ones. Exactly one (carSlot) is the live raycast-physics car; the rest render

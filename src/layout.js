@@ -56,10 +56,10 @@ export const CIVIC = { pos: [2.8, 0, 2.2], rotY: Math.PI / 2 } // nose to its do
 
 // Cars parked in a row out in the lot (decorative; different classes).
 export const PARKED = [
-  { type: 'suv', color: '#48604a', x: 15, z: 12, rotY: 0 },
-  { type: 'hatch', color: '#b8892f', x: 15, z: 14.6, rotY: 0 },
-  { type: 'roadster', color: '#7a2f6a', x: 15, z: 17.2, rotY: 0 },
-  { type: 'muscle', color: '#2f5f6a', x: 15, z: 19.8, rotY: 0 },
+  { type: 'suv', color: '#48604a', x: 15, z: 10, rotY: 0 },
+  { type: 'hatch', color: '#b8892f', x: 15, z: 15, rotY: 0 },
+  { type: 'roadster', color: '#7a2f6a', x: 15, z: 20, rotY: 0 },
+  { type: 'muscle', color: '#2f5f6a', x: 15, z: 25, rotY: 0 },
 ]
 export const BIKES = [
   { pos: [5.6, 0, 4.6], rotY: -0.5 },

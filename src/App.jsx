@@ -331,6 +331,18 @@ export default function App() {
     if (!isFp) document.documentElement.classList.remove('aim-hit')
     return () => document.documentElement.classList.remove('fp-cursor')
   }, [isFp])
+  // Track pointer-lock so the cursor is only hidden when actually captured
+  // (otherwise an invisible, un-locked mouse reads as "click to capture broken").
+  useEffect(() => {
+    const onLock = () =>
+      document.documentElement.classList.toggle('locked', !!document.pointerLockElement)
+    document.addEventListener('pointerlockchange', onLock)
+    onLock()
+    return () => {
+      document.removeEventListener('pointerlockchange', onLock)
+      document.documentElement.classList.remove('locked')
+    }
+  }, [])
 
   // At the desk the native cursor never shows either: off the screens it's
   // the same dot as everywhere else (on-glass, the retro cursor takes over).

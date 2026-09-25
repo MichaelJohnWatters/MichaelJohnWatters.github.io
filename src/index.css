@@ -656,6 +656,10 @@ body {
   right: 11.6rem;
   padding: 0.5rem 0.7rem;
 }
+.ctl-auto {
+  top: 5rem;
+  right: 2rem;
+}
 
 /* Daytime: the sky IS the page background (the canvas is transparent).
    html, body AND #root all carry the night colour — override all three. */

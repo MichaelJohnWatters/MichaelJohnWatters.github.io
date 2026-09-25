@@ -25,7 +25,7 @@ function Exposure({ lights, daytime }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carIndex }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carIndex, auto }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   return (
     <>
@@ -80,6 +80,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         onExitDrive={onExitDrive}
         carProfile={carProfile}
         joyRef={joyRef}
+        auto={auto}
       />
     </>
   )
@@ -103,9 +104,10 @@ export default function App() {
   const [doors, setDoors] = useState([false, true]) // roller doors open? (Civic's bay open to start)
   const [nearVehicle, setNearVehicle] = useState(-1)
   const [torch, setTorch] = useState(false) // hand torch while on foot
-  // the car is always the real raycast-physics car now (desktop: manual gearbox;
-  // touch: joystick + automatic). No more arcade/legacy car mode or toggle.
+  // the car is always the real raycast-physics car now. Transmission: mobile is
+  // automatic (no shift keys); desktop is manual by default but can toggle to auto.
   const physicsMode = true
+  const [autoBox, setAutoBox] = useState(IS_TOUCH)
   const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
   const [carIndex, setCarIndex] = useState(0)
   const carProfile = cars[carIndex]
@@ -406,6 +408,7 @@ export default function App() {
             physicsMode={physicsMode}
             carProfile={carProfile}
             carIndex={carIndex}
+            auto={autoBox}
           />
         </ScrollControls>
       </Canvas>
@@ -555,6 +558,18 @@ export default function App() {
           >
             📯 horn (H)
           </button>
+          {!IS_TOUCH && driving === 0 && (
+            <button
+              className="ctl ctl-auto"
+              onClick={() => {
+                clickDown()
+                setAutoBox((a) => !a)
+              }}
+              title="gearbox: automatic (no clutch/shifting) or manual"
+            >
+              {autoBox ? '⚙ auto' : '🖐 manual'}
+            </button>
+          )}
           {/* gearbox HUD — Drive writes into these each frame (no re-render) */}
           <div id="rev-warn" className="rev-warn" />
           <div className="gauge">
@@ -615,11 +630,21 @@ export default function App() {
           ) : driving === 0 ? (
             <div className="drive-help">
               <div className="drive-help-row">
-                <span><kbd>I</kbd> start</span>
-                <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive</span>
-                <span><kbd>⇧</kbd> clutch</span>
-                <span><kbd>↑</kbd><kbd>↓</kbd> gears</span>
-                <span><kbd>H</kbd> horn · <kbd>F</kbd> lights · <kbd>E</kbd> out</span>
+                {autoBox ? (
+                  <>
+                    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive</span>
+                    <span>⚙ automatic</span>
+                    <span><kbd>H</kbd> horn · <kbd>F</kbd> lights · <kbd>E</kbd> out</span>
+                  </>
+                ) : (
+                  <>
+                    <span><kbd>I</kbd> start</span>
+                    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive</span>
+                    <span><kbd>⇧</kbd> clutch</span>
+                    <span><kbd>↑</kbd><kbd>↓</kbd> gears</span>
+                    <span><kbd>H</kbd> horn · <kbd>F</kbd> lights · <kbd>E</kbd> out</span>
+                  </>
+                )}
               </div>
               <div className="drive-help-tip">
                 🔧 <b>{carProfile.name}</b> — real physics · tune it below

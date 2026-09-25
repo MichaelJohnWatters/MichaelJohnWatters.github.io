@@ -200,31 +200,35 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     ignCd.current = Math.max(0, ignCd.current - dt)
     limT.current += dt
     const k = keys.current
-    // touch: joystick up = throttle, down = brake, x = steer (blended with any
-    // keys). Desktop keys stay 0/1. Touch is auto-clutch (see auto-box below).
     const joy = joyRef?.current || { x: 0, y: 0 }
-    const gas = clamp((k.f ? 1 : 0) + Math.max(0, -joy.y), 0, 1)
-    const brakeInput = clamp((k.b ? 1 : 0) + Math.max(0, joy.y), 0, 1)
+    // raw stick intent: push forward (up / W) and pull back (down / S), blended.
+    const stickFwd = clamp((k.f ? 1 : 0) + Math.max(0, -joy.y), 0, 1)
+    const stickBack = clamp((k.b ? 1 : 0) + Math.max(0, joy.y), 0, 1)
     const steerInput = clamp((k.r ? 1 : 0) - (k.l ? 1 : 0) + joy.x, -1, 1)
     const autoBox = autoRef.current
     const clutchIn = autoBox ? false : k.clutch // auto = no clutch
-    // auto: if the engine ever ends up off/in neutral (e.g. toggled on mid-drive),
+    // auto: if the engine ends up off/in neutral (e.g. toggled on mid-drive),
     // fire it up and drop into 1st so it just drives.
     if (autoBox && !c?.blown && (stalled.current || gear.current === 0)) {
       if (stalled.current) { stalled.current = false; rpm.current = IDLE; engineStart('car') }
       if (gear.current === 0) gear.current = 1
     }
-    let g = gear.current
-    // AUTOMATIC transmission (mobile always, desktop toggle): pull away in 1st,
-    // upshift near the top of a gear, downshift when lugging; brake at a stop → R.
+    // AUTOMATIC gear selection (mobile always, desktop toggle): upshift near the
+    // top of a gear, downshift when lugging. Pull back → brake to a stop, then
+    // engage REVERSE; push forward from a stop in reverse → back into drive.
     if (autoBox && !c?.blown && !stalled.current && shiftCd.current <= 0) {
       const spd = Math.abs(p.fwd)
-      if (spd < 0.8 && brakeInput > 0.6 && g >= 0) { gear.current = -1; shiftCd.current = 0.4; shiftClack() }
-      else if (spd < 0.8 && gas > 0.3 && g === -1) { gear.current = 1; shiftCd.current = 0.4; shiftClack() }
-      else if (g >= 1 && rpm.current > 0.9 && g < 5) doShift(1)
-      else if (g >= 1 && rpm.current < 0.35 && g > 1) doShift(-1)
-      g = gear.current
+      if (spd < 1 && stickBack > 0.6 && gear.current >= 0) { gear.current = -1; shiftCd.current = 0.4; shiftClack() }
+      else if (spd < 1 && stickFwd > 0.3 && gear.current === -1) { gear.current = 1; shiftCd.current = 0.4; shiftClack() }
+      else if (gear.current >= 1 && rpm.current > 0.9 && gear.current < 5) doShift(1)
+      else if (gear.current >= 1 && rpm.current < 0.35 && gear.current > 1) doShift(-1)
     }
+    let g = gear.current
+    // In AUTO reverse the stick flips: pull back = reverse throttle, push forward
+    // = brake (then re-engage drive at a stop). Manual: forward is always the gas.
+    const reversingAuto = autoBox && g === -1
+    const gas = reversingAuto ? stickBack : stickFwd
+    const brakeInput = reversingAuto ? stickFwd : stickBack
     const neutral = g === 0
     const decoupled = clutchIn || neutral
     const dead = !!c?.blown

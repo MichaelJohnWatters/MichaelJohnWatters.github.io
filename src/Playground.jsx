@@ -244,18 +244,44 @@ function StaticBox({ position, rotation = [0, 0, 0], args, color = '#4a4a52' }) 
   )
 }
 
-// A little test course down the long road: speed bumps, then a launch ramp.
+// A wedge ramp — a tilted slab whose low edge sits on the ground at `z` and
+// rises toward +z (or -z for a down-ramp when `rot` is negative).
+function Ramp({ z, rot = 0.32, len = 7, w = 9, color = '#5b6570' }) {
+  const h = Math.abs(Math.sin(rot)) * len / 2
+  return <StaticBox position={[ROAD.x, h, z]} rotation={[rot, 0, 0]} args={[w, 0.5, len]} color={color} />
+}
+
+// Full stunt course down the long road: slalom → speed bumps → jump → barrel
+// gauntlet → chicane → big kicker → tyre wall. Static geometry is cheap; props
+// are kept modest for mobile.
 function RoadCourse() {
   return (
     <>
-      {[70, 77, 84].map((z) => (
-        <StaticBox key={z} position={[ROAD.x, 0.11, z]} args={[7.6, 0.22, 0.7]} color="#c9a23a" />
+      {/* 1 · SLALOM — weave the alternating cones */}
+      {[46, 52, 58, 64, 70].map((z, i) => (
+        <Cone key={'sl' + z} position={[ROAD.x + (i % 2 ? 6 : -6), 0.25, z]} />
       ))}
-      {/* launch ramp (rises toward the roundabout) */}
-      <StaticBox position={[ROAD.x, 0.5, 150]} rotation={[0.24, 0, 0]} args={[7, 0.5, 7]} color="#55555e" />
-      {/* a scatter of rubble just past it */}
-      {[[-1.5, 168], [1.2, 171], [0, 174], [-1.8, 176]].map(([x, z], i) => (
-        <RubbleBlock key={i} position={[ROAD.x + x, 0.4, z]} />
+      {/* 2 · SPEED BUMPS */}
+      {[84, 90, 96].map((z) => (
+        <StaticBox key={'sb' + z} position={[ROAD.x, 0.12, z]} args={[10, 0.24, 0.8]} color="#c9a23a" />
+      ))}
+      {/* 3 · JUMP — kicker ramp for airtime */}
+      <Ramp z={118} rot={0.34} len={7} w={10} />
+      {/* 4 · BARREL GAUNTLET — smash straight through */}
+      {[[-4, 150], [4, 153], [0, 156], [-4, 159], [4, 162]].map(([x, z], i) => (
+        <Barrel key={'bg' + i} position={[ROAD.x + x, 0.5, z]} color={i % 2 ? '#c0392b' : '#2e6da4'} />
+      ))}
+      {/* 5 · CHICANE — offset walls force a hard S */}
+      <StaticBox position={[ROAD.x - 7, 0.7, 188]} args={[18, 1.4, 0.6]} color="#9a3b3b" />
+      <StaticBox position={[ROAD.x + 7, 0.7, 208]} args={[18, 1.4, 0.6]} color="#9a3b3b" />
+      {/* 6 · BIG KICKER — a bigger, wider launch */}
+      <Ramp z={244} rot={0.42} len={9} w={12} color="#55555e" />
+      {[[-1.5, 262], [1.2, 265], [0, 268]].map(([x, z], i) => (
+        <RubbleBlock key={'rb' + i} position={[ROAD.x + x, 0.4, z]} />
+      ))}
+      {/* 7 · TYRE WALL — plow through a stack */}
+      {[[-3, 300], [0, 300], [3, 300], [-1.5, 300], [1.5, 300], [0, 300.6]].map(([x, z], i) => (
+        <Tyre key={'tw' + i} position={[ROAD.x + x, i === 5 ? 0.9 : 0.4, z]} />
       ))}
     </>
   )

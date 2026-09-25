@@ -854,7 +854,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch' }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch', idleCars = [] }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1282,9 +1282,10 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       </VehicleRig>
       <Wreck vehiclesRef={vehiclesRef} />
       <TyreSmoke vehiclesRef={vehiclesRef} />
-      {/* cars parked out in the lot — a row of different classes */}
-      {PARKED.map((p, i) => (
-        <CompleteCar key={i} position={[p.x, 0, p.z]} rotY={p.rotY} color={p.color} type={p.type} />
+      {/* the idle (not-being-driven) cars, static at their home spots — you can
+          walk up and get into any of them */}
+      {idleCars.map((c) => (
+        <CompleteCar key={c.i} position={[c.home[0], 0, c.home[1]]} rotY={c.home[2]} color={c.color} type={c.type} />
       ))}
       <LiftedMx5 />
       <Mx5Parts />

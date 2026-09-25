@@ -45,7 +45,7 @@ function Wheel({ wheelRef, radius }) {
   )
 }
 
-export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef, auto = false }) {
+export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef, auto = false, spawn }) {
   const { camera } = useThree()
   const prof = useRef(profile)
   prof.current = profile
@@ -74,6 +74,21 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       chassisApi.sleepTimeLimit?.set?.(0.4) // settle then lock quickly
     }
   }, [active, chassisApi])
+
+  // TELEPORT into a slot: when you get into a different (parked) car, drop the
+  // chassis onto that car's spot, upright + at rest. spawn.n bumps per get-in;
+  // the initial value is skipped so the car settles in its bay on load.
+  const lastSpawnN = useRef(spawn?.n)
+  useEffect(() => {
+    if (!spawn || spawn.n === lastSpawnN.current || !chassisApi.position) return
+    lastSpawnN.current = spawn.n
+    const yh = spawn.heading / 2
+    chassisApi.position.set(spawn.x, 1.4, spawn.z)
+    chassisApi.quaternion.set(0, Math.sin(yh), 0, Math.cos(yh))
+    chassisApi.velocity.set(0, 0, 0)
+    chassisApi.angularVelocity.set(0, 0, 0)
+    chassisApi.wakeUp()
+  }, [spawn?.n, chassisApi]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const wheels = [useRef(), useRef(), useRef(), useRef()]
   // SUSPENSION grounded in the car's real mass: a heavier car gets stiffer

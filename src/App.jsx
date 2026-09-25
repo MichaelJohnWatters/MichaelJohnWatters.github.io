@@ -8,8 +8,8 @@ import Drive from './Drive'
 import Playground from './Playground'
 import Joystick from './Joystick'
 import Phone from './Phone'
-import { CIVIC, BIKES } from './layout'
-import { CARS, TUNE } from './cars'
+import { CIVIC, BIKES, PARKED } from './layout'
+import { CARS, TUNE, TYPE_PROFILE } from './cars'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -51,7 +51,7 @@ function SkyBody({ daytime }) {
   )
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carIndex, auto }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   return (
     <>
@@ -94,12 +94,12 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <Lightformer intensity={0.7} color="#6a6fa0" position={[-10, 3, 5]} scale={[7, 7, 1]} />
         <Lightformer intensity={0.6} color="#4a4360" position={[0, -5, 0]} scale={[16, 16, 1]} rotation={[Math.PI / 2, 0, 0]} />
       </Environment>
-      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} idleCars={idleCars} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
       {mode === 'explore' && (
-        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} posOutRef={playerPosRef} torch={torch} />
+        <Player start={spawn} onNearSeat={onNearSeat} onSit={onSit} joyRef={joyRef} sofa={sofa} onSofaToggle={onSofaToggle} onNearSofa={onNearSofa} doors={doors} vehiclesRef={vehiclesRef} onNearVehicle={onNearVehicle} onDrive={onDrive} idleCars={idleCars} onNearCar={onNearCar} onEnterCar={onEnterCar} posOutRef={playerPosRef} torch={torch} />
       )}
       {/* kinematic controller drives everything EXCEPT the physics Civic */}
       {mode === 'drive' && !carPhysicsDrive && (
@@ -114,6 +114,8 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         carActive={carPhysicsDrive}
         onExitDrive={onExitDrive}
         carProfile={carProfile}
+        carSpawn={carSpawn}
+        idleCars={idleCars}
         joyRef={joyRef}
         auto={auto}
       />
@@ -144,10 +146,29 @@ export default function App() {
   const physicsMode = true
   const [autoBox, setAutoBox] = useState(IS_TOUCH)
   const [cars, setCars] = useState(() => CARS.map((c) => ({ ...c, gears: [...c.gears] })))
-  const [carIndex, setCarIndex] = useState(0)
-  const carProfile = cars[carIndex]
+  // Every drivable car physically in the world: the bay Civic + the 4 parked
+  // ones. Exactly one (carSlot) is the live raycast-physics car; the rest render
+  // as static models you can walk up to and get into. `prof` = tuning (into cars).
+  // home[2] is the car's DISPLAY rotation (CompleteCar rotY); the physics driving
+  // heading is that + PI/2 (the driven car's rig carries a -PI/2 nose offset).
+  const [carSlots, setCarSlots] = useState(() => [
+    { type: 'hatch', color: CARS[0].color, home: [CIVIC.pos[0], CIVIC.pos[2], -Math.PI / 2], prof: 0 },
+    ...PARKED.map((p) => ({ type: p.type, color: p.color, home: [p.x, p.z, p.rotY], prof: TYPE_PROFILE[p.type] })),
+  ])
+  const [carSlot, setCarSlot] = useState(0) // which slot is the live physics car
+  const [spawnN, setSpawnN] = useState(0) // bumps to teleport the physics car into its slot
+  const [nearCar, setNearCar] = useState(-1) // idle car slot in reach, or -1
+  const liveSlot = carSlots[carSlot]
+  const carProfile = { ...cars[liveSlot.prof], color: liveSlot.color, type: liveSlot.type }
+  const carSpawn = { x: liveSlot.home[0], z: liveSlot.home[1], heading: liveSlot.home[2] + Math.PI / 2, n: spawnN }
+  const idleCars = carSlots.map((s, i) => ({ ...s, i })).filter((s) => s.i !== carSlot)
   const tuneCar = (field, value) =>
-    setCars((cs) => cs.map((c, i) => (i === carIndex ? { ...c, [field]: value } : c)))
+    setCars((cs) => cs.map((c, i) => (i === liveSlot.prof ? { ...c, [field]: value } : c)))
+  // picker morphs the car you're in into a class (type/colour/tuning) — for testing
+  const pickCar = (i) => {
+    clickDown()
+    setCarSlots((s) => s.map((sp, idx) => (idx === carSlot ? { ...sp, type: CARS[i].type, color: CARS[i].color, prof: i } : sp)))
+  }
   const [driving, setDriving] = useState(0) // which vehicle Drive controls
   const [spawn, setSpawn] = useState([0.9, 0, 0.4]) // where Player mounts
   // Live vehicle poses — they persist wherever you park them. r = the
@@ -167,6 +188,18 @@ export default function App() {
     setPhone(false)
     setMode('drive')
   }
+  // get into one of the idle parked cars: make it the live physics car (teleport
+  // the chassis to its spot + adopt its profile), then drive.
+  const enterCar = (s) => {
+    // save the car you're leaving exactly where it's parked, so it stays put
+    const cur = vehiclesRef.current[0]
+    if (cur) setCarSlots((slots) => slots.map((sp, i) => (i === carSlot ? { ...sp, home: [cur.x, cur.z, cur.heading - Math.PI / 2] } : sp)))
+    setCarSlot(s)
+    setSpawnN((n) => n + 1)
+    setNearCar(-1)
+    enterDrive(0)
+  }
+  if (import.meta.env.DEV) window.__enterCar = enterCar // test-only get-in hook
   const exitDrive = () => {
     clickDown()
     const c = vehiclesRef.current[driving]
@@ -454,7 +487,10 @@ export default function App() {
             torch={torch}
             physicsMode={physicsMode}
             carProfile={carProfile}
-            carIndex={carIndex}
+            carSpawn={carSpawn}
+            idleCars={idleCars}
+            onNearCar={setNearCar}
+            onEnterCar={enterCar}
             auto={autoBox}
           />
         </ScrollControls>
@@ -524,11 +560,8 @@ export default function App() {
                 {cars.map((car, i) => (
                   <button
                     key={car.name}
-                    className={'tune-car' + (i === carIndex ? ' on' : '')}
-                    onClick={() => {
-                      clickDown()
-                      setCarIndex(i)
-                    }}
+                    className={'tune-car' + (i === liveSlot.prof ? ' on' : '')}
+                    onClick={() => pickCar(i)}
                   >
                     {car.name}
                   </button>
@@ -554,6 +587,10 @@ export default function App() {
           ) : nearSofa ? (
             <div className="aim-label show sit-label" onClick={sofaToggle}>
               {IS_TOUCH ? 'tap to sit on the sofa' : 'press E to sit on the sofa'}
+            </div>
+          ) : nearCar >= 0 ? (
+            <div className="aim-label show sit-label" onClick={() => enterCar(nearCar)}>
+              {(IS_TOUCH ? 'tap to ' : 'press E to ') + 'drive the ' + cars[carSlots[nearCar].prof].name}
             </div>
           ) : nearVehicle >= 0 ? (
             <div className="aim-label show sit-label" onClick={() => enterDrive(nearVehicle)}>
@@ -638,11 +675,8 @@ export default function App() {
                 {cars.map((car, i) => (
                   <button
                     key={car.name}
-                    className={'tune-car' + (i === carIndex ? ' on' : '')}
-                    onClick={() => {
-                      clickDown()
-                      setCarIndex(i)
-                    }}
+                    className={'tune-car' + (i === liveSlot.prof ? ' on' : '')}
+                    onClick={() => pickCar(i)}
                   >
                     {car.name}
                   </button>

@@ -91,7 +91,16 @@ const WALL = 0.2 // keep-off distance from walls
 const SIT_DIST = 1.4 // how close to the chair before you can sit
 const clamp = THREE.MathUtils.clamp
 
-function blocked(x, z, doors, vehicles) {
+function blocked(x, z, doors, vehicles, idleCars) {
+  // idle (parked) cars are solid on foot too — box sized by their orientation
+  if (idleCars) {
+    for (const c of idleCars) {
+      const alongX = Math.abs(Math.cos(c.home[2])) > 0.5
+      const hx = (alongX ? 2.2 : 1.0) + RADIUS
+      const hz = (alongX ? 1.0 : 2.2) + RADIUS
+      if (Math.abs(x - c.home[0]) < hx && Math.abs(z - c.home[1]) < hz) return true
+    }
+  }
   for (const b of COLLIDERS) {
     if (x > b.minX - RADIUS && x < b.maxX + RADIUS && z > b.minZ - RADIUS && z < b.maxZ + RADIUS) {
       return true
@@ -128,7 +137,7 @@ function blocked(x, z, doors, vehicles) {
 // First-person walker. Mounted in "explore" mode. Spawns beside the desk on
 // the open half of the garage. Desktop: pointer-lock mouse-look. Touch:
 // drag anywhere (off the joystick) to look.
-export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive, posOutRef, torch = false }) {
+export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRef, sofa = false, onSofaToggle, onNearSofa, doors = [false, false], vehiclesRef, onNearVehicle, onDrive, idleCars = [], onNearCar, onEnterCar, posOutRef, torch = false }) {
   const group = useRef()
   const pos = useRef(new THREE.Vector3(...start))
   const keys = useKeys()
@@ -141,6 +150,9 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
   const doorsRef = useRef(doors)
   doorsRef.current = doors
   const nearVehicleRef = useRef(-1) // index of the vehicle in reach, or -1
+  const nearCarRef = useRef(-1) // slot of the idle parked car in reach, or -1
+  const idleCarsRef = useRef(idleCars)
+  idleCarsRef.current = idleCars
   const torchLight = useRef()
   const torchTarget = useRef()
   useEffect(() => {
@@ -226,11 +238,12 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
       if (e.code !== 'KeyE' || window.__phoneOpen) return
       if (near.current) onSit?.()
       else if (sofaRef.current || nearSofaRef.current) onSofaToggle?.()
+      else if (nearCarRef.current >= 0) onEnterCar?.(nearCarRef.current)
       else if (nearVehicleRef.current >= 0) onDrive?.(nearVehicleRef.current)
     }
     window.addEventListener('keydown', sit)
     return () => window.removeEventListener('keydown', sit)
-  }, [onSit, onSofaToggle, onDrive])
+  }, [onSit, onSofaToggle, onDrive, onEnterCar])
 
   useFrame((_, delta) => {
     // Sitting on the sofa: parked camera facing the TV, no walking. On
@@ -280,10 +293,11 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
       // The far z bound is the YARD fence — the front wall itself blocks
       // unless an open door is in the way (see blocked()).
       const vs = vehiclesRef?.current
+      const ic = idleCarsRef.current
       const nx = clamp(pos.current.x + dx * step, WORLD.minX + WALL, WORLD.maxX - WALL)
-      if (!blocked(nx, pos.current.z, doorsRef.current, vs)) pos.current.x = nx
+      if (!blocked(nx, pos.current.z, doorsRef.current, vs, ic)) pos.current.x = nx
       const nz = clamp(pos.current.z + dz * step, WORLD.minZ + WALL, WORLD.maxZ - WALL)
-      if (!blocked(pos.current.x, nz, doorsRef.current, vs)) pos.current.z = nz
+      if (!blocked(pos.current.x, nz, doorsRef.current, vs, ic)) pos.current.z = nz
       group.current.rotation.y = Math.atan2(dx, dz)
       // Footstep on each bob trough (~2 steps/sec at walk speed).
       const prevPhase = Math.floor(bob.current / Math.PI)
@@ -336,6 +350,17 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
     if (nearIdx !== nearVehicleRef.current) {
       nearVehicleRef.current = nearIdx
       onNearVehicle?.(nearIdx)
+    }
+    // nearest idle (parked) car you can get into
+    let nearCarSlot = -1
+    let bestCarD = Infinity
+    for (const c of idleCarsRef.current) {
+      const d = Math.hypot(pos.current.x - c.home[0], pos.current.z - c.home[1])
+      if (d < 3.4 && d < bestCarD) { bestCarD = d; nearCarSlot = c.i }
+    }
+    if (nearCarSlot !== nearCarRef.current) {
+      nearCarRef.current = nearCarSlot
+      onNearCar?.(nearCarSlot)
     }
 
     // Eyes at head height, walk-bob, look along yaw+pitch.

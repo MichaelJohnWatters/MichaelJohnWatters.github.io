@@ -204,7 +204,9 @@ export default function Player({ start = [0.9, 0, 0.4], onNearSeat, onSit, joyRe
     }
     const relock = () => {
       if (window.__phoneOpen) return
-      if (!document.pointerLockElement) canvas?.requestPointerLock?.()?.catch?.(() => {})
+      // re-query the canvas (a captured ref can go stale) — this is the
+      // "click to capture the mouse" path, so it must not silently miss.
+      if (!document.pointerLockElement) document.querySelector('canvas')?.requestPointerLock?.()?.catch?.(() => {})
     }
     lockPitch.current = 0
     canvas?.requestPointerLock?.()?.catch?.(() => {}) // works when entering FP via a click/key gesture

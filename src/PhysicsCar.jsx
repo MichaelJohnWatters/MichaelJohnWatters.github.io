@@ -130,6 +130,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   const camReady = useRef(false)
   const autoRef = useRef(auto) // automatic gearbox (mobile default; desktop toggle)
   autoRef.current = auto
+  const camView = useRef(0) // 0 = chase · 1 = close · 2 = hood
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
 
@@ -153,6 +154,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       if (gear.current > 0 && !keys.current.clutch) { stallSound(); return } // start in gear w/o clutch = won't catch
       stalled.current = false; rpm.current = IDLE; engineStart('car')
     }
+    const honk = () => horn('car')
+    const cycleView = () => { camView.current = (camView.current + 1) % 3; camReady.current = false }
     const map = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r' }
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true
@@ -161,7 +164,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       if (e.code === 'ArrowDown') doShift(-1)
       if (e.code === 'KeyI') ignite()
       if (e.code === 'KeyE') onExitRef.current?.()
-      if (e.code === 'KeyH') horn('car')
+      if (e.code === 'KeyH') honk()
+      if (e.code === 'KeyV') cycleView()
       if (e.code === 'KeyF') window.dispatchEvent(new Event('vehicle-flash'))
     }
     const up = (e) => {
@@ -172,6 +176,9 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
+    // on-screen buttons (mobile) fire these — make them work for the physics car
+    window.addEventListener('vehicle-horn', honk)
+    window.addEventListener('drive-cam', cycleView)
     if (document.pointerLockElement) document.exitPointerLock()
     return () => {
       engineStop()
@@ -179,6 +186,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('vehicle-horn', honk)
+      window.removeEventListener('drive-cam', cycleView)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
@@ -416,17 +425,20 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       }
     }
 
-    // chase camera. The look target is smoothed too — snapping it to the raw
-    // 60 Hz physics pose would judder the whole view on a 120 Hz display.
+    // chase camera (V / 👁 cycles chase → close → hood). The look target is
+    // smoothed too — snapping it to the raw 60 Hz pose juddders on 120 Hz.
     const fx = Math.sin(p.heading)
     const fz = Math.cos(p.heading)
+    const V = camView.current
+    const back = V === 2 ? -1.6 : V === 1 ? 4.5 : 7 // hood cam sits just ahead
+    const high = V === 2 ? 1.3 : V === 1 ? 2.2 : 3.2
     if (!camReady.current) {
       camReady.current = true
-      camera.position.set(p.x - fx * 7, p.y + 3.2, p.z - fz * 7)
-      camLook.current.set(p.x, p.y + 0.6, p.z)
+      camera.position.set(p.x - fx * back, p.y + high, p.z - fz * back)
+      camLook.current.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2)
     }
-    camera.position.lerp(tmp.set(p.x - fx * 7, p.y + 3.2, p.z - fz * 7), 1 - Math.pow(0.0016, dt))
-    camLook.current.lerp(tmp.set(p.x, p.y + 0.6, p.z), 1 - Math.exp(-dt * 26))
+    camera.position.lerp(tmp.set(p.x - fx * back, p.y + high, p.z - fz * back), 1 - Math.pow(0.0016, dt))
+    camLook.current.lerp(tmp.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2), 1 - Math.exp(-dt * 26))
     camera.lookAt(camLook.current)
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()

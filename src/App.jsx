@@ -540,24 +540,14 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
-          <button
-            className="ctl ctl-view"
-            onClick={() => window.dispatchEvent(new Event('vehicle-flash'))}
-          >
-            💡 flash (F)
-          </button>
-          <button
-            className="ctl ctl-cam"
-            onClick={() => window.dispatchEvent(new Event('drive-cam'))}
-          >
-            👁 view (V)
-          </button>
-          <button
-            className="ctl ctl-horn"
-            onClick={() => window.dispatchEvent(new Event('vehicle-horn'))}
-          >
-            📯 horn (H)
-          </button>
+          {/* on-screen action buttons: mobile only (desktop uses F / V / H keys) */}
+          {IS_TOUCH && (
+            <>
+              <button className="ctl ctl-drive ctl-flash" aria-label="flash lights" onClick={() => window.dispatchEvent(new Event('vehicle-flash'))}>💡</button>
+              <button className="ctl ctl-drive ctl-viewcam" aria-label="camera view" onClick={() => window.dispatchEvent(new Event('drive-cam'))}>👁</button>
+              <button className="ctl ctl-drive ctl-honk" aria-label="horn" onClick={() => window.dispatchEvent(new Event('vehicle-horn'))}>📯</button>
+            </>
+          )}
           {!IS_TOUCH && driving === 0 && (
             <button
               className="ctl ctl-auto"

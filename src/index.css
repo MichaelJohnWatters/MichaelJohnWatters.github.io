@@ -624,17 +624,23 @@ body {
   top: 2rem;
   left: 2rem;
 }
-.ctl-view {
-  top: 2rem;
-  right: 2rem;
+/* compact icon action buttons (mobile, in-car): flash / view / horn */
+.ctl-drive {
+  padding: 0.45rem 0.55rem;
+  font-size: 1.15rem;
+  line-height: 1;
 }
-.ctl-cam {
-  top: 2rem;
-  right: 9.5rem;
+.ctl-flash {
+  top: 1rem;
+  right: 1rem;
 }
-.ctl-horn {
-  top: 2rem;
-  right: 17.5rem;
+.ctl-viewcam {
+  top: 1rem;
+  right: 4rem;
+}
+.ctl-honk {
+  top: 1rem;
+  right: 7rem;
 }
 .ctl-mute {
   bottom: 2rem;

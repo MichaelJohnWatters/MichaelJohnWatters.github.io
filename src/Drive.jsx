@@ -416,7 +416,7 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
       // the bike looks down over the bars so the clip-ons + your arms sit in frame
       const drop = isBike ? 2.6 : 0.2
       camera.lookAt(c.x + fx * 14, P.eyeY - drop, c.z + fz * 14)
-      if (isBike) camera.rotateZ((c.lean || 0) * 0.8)
+      if (isBike) camera.rotateZ(-(c.lean || 0) * 0.8) // bank WITH the lean
     } else {
       const a = 1 - Math.pow(0.001, dt)
       camera.position.lerp(tmpCam.set(c.x - fx * P.camD, P.camH, c.z - fz * P.camD), a)

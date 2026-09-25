@@ -233,6 +233,56 @@ function Motorbike({ position, rotY = 0, color = '#c62828' }) {
   )
 }
 
+// A rider that appears on the bike ONLY while it's being ridden. In first-person
+// (cockpit) the head+torso hide (the camera sits in the helmet) so you just see
+// your arms reaching to the bars; in chase you see the whole rider leaning in.
+function Rider({ vehiclesRef, idx, active }) {
+  const head = useRef()
+  useFrame(() => {
+    const c = vehiclesRef?.current?.[idx]
+    if (head.current) head.current.visible = active && !c?.cockpit
+  })
+  const suit = '#2b3040'
+  return (
+    <group visible={active}>
+      {/* head + torso — hidden in first-person */}
+      <group ref={head}>
+        <mesh position={[0, 1.0, 0.08]} rotation-x={0.7} castShadow>
+          <boxGeometry args={[0.26, 0.34, 0.2]} />
+          <meshStandardMaterial color={suit} roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 1.16, 0.28]} castShadow>
+          <boxGeometry args={[0.2, 0.2, 0.22]} />
+          <meshStandardMaterial color="#c62828" metalness={0.4} roughness={0.35} envMapIntensity={1} />
+        </mesh>
+        <mesh position={[0, 1.14, 0.39]}>
+          <boxGeometry args={[0.16, 0.07, 0.05]} />
+          <meshStandardMaterial color="#0c0c10" metalness={0.6} roughness={0.2} />
+        </mesh>
+      </group>
+      {/* hips on the seat */}
+      <mesh position={[0, 0.86, -0.1]} castShadow>
+        <boxGeometry args={[0.24, 0.16, 0.26]} />
+        <meshStandardMaterial color={suit} roughness={0.7} />
+      </mesh>
+      {/* arms reaching to the clip-on bars (visible in first person) */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 0.16, 0.94, 0.32]} rotation-x={0.95} castShadow>
+          <boxGeometry args={[0.08, 0.42, 0.08]} />
+          <meshStandardMaterial color={suit} roughness={0.7} />
+        </mesh>
+      ))}
+      {/* thighs gripping the tank */}
+      {[-1, 1].map((s) => (
+        <mesh key={'t' + s} position={[s * 0.12, 0.76, 0.04]} rotation-x={-0.5} castShadow>
+          <boxGeometry args={[0.1, 0.36, 0.12]} />
+          <meshStandardMaterial color="#15161b" roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 // Every street/road lamp GLOWS (emissive heads, free), but casting real
 // light from all of them at once would melt the GPU — three.js shades every
 // light on every pixel. So a small POOL of point-lights hops to the lamps
@@ -1314,6 +1364,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       {BIKES.map((b, i) => (
         <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
           <Motorbike color="#c62828" />
+          <Rider vehiclesRef={vehiclesRef} idx={i + 1} active={headlights === i + 1} />
           <BikeLight on={headlights === i + 1} />
         </VehicleRig>
       ))}

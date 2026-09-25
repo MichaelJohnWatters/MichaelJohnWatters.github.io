@@ -54,7 +54,7 @@ function vehicleBlocked(x, z, r, doors, others) {
   return false
 }
 
-export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef }) {
+export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, auto = false }) {
   const { camera } = useThree()
   const keys = useRef({ f: false, b: false, l: false, r: false, clutch: false })
   const speed = useRef(0)
@@ -114,8 +114,8 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
       vehiclesRef.current[index].blown = false
       vehiclesRef.current[index].wheelspin = false
     }
-    if (IS_TOUCH) {
-      // touch: auto-clutch, engine already running, in 1st — just drive
+    if (auto) {
+      // automatic: engine already running, in 1st, auto-clutch — just drive
       engineStart(isBike ? 'bike' : 'car')
       gear.current = 1
       stalled.current = false
@@ -178,6 +178,7 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
   useFrame((_, dt) => {
     const c = vehiclesRef.current[index]
     if (!c) return
+    c.cockpit = cockpit // Room's Rider hides its head/torso in first-person
     const others = vehiclesRef.current.filter((_, i) => i !== index)
     const k = keys.current
     const joy = joyRef?.current || { x: 0, y: 0 }
@@ -186,7 +187,13 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     const brakeIn = clamp((k.b ? 1 : 0) + Math.max(0, joy.y), 0, 1)
     const throttle = gas // the engine revs on gas, whatever gear you're in
     const steerIn = clamp((k.r ? 1 : 0) - (k.l ? 1 : 0) + joy.x, -1, 1)
-    const clutchIn = k.clutch
+    const clutchIn = auto ? false : k.clutch // automatic = no clutch
+    // automatic: if the engine is off/in neutral (e.g. auto toggled on mid-ride),
+    // fire it up and drop into 1st so it just goes.
+    if (auto && !c.blown && (stalled.current || gear.current === 0)) {
+      if (stalled.current) { stalled.current = false; rpm.current = IDLE_RPM; engineStart(isBike ? 'bike' : 'car') }
+      if (gear.current === 0) gear.current = 1
+    }
     shiftCd.current = Math.max(0, shiftCd.current - dt)
     launch.current = Math.max(0, launch.current - dt)
     ignCd.current = Math.max(0, ignCd.current - dt)
@@ -234,8 +241,8 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
       if (rpm.current > 1.02 && wrRaw <= 1.05) rpm.current = 1.0 + Math.random() * 0.02
       rpm.current = clamp(rpm.current, 0, 1.6)
       // STALL: revs dragged under the stall line while in gear (not mid-launch,
-      // not while deliberately reversing). Touch has an auto-clutch — no stall.
-      if (!IS_TOUCH && launch.current <= 0 && throttle >= 0 && rpm.current < 0.09) {
+      // not while deliberately reversing). Automatic has an auto-clutch — no stall.
+      if (!auto && launch.current <= 0 && throttle >= 0 && rpm.current < 0.09) {
         stalled.current = true
         stallSound()
         engineStop()
@@ -303,10 +310,10 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef })
     v -= Math.sign(v) * Math.min(Math.abs(v), DRAG * dt)
     v = clamp(v, -P.rev, topSpeed)
 
-    // --- AUTO-SHIFT: touch only (no shift keys). Desktop is fully manual:
+    // --- AUTO-SHIFT (automatic mode: mobile always, desktop toggle). Manual =
     // wind it out, upshift yourself, downshift for corners. ---
-    if (!dead && IS_TOUCH && !clutchIn && shiftCd.current <= 0 && v > 0.3) {
-      if ((g === 0 || rpm.current > 0.94) && g < P.gears.length) doShift(1) // never idle in N on touch
+    if (!dead && auto && !clutchIn && shiftCd.current <= 0 && v > 0.3) {
+      if ((g === 0 || rpm.current > 0.94) && g < P.gears.length) doShift(1)
       else if (rpm.current < 0.33 && g > 1) doShift(-1)
     }
 

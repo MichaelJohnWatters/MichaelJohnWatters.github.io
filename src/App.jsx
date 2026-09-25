@@ -103,7 +103,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       )}
       {/* kinematic controller drives everything EXCEPT the physics Civic */}
       {mode === 'drive' && !carPhysicsDrive && (
-        <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} />
+        <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} auto={auto} />
       )}
       {/* the cannon-es physics playground (paused while at the desk) — also
           hosts the real raycast-vehicle Civic when physics mode is on */}
@@ -199,6 +199,7 @@ export default function App() {
     enterDrive(0)
   }
   if (import.meta.env.DEV) window.__enterCar = enterCar // test-only get-in hook
+  if (import.meta.env.DEV) window.__drive = enterDrive // test-only (enter vehicle idx)
   const exitDrive = () => {
     clickDown()
     const c = vehiclesRef.current[driving]
@@ -627,7 +628,7 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
-          {/* reset/flip the car upright — shown on both (desktop also has R key) */}
+          {/* reset/flip the car upright — car only (desktop also has R key) */}
           {driving === 0 && (
             <button className="ctl ctl-drive ctl-reset" title="flip the car back upright (R)" aria-label="reset car" onClick={() => window.dispatchEvent(new Event('car-reset'))}>↻</button>
           )}
@@ -639,7 +640,7 @@ export default function App() {
               <button className="ctl ctl-drive ctl-honk" aria-label="horn" onClick={() => window.dispatchEvent(new Event('vehicle-horn'))}>📯</button>
             </>
           )}
-          {!IS_TOUCH && driving === 0 && (
+          {!IS_TOUCH && (
             <button
               className="ctl ctl-auto"
               onClick={() => {
@@ -683,7 +684,7 @@ export default function App() {
               </div>
               {[
                 ['mass', 'weight', 'kg'],
-                ['force', 'power', 'N'],
+                ['force', 'power', 'hp'],
                 ['grip', 'grip', ''],
                 ['balance', 'balance', ''],
                 ['brake', 'brakes', ''],
@@ -698,7 +699,9 @@ export default function App() {
                     value={carProfile[field]}
                     onChange={(e) => tuneCar(field, +e.target.value)}
                   />
-                  <b>{carProfile[field]}{unit}</b>
+                  {/* the physics value for "power" is a wheel force (N); show it as
+                      relatable horsepower (≈ force / 50) */}
+                  <b>{field === 'force' ? `${Math.round(carProfile.force / 50)} hp` : `${carProfile[field]}${unit}`}</b>
                 </label>
               ))}
             </div>

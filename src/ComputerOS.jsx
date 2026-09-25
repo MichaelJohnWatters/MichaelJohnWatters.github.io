@@ -44,7 +44,7 @@ const BOOKMARKS = [
 function WebBrowser({ focused }) {
   const [q, setQ] = useState('')
   const qRef = useRef('')
-  const [status, setStatus] = useState('enter = search the web in-world · shift+enter = Google in your browser')
+  const [status, setStatus] = useState('enter = search, or type a URL to go there · shift+enter = Google')
   const [page, setPage] = useState(null) // embedded page URL, or null = home
   const [pageHtml, setPageHtml] = useState(null) // proxied page html (worker mode)
   const [pageLoading, setPageLoading] = useState(false) // proxy fetch in flight
@@ -144,6 +144,16 @@ function WebBrowser({ focused }) {
     } else {
       complete('search') // whiteboard task
       setNotice(null)
+      // Direct URL? A full https URL, or a bare domain with no spaces (e.g.
+      // "example.com/path") — navigate straight there (via the proxy) instead of
+      // searching. Anything else is treated as a search query.
+      const looksUrl = /^https?:\/\//i.test(s) || (!/\s/.test(s) && /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(s))
+      if (looksUrl) {
+        const url = /^https?:\/\//i.test(s) ? s : 'https://' + s
+        setResults(null)
+        openPage(url, url)
+        return
+      }
       if (SEARCH_PROXY) {
         // Worker deployed: native results page, fully in-world clickable.
         setPage(null)

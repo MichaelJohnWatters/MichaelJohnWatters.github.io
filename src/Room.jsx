@@ -177,58 +177,63 @@ function Mx5Parts({ color = '#c0392b' }) {
   )
 }
 
-// Sport bike (nose = +z). Fairing, sloped tank, tail cowl, USD forks, clip-ons.
-function Motorbike({ position, rotY = 0, color = '#c62828' }) {
+// Sport bike (nose = +z). The FRONT END (wheel, forks, clip-ons) is a group that
+// turns with the bike's steerVis — visible fork steer at low speed.
+function Motorbike({ vehiclesRef, idx, color = '#c62828' }) {
   const paint = { metalness: 0.55, roughness: 0.3, envMapIntensity: 1 }
+  const front = useRef()
+  useFrame(() => {
+    const c = vehiclesRef?.current?.[idx]
+    if (front.current) front.current.rotation.y = -(c?.steerVis || 0)
+  })
   return (
-    <group position={position} rotation-y={rotY}>
-      <Wheel position={[0, 0.3, 0.74]} radius={0.3} width={0.1} rotZ />
+    <group>
+      {/* rear wheel + chassis */}
       <Wheel position={[0, 0.31, -0.74]} radius={0.32} width={0.14} rotZ />
-      {/* engine / belly */}
       <mesh position={[0, 0.42, 0.02]} castShadow>
         <boxGeometry args={[0.26, 0.34, 0.72]} />
         <meshStandardMaterial color="#26262c" metalness={0.4} roughness={0.5} />
       </mesh>
-      {/* sculpted fuel tank (slopes forward) */}
+      {/* sculpted fuel tank */}
       <mesh position={[0, 0.72, 0.22]} rotation-x={-0.14} castShadow>
         <boxGeometry args={[0.34, 0.22, 0.5]} />
         <meshStandardMaterial color={color} {...paint} />
       </mesh>
-      {/* front fairing / nose */}
+      {/* fairing / nose (frame-mounted, doesn't steer) */}
       <mesh position={[0, 0.68, 0.6]} rotation-x={0.5} castShadow>
         <boxGeometry args={[0.34, 0.42, 0.2]} />
         <meshStandardMaterial color={color} {...paint} />
       </mesh>
-      {/* headlight */}
       <mesh position={[0, 0.64, 0.75]}>
         <boxGeometry args={[0.2, 0.14, 0.06]} />
         <meshStandardMaterial color="#cfe6ff" emissive="#8fb3d9" emissiveIntensity={0.5} toneMapped={false} />
       </mesh>
-      {/* seat */}
+      {/* seat + tail cowl */}
       <mesh position={[0, 0.7, -0.12]} castShadow>
         <boxGeometry args={[0.26, 0.07, 0.42]} />
         <meshStandardMaterial color="#141418" roughness={0.8} />
       </mesh>
-      {/* rear seat cowl (tail kicks up) */}
       <mesh position={[0, 0.82, -0.5]} rotation-x={0.34} castShadow>
         <boxGeometry args={[0.24, 0.16, 0.42]} />
         <meshStandardMaterial color={color} {...paint} />
-      </mesh>
-      {/* USD forks */}
-      <mesh position={[0, 0.5, 0.66]} rotation-x={-0.4} castShadow>
-        <boxGeometry args={[0.11, 0.72, 0.11]} />
-        <meshStandardMaterial color="#6a6d75" metalness={0.7} roughness={0.25} />
-      </mesh>
-      {/* low clip-on handlebars */}
-      <mesh position={[0, 0.82, 0.5]} castShadow>
-        <boxGeometry args={[0.5, 0.045, 0.045]} />
-        <meshStandardMaterial color="#1a1a1f" />
       </mesh>
       {/* underslung exhaust */}
       <mesh position={[0.14, 0.32, -0.3]} rotation-x={Math.PI / 2 - 0.12} castShadow>
         <cylinderGeometry args={[0.05, 0.07, 0.7, 10]} />
         <meshStandardMaterial color="#9aa0a6" metalness={0.7} roughness={0.3} />
       </mesh>
+      {/* STEERABLE front end — pivots at the headstock */}
+      <group ref={front} position={[0, 0, 0.58]}>
+        <Wheel position={[0, 0.3, 0.16]} radius={0.3} width={0.1} rotZ />
+        <mesh position={[0, 0.5, 0.08]} rotation-x={-0.4} castShadow>
+          <boxGeometry args={[0.11, 0.72, 0.11]} />
+          <meshStandardMaterial color="#6a6d75" metalness={0.7} roughness={0.25} />
+        </mesh>
+        <mesh position={[0, 0.82, -0.08]} castShadow>
+          <boxGeometry args={[0.5, 0.045, 0.045]} />
+          <meshStandardMaterial color="#1a1a1f" />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -1370,7 +1375,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       <Shelves />
       {BIKES.map((b, i) => (
         <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
-          <Motorbike color="#c62828" />
+          <Motorbike vehiclesRef={vehiclesRef} idx={i + 1} color="#c62828" />
           <Rider vehiclesRef={vehiclesRef} idx={i + 1} active={headlights === i + 1} />
           <BikeLight on={headlights === i + 1} />
         </VehicleRig>

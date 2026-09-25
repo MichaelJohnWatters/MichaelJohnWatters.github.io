@@ -22,7 +22,7 @@ const PARAMS = {
     gears: [7, 16, 28, 42, 58], // ~209 km/h flat out
     gearMul: [1.12, 0.88, 0.74, 0.62, 0.52],
     accel: 12, brake: 17, rev: 4, steer: 2.6, r: 0.45, grip: 8,
-    camD: 5, camH: 2.1, eyeY: 1.34, eyeOff: -0.05,
+    camD: 5, camH: 2.1, eyeY: 1.16, eyeOff: -0.18,
   },
 }
 const DRAG = 1.3
@@ -299,10 +299,10 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
         v += dir * Math.min(demand, P.grip) * dt
       }
       if (brakeIn > 0) {
-        if (Math.abs(v) > 0.1) brakeNow()
+        if (v > 0.1) brakeNow() // only brake FORWARD motion...
         else if (g >= 1) {
-          // pull back at a stop → reverse. On the BIKE it's a slow leg-paddle
-          // (you can't ride a motorbike backwards — you walk it back).
+          // ...once stopped (or already reversing), pull-back = reverse. On the
+          // BIKE it's a slow leg-paddle (you walk a motorbike back, not ride it).
           const revMax = isBike ? 1.4 : P.rev
           v = Math.max(-revMax, v - P.accel * (isBike ? 0.25 : 0.5) * brakeIn * dt)
         }
@@ -335,11 +335,15 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
     const auth = clamp(Math.abs(v) / 3, 0, 1)
     const steer = steerIn * auth * Math.sign(v || 1)
     c.heading -= steer * P.steer * dt
-    c.lean = THREE.MathUtils.lerp(
-      c.lean || 0,
-      steer * Math.sqrt(clamp(Math.abs(v) / topSpeed, 0, 1)) * 0.75,
-      1 - Math.pow(0.001, dt),
-    )
+    if (isBike) {
+      // low speed → the forks turn (countersteer feel kicks in as you speed up);
+      // higher speed → it leans, and leans HARDER the faster you go.
+      const fast = clamp((Math.abs(v) - 1) / 7, 0, 1) // 0 at walking pace → 1 by ~8 m/s
+      c.steerVis = THREE.MathUtils.lerp(c.steerVis || 0, steerIn * (1 - fast) * 0.6, 1 - Math.pow(0.001, dt))
+      c.lean = THREE.MathUtils.lerp(c.lean || 0, steer * fast * 1.05, 1 - Math.pow(0.0006, dt))
+    } else {
+      c.lean = 0
+    }
 
     // integrate + collide (axis-separated slide)
     const nx = c.x + Math.sin(c.heading) * v * dt
@@ -409,7 +413,9 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
     const fz = Math.cos(c.heading)
     if (cockpit) {
       camera.position.set(c.x + fx * P.eyeOff, P.eyeY, c.z + fz * P.eyeOff)
-      camera.lookAt(c.x + fx * 14, P.eyeY - 0.2, c.z + fz * 14)
+      // the bike looks down over the bars so the clip-ons + your arms sit in frame
+      const drop = isBike ? 2.6 : 0.2
+      camera.lookAt(c.x + fx * 14, P.eyeY - drop, c.z + fz * 14)
       if (isBike) camera.rotateZ((c.lean || 0) * 0.8)
     } else {
       const a = 1 - Math.pow(0.001, dt)

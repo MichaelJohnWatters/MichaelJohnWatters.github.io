@@ -190,7 +190,7 @@ const PINS = (() => {
   const ox = 13.5
   const oz = 20
   let i = 0
-  for (let row = 0; row < 4; row++) {
+  for (let row = 0; row < 3; row++) {
     for (let k = 0; k <= row; k++) {
       out.push([ox + (k - row / 2) * 0.42, 0.27, oz + row * 0.42])
       i++
@@ -323,36 +323,21 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={2} args={[0.7, 1.2, 2.2]} />
       <PlayerPusher playerPosRef={playerPosRef} />
-      {/* cones: a few by the driveway + a slalom down the main straight */}
-      {[
-        [3.8, 12.5], [5.2, 13.8], [-2.6, 13.2], [-4.2, 12.2],
-        [-1.2, 15], [1.8, 17.5], [-1.2, 20], [1.8, 22.5], [-1.2, 25],
-      ].map(([x, z], i) => (
+      {/* lot props — kept light now that the road has a full course (perf) */}
+      {[[3.8, 12.5], [5.2, 13.8], [-2.6, 13.2], [-4.2, 12.2]].map(([x, z], i) => (
         <Cone key={i} position={[x, 0.25, z]} />
       ))}
-      {/* oil drums by the container + a couple strays */}
-      {[
-        [-13.2, 24.6, '#8a3b32'], [-12.5, 25.4, '#2f5a7a'], [-12.9, 23.6, '#4a4a52'],
-        [4.6, 19.5, '#8a3b32'], [-6.5, 17, '#2f5a7a'],
-      ].map(([x, z, c], i) => (
+      {[[-13.2, 24.6, '#8a3b32'], [-12.5, 25.4, '#2f5a7a'], [4.6, 19.5, '#4a4a52']].map(([x, z, c], i) => (
         <Barrel key={i} position={[x, 0.45, z]} color={c} />
       ))}
-      {/* crate stack where the driveway meets the straight — smash it */}
-      {[
-        [-0.3, 0.3, 16.5], [0.3, 0.3, 16.5], [-0.3, 0.3, 17.1], [0.3, 0.3, 17.1],
-        [0, 0.88, 16.8], [-0.55, 0.3, 16.8],
-      ].map(([x, y, z], i) => (
+      {/* small crate stack to smash */}
+      {[[-0.3, 0.3, 16.5], [0.3, 0.3, 16.5], [0, 0.88, 16.5]].map(([x, y, z], i) => (
         <Crate key={i} position={[x, y, z]} />
       ))}
-      {/* tyre stack + a loose one */}
-      {[[-3.4, 0.15, 19], [-3.4, 0.42, 19], [-3.4, 0.69, 19], [-2.5, 0.15, 20.2]].map(
-        ([x, y, z], i) => (
-          <Tyre key={i} position={[x, y, z]} />
-        ),
-      )}
-      {/* the bins (they were begging for it) */}
+      {[[-3.4, 0.15, 19], [-3.4, 0.42, 19]].map(([x, y, z], i) => (
+        <Tyre key={i} position={[x, y, z]} />
+      ))}
       <Bin position={[-5.6, 0.6, 10.6]} color="#33343c" />
-      <Bin position={[-4.9, 0.6, 10.7]} color="#2c4a35" />
       {/* bowling corner */}
       {PINS.map((p, i) => (
         <Pin key={i} position={p} />

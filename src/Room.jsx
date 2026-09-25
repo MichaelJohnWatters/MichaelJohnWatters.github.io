@@ -238,9 +238,11 @@ function Motorbike({ position, rotY = 0, color = '#c62828' }) {
 // your arms reaching to the bars; in chase you see the whole rider leaning in.
 function Rider({ vehiclesRef, idx, active }) {
   const head = useRef()
+  const leg = useRef()
   useFrame(() => {
     const c = vehiclesRef?.current?.[idx]
     if (head.current) head.current.visible = active && !c?.cockpit
+    if (leg.current) leg.current.visible = active && !!c?.paddle // drops when reversing
   })
   const suit = '#2b3040'
   return (
@@ -279,6 +281,11 @@ function Rider({ vehiclesRef, idx, active }) {
           <meshStandardMaterial color="#15161b" roughness={0.8} />
         </mesh>
       ))}
+      {/* right leg drops to the ground to paddle the bike backward (reverse) */}
+      <mesh ref={leg} position={[0.34, 0.42, -0.1]} rotation-z={-0.5} rotation-x={0.25} castShadow>
+        <boxGeometry args={[0.1, 0.72, 0.12]} />
+        <meshStandardMaterial color="#15161b" roughness={0.8} />
+      </mesh>
     </group>
   )
 }

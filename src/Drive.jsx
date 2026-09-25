@@ -300,12 +300,15 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
       }
       if (brakeIn > 0) {
         if (Math.abs(v) > 0.1) brakeNow()
-        else if (IS_TOUCH && g >= 1) {
-          // touch convenience: pull back at a stop in a fwd gear to reverse
-          v = Math.max(-P.rev, v - P.accel * 0.5 * brakeIn * dt)
+        else if (g >= 1) {
+          // pull back at a stop → reverse. On the BIKE it's a slow leg-paddle
+          // (you can't ride a motorbike backwards — you walk it back).
+          const revMax = isBike ? 1.4 : P.rev
+          v = Math.max(-revMax, v - P.accel * (isBike ? 0.25 : 0.5) * brakeIn * dt)
         }
       }
     }
+    c.paddle = isBike && v < -0.05 // Room's Rider drops a leg to push it back
     // drag toward rest
     v -= Math.sign(v) * Math.min(Math.abs(v), DRAG * dt)
     v = clamp(v, -P.rev, topSpeed)

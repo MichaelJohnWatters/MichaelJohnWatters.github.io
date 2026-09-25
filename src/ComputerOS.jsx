@@ -51,6 +51,7 @@ function WebBrowser({ focused }) {
   const [scrollY, setScrollY] = useState(0) // embed scroll (px, visual)
   const [zoom, setZoom] = useState(50) // embed zoom % (pages render scaled)
   const [live, setLive] = useState(false) // true = real input INTO the page
+  const [fullFrame, setFullFrame] = useState(false) // direct live app: full-size iframe (not the scaled scroll canvas)
   const [results, setResults] = useState(null) // native in-OS search results
   const [notice, setNotice] = useState(null) // { label, url } for frame-blockers
   const hidRef = useRef()
@@ -88,15 +89,17 @@ function WebBrowser({ focused }) {
     return () => root.removeEventListener('os-drag', onDrag)
   }, [])
 
-  const openPage = (url, label) => {
+  const openPage = (url, label, direct = false) => {
     setScrollY(0)
-    if (!SEARCH_PROXY || !/^https?:/i.test(url)) {
-      // no worker, or same-origin relative url: raw iframe, no proxy needed
+    setFullFrame(direct)
+    if (direct || !SEARCH_PROXY || !/^https?:/i.test(url)) {
+      // DIRECT (typed URL) or same-origin relative url: raw LIVE iframe, no proxy
+      // — runs the real app (JS, rooms, media) if the site allows being framed.
       setPage(url)
       setPageHtml(null)
       setPageLoading(false)
       setLive(true)
-      setStatus(`${label} · live — 🔒 for view-only (in-game cursor)`)
+      setStatus(`${label} · live — 🖱 take control to use it · 🔒 to release`)
       return
     }
     // Worker mode: fetch the page THROUGH the proxy — frame-blocking headers
@@ -156,7 +159,7 @@ function WebBrowser({ focused }) {
       // else is a search query.
       if (url) {
         setResults(null)
-        openPage(url, url)
+        openPage(url, url, true) // direct = live iframe (runs the real app)
         return
       }
       if (SEARCH_PROXY) {
@@ -226,6 +229,7 @@ function WebBrowser({ focused }) {
             if (page) {
               setPage(null)
               setPageHtml(null)
+              setFullFrame(false)
             } else {
               setResults(null)
               setNotice(null)
@@ -423,19 +427,26 @@ function WebBrowser({ focused }) {
             // "frame-bust" and hijack the visitor's whole tab — links
             // navigate IN-frame; explicit new-tab links still pop out.
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            // live apps need media/etc. (rooms, video calls) to actually work
+            allow="camera; microphone; autoplay; clipboard-write; fullscreen; display-capture"
             // View mode (default): in-game cursor, ▲▼ scroll, no page input.
             // Live mode (🖱): real input INTO the page — the parent goes
             // blind there, so the retro cursor hands off at the boundary.
             onPointerEnter={() => live && document.documentElement.classList.add('over-embed')}
             onPointerLeave={() => document.documentElement.classList.remove('over-embed')}
-            style={{
-              width: `${Math.round(10000 / zoom)}%`,
-              height: 3600, // tall canvas = real content to ▲▼ through
-              border: 'none',
-              pointerEvents: live ? 'auto' : 'none',
-              transform: `scale(${zoom / 100}) translateY(${(-scrollY * 100) / zoom}px)`,
-              transformOrigin: '0 0',
-            }}
+            style={
+              fullFrame
+                ? // direct live app: fill the window, let the app own its layout
+                  { width: '100%', height: '100%', border: 'none', pointerEvents: live ? 'auto' : 'none' }
+                : {
+                    width: `${Math.round(10000 / zoom)}%`,
+                    height: 3600, // tall canvas = real content to ▲▼ through
+                    border: 'none',
+                    pointerEvents: live ? 'auto' : 'none',
+                    transform: `scale(${zoom / 100}) translateY(${(-scrollY * 100) / zoom}px)`,
+                    transformOrigin: '0 0',
+                  }
+            }
           />
           )}
         </div>

@@ -58,6 +58,7 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
   const { camera } = useThree()
   const keys = useRef({ f: false, b: false, l: false, r: false, clutch: false })
   const speed = useRef(0)
+  const steerSm = useRef(0) // smoothed steering — no instant left↔right flips
   const doorsRef = useRef(doors)
   doorsRef.current = doors
   const P = PARAMS[vehiclesRef.current[index]?.kind] || PARAMS.car
@@ -331,15 +332,18 @@ export default function Drive({ vehiclesRef, index = 0, doors, onExit, joyRef, a
       screeching.current = false
     }
 
-    // steering — authority ramps with speed, flips in reverse
+    // steering — the raw input is ramped so you can't snap full-left to full-right
+    // instantly (esp. the bike's lean). Authority grows with speed, flips in reverse.
+    steerSm.current += (steerIn - steerSm.current) * Math.min(1, dt * (isBike ? 3.5 : 6))
+    const sIn = steerSm.current
     const auth = clamp(Math.abs(v) / 3, 0, 1)
-    const steer = steerIn * auth * Math.sign(v || 1)
+    const steer = sIn * auth * Math.sign(v || 1)
     c.heading -= steer * P.steer * dt
     if (isBike) {
       // low speed → the forks turn (countersteer feel kicks in as you speed up);
       // higher speed → it leans, and leans HARDER the faster you go.
       const fast = clamp((Math.abs(v) - 1) / 7, 0, 1) // 0 at walking pace → 1 by ~8 m/s
-      c.steerVis = THREE.MathUtils.lerp(c.steerVis || 0, steerIn * (1 - fast) * 0.6, 1 - Math.pow(0.001, dt))
+      c.steerVis = THREE.MathUtils.lerp(c.steerVis || 0, sIn * (1 - fast) * 0.6, 1 - Math.pow(0.001, dt))
       c.lean = THREE.MathUtils.lerp(c.lean || 0, steer * fast * 1.05, 1 - Math.pow(0.0006, dt))
     } else {
       c.lean = 0

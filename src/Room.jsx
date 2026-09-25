@@ -177,39 +177,57 @@ function Mx5Parts({ color = '#c0392b' }) {
   )
 }
 
-// Low-poly motorbike (length ~2.1 along z).
-function Motorbike({ position, rotY = 0, color = '#b03030' }) {
+// Sport bike (nose = +z). Fairing, sloped tank, tail cowl, USD forks, clip-ons.
+function Motorbike({ position, rotY = 0, color = '#c62828' }) {
+  const paint = { metalness: 0.55, roughness: 0.3, envMapIntensity: 1 }
   return (
     <group position={position} rotation-y={rotY}>
-      <Wheel position={[0, 0.3, 0.72]} radius={0.3} width={0.09} rotZ />
-      <Wheel position={[0, 0.3, -0.72]} radius={0.3} width={0.09} rotZ />
-      {/* frame spine */}
-      <mesh position={[0, 0.58, 0]} rotation-x={0.12} castShadow>
-        <boxGeometry args={[0.12, 0.14, 1.3]} />
-        <meshStandardMaterial color="#26262c" />
+      <Wheel position={[0, 0.3, 0.74]} radius={0.3} width={0.1} rotZ />
+      <Wheel position={[0, 0.31, -0.74]} radius={0.32} width={0.14} rotZ />
+      {/* engine / belly */}
+      <mesh position={[0, 0.42, 0.02]} castShadow>
+        <boxGeometry args={[0.26, 0.34, 0.72]} />
+        <meshStandardMaterial color="#26262c" metalness={0.4} roughness={0.5} />
       </mesh>
-      {/* tank + seat */}
-      <mesh position={[0, 0.74, 0.18]} castShadow>
-        <boxGeometry args={[0.32, 0.2, 0.5]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
+      {/* sculpted fuel tank (slopes forward) */}
+      <mesh position={[0, 0.72, 0.22]} rotation-x={-0.14} castShadow>
+        <boxGeometry args={[0.34, 0.22, 0.5]} />
+        <meshStandardMaterial color={color} {...paint} />
       </mesh>
-      <mesh position={[0, 0.72, -0.38]} castShadow>
-        <boxGeometry args={[0.28, 0.09, 0.55]} />
+      {/* front fairing / nose */}
+      <mesh position={[0, 0.68, 0.6]} rotation-x={0.5} castShadow>
+        <boxGeometry args={[0.34, 0.42, 0.2]} />
+        <meshStandardMaterial color={color} {...paint} />
+      </mesh>
+      {/* headlight */}
+      <mesh position={[0, 0.64, 0.75]}>
+        <boxGeometry args={[0.2, 0.14, 0.06]} />
+        <meshStandardMaterial color="#cfe6ff" emissive="#8fb3d9" emissiveIntensity={0.5} toneMapped={false} />
+      </mesh>
+      {/* seat */}
+      <mesh position={[0, 0.7, -0.12]} castShadow>
+        <boxGeometry args={[0.26, 0.07, 0.42]} />
+        <meshStandardMaterial color="#141418" roughness={0.8} />
+      </mesh>
+      {/* rear seat cowl (tail kicks up) */}
+      <mesh position={[0, 0.82, -0.5]} rotation-x={0.34} castShadow>
+        <boxGeometry args={[0.24, 0.16, 0.42]} />
+        <meshStandardMaterial color={color} {...paint} />
+      </mesh>
+      {/* USD forks */}
+      <mesh position={[0, 0.5, 0.66]} rotation-x={-0.4} castShadow>
+        <boxGeometry args={[0.11, 0.72, 0.11]} />
+        <meshStandardMaterial color="#6a6d75" metalness={0.7} roughness={0.25} />
+      </mesh>
+      {/* low clip-on handlebars */}
+      <mesh position={[0, 0.82, 0.5]} castShadow>
+        <boxGeometry args={[0.5, 0.045, 0.045]} />
         <meshStandardMaterial color="#1a1a1f" />
       </mesh>
-      {/* forks + handlebars */}
-      <mesh position={[0, 0.62, 0.62]} rotation-x={-0.45} castShadow>
-        <boxGeometry args={[0.08, 0.75, 0.08]} />
-        <meshStandardMaterial color="#55555f" metalness={0.5} />
-      </mesh>
-      <mesh position={[0, 0.98, 0.5]} castShadow>
-        <boxGeometry args={[0.56, 0.05, 0.05]} />
-        <meshStandardMaterial color="#26262c" />
-      </mesh>
-      {/* exhaust */}
-      <mesh position={[0.16, 0.35, -0.35]} rotation-x={Math.PI / 2 - 0.15} castShadow>
-        <cylinderGeometry args={[0.05, 0.06, 0.8, 8]} />
-        <meshStandardMaterial color="#8a8f96" metalness={0.6} />
+      {/* underslung exhaust */}
+      <mesh position={[0.14, 0.32, -0.3]} rotation-x={Math.PI / 2 - 0.12} castShadow>
+        <cylinderGeometry args={[0.05, 0.07, 0.7, 10]} />
+        <meshStandardMaterial color="#9aa0a6" metalness={0.7} roughness={0.3} />
       </mesh>
     </group>
   )
@@ -1295,7 +1313,7 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       <Shelves />
       {BIKES.map((b, i) => (
         <VehicleRig key={i} vehiclesRef={vehiclesRef} idx={i + 1} nose={0} lean>
-          <Motorbike color={i === 0 ? '#b03030' : '#2a2a30'} />
+          <Motorbike color="#c62828" />
           <BikeLight on={headlights === i + 1} />
         </VehicleRig>
       ))}

@@ -62,8 +62,7 @@ export const PARKED = [
   { type: 'muscle', color: '#2f5f6a', x: 15, z: 25, rotY: 0 },
 ]
 export const BIKES = [
-  { pos: [5.6, 0, 4.6], rotY: -0.5 },
-  { pos: [5.7, 0, 3.4], rotY: -0.35 },
+  { pos: [5.6, 0, 4.4], rotY: -0.5 }, // one red sports bike (two used to snag each other)
 ]
 export const CAVE = {
   couch: { x: 4.9, z: -1.2 }, // back-right corner, pushed back from the TV

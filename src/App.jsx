@@ -177,7 +177,6 @@ export default function App() {
   const vehiclesRef = useRef([
     { kind: 'car', x: CIVIC.pos[0], z: CIVIC.pos[2], heading: 0, lean: 0, r: 1.5 },
     { kind: 'bike', x: BIKES[0].pos[0], z: BIKES[0].pos[2], heading: BIKES[0].rotY, lean: 0, r: 0.6 },
-    { kind: 'bike', x: BIKES[1].pos[0], z: BIKES[1].pos[2], heading: BIKES[1].rotY, lean: 0, r: 0.6 },
   ])
 
   const enterDrive = (idx) => {

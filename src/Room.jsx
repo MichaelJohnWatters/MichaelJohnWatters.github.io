@@ -75,12 +75,12 @@ function CompleteCar({ position = [0, 0, 0], rotY = 0, color = '#2f6fb0', wheels
       {/* hull */}
       <mesh position={[0, S.bodyY + S.ride, 0]} castShadow>
         <boxGeometry args={[S.len, S.bodyH, S.wid]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
       {/* greenhouse / cabin */}
       <mesh position={[S.cabinX, S.cabinY + S.ride, 0]} castShadow>
         <boxGeometry args={[S.cabinLen, S.cabinH, S.wid * 0.9]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
       {/* windscreen */}
       <mesh position={[S.cabinX + S.cabinLen / 2 - 0.04, S.cabinY + S.ride - 0.02, 0]} rotation-z={0.5}>
@@ -131,7 +131,7 @@ function LiftedMx5({ color = '#c0392b' }) {
       {/* splash of body colour: rear clip still attached */}
       <mesh position={[0, LIFT.deckY + 0.22, -1.45]} castShadow>
         <boxGeometry args={[1.45, 0.3, 0.7]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
     </group>
   )
@@ -162,16 +162,16 @@ function Mx5Parts({ color = '#c0392b' }) {
       {/* bonnet flat on the floor in front of the lift */}
       <mesh position={[-2.2, 0.03, 4.7]} rotation-x={-Math.PI / 2}>
         <boxGeometry args={[1.3, 1.2, 0.04]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
       {/* doors leaning against the left wall */}
       <mesh position={[-6.32, 0.55, 1.4]} rotation={[0, Math.PI / 2, -0.22]}>
         <boxGeometry args={[1.1, 1.0, 0.05]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
       <mesh position={[-6.32, 0.55, 2.6]} rotation={[0, Math.PI / 2, -0.18]}>
         <boxGeometry args={[1.1, 1.0, 0.05]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
     </group>
   )
@@ -191,7 +191,7 @@ function Motorbike({ position, rotY = 0, color = '#b03030' }) {
       {/* tank + seat */}
       <mesh position={[0, 0.74, 0.18]} castShadow>
         <boxGeometry args={[0.32, 0.2, 0.5]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.34} envMapIntensity={1} />
       </mesh>
       <mesh position={[0, 0.72, -0.38]} castShadow>
         <boxGeometry args={[0.28, 0.09, 0.55]} />
@@ -862,7 +862,8 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
       {/* --- Shell --- */}
       <mesh rotation-x={-Math.PI / 2} position={[CX, 0, CZ]} receiveShadow>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#54545a" />
+        {/* sealed concrete — a touch of sheen so it catches the neon + car */}
+        <meshStandardMaterial color="#54545a" metalness={0.12} roughness={0.5} envMapIntensity={0.5} />
       </mesh>
       {/* back wall */}
       <mesh position={[CX, ceiling / 2, minZ]}>

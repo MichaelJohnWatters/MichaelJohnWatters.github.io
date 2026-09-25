@@ -14,9 +14,11 @@ html.over-embed .os-cursor {
   opacity: 0 !important;
 }
 
-/* First person: no cursor at all — the centre crosshair is the pointer. */
-html.fp-cursor,
-html.fp-cursor * {
+/* First person: hide the cursor ONLY while the pointer is actually locked (the
+   crosshair is the aim). If the lock isn't engaged, keep the cursor VISIBLE so
+   you can see it and click to capture — otherwise it's an invisible free mouse. */
+html.fp-cursor.locked,
+html.fp-cursor.locked * {
   cursor: none !important;
 }
 .crosshair {

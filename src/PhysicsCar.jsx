@@ -171,6 +171,17 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     }
     const honk = () => horn('car')
     const cycleView = () => { camView.current = (camView.current + 1) % 3; camReady.current = false }
+    // drop the car back onto its wheels, upright at its current spot & heading
+    const resetCar = () => {
+      const p = pose.current
+      const yh = p.heading / 2
+      chassisApi.position.set(p.x, 1.4, p.z) // lift clear, then settle onto the wheels
+      chassisApi.quaternion.set(0, Math.sin(yh), 0, Math.cos(yh)) // upright, yaw only
+      chassisApi.velocity.set(0, 0, 0)
+      chassisApi.angularVelocity.set(0, 0, 0)
+      chassisApi.wakeUp()
+      camReady.current = false
+    }
     const map = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r' }
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true
@@ -181,6 +192,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       if (e.code === 'KeyE') onExitRef.current?.()
       if (e.code === 'KeyH') honk()
       if (e.code === 'KeyV') cycleView()
+      if (e.code === 'KeyR') resetCar()
       if (e.code === 'KeyF') window.dispatchEvent(new Event('vehicle-flash'))
     }
     const up = (e) => {
@@ -191,9 +203,10 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
-    // on-screen buttons (mobile) fire these — make them work for the physics car
+    // on-screen buttons fire these — make them work for the physics car
     window.addEventListener('vehicle-horn', honk)
     window.addEventListener('drive-cam', cycleView)
+    window.addEventListener('car-reset', resetCar)
     if (document.pointerLockElement) document.exitPointerLock()
     return () => {
       engineStop()
@@ -203,6 +216,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       window.removeEventListener('blur', clear)
       window.removeEventListener('vehicle-horn', honk)
       window.removeEventListener('drive-cam', cycleView)
+      window.removeEventListener('car-reset', resetCar)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])

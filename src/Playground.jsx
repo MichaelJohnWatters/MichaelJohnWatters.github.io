@@ -267,8 +267,11 @@ function RubbleBlock({ position }) {
 }
 
 export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, joyRef, auto }) {
+  // low contact friction + slight restitution so a glancing wall/kerb hit SLIDES
+  // the car along instead of grabbing it to a dead stop (tyre traction is the
+  // raycast wheels' frictionSlip, independent of this).
   return (
-    <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused}>
+    <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused} defaultContactMaterial={{ friction: 0.08, restitution: 0.12 }}>
       <WorldColliders />
       <RoadCourse />
       <Ground />

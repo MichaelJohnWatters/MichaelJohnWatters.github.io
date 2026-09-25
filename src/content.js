@@ -22,9 +22,9 @@ export const OS_WINDOWS = [
     body: [],
   },
   {
-    title: 'netscape.exe',
+    title: 'firefox',
     kind: 'web',
-    glyph: '🌐',
+    glyph: '🦊',
     defW: 400,
     defH: 250,
     body: [],

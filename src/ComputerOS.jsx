@@ -883,7 +883,7 @@ export default function ComputerOS({ mon, screenRef, focusedWin, onFocus }) {
           🐧 Applications
         </button>
         {/* pinned quick-launch: always available, open or not */}
-        {['netscape.exe', 'cv.html'].map((key) => {
+        {['firefox', 'cv.html'].map((key) => {
           const w = OS_WINDOWS.find((x) => x.title === key)
           return (
             <button

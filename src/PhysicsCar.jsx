@@ -45,7 +45,7 @@ function Wheel({ wheelRef, radius }) {
   )
 }
 
-export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef }) {
+export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFAULT, joyRef, auto = false }) {
   const { camera } = useThree()
   const prof = useRef(profile)
   prof.current = profile
@@ -128,6 +128,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   const steerAngle = useRef(0)
   const camLook = useRef(new THREE.Vector3())
   const camReady = useRef(false)
+  const autoRef = useRef(auto) // automatic gearbox (mobile default; desktop toggle)
+  autoRef.current = auto
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
 
@@ -140,7 +142,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
   useEffect(() => {
     if (!active) return
     // desktop: engine OFF in neutral (press I). touch: auto-running in 1st.
-    if (IS_TOUCH) { engineStart('car'); gear.current = 1; stalled.current = false; rpm.current = IDLE }
+    if (autoRef.current) { engineStart('car'); gear.current = 1; stalled.current = false; rpm.current = IDLE }
     else { gear.current = 0; stalled.current = true; rpm.current = 0 }
     if (vehiclesRef.current[0]) { vehiclesRef.current[0].blown = false; vehiclesRef.current[0].wheelspin = false }
     const ignite = () => {
@@ -204,11 +206,18 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     const gas = clamp((k.f ? 1 : 0) + Math.max(0, -joy.y), 0, 1)
     const brakeInput = clamp((k.b ? 1 : 0) + Math.max(0, joy.y), 0, 1)
     const steerInput = clamp((k.r ? 1 : 0) - (k.l ? 1 : 0) + joy.x, -1, 1)
-    const clutchIn = k.clutch // (never set on touch — no shift key)
+    const autoBox = autoRef.current
+    const clutchIn = autoBox ? false : k.clutch // auto = no clutch
+    // auto: if the engine ever ends up off/in neutral (e.g. toggled on mid-drive),
+    // fire it up and drop into 1st so it just drives.
+    if (autoBox && !c?.blown && (stalled.current || gear.current === 0)) {
+      if (stalled.current) { stalled.current = false; rpm.current = IDLE; engineStart('car') }
+      if (gear.current === 0) gear.current = 1
+    }
     let g = gear.current
-    // AUTOMATIC transmission on touch (no shift keys): pull away in 1st, upshift
-    // near the top of a gear, downshift when lugging; brake at a stop → reverse.
-    if (IS_TOUCH && !c?.blown && !stalled.current && shiftCd.current <= 0) {
+    // AUTOMATIC transmission (mobile always, desktop toggle): pull away in 1st,
+    // upshift near the top of a gear, downshift when lugging; brake at a stop → R.
+    if (autoBox && !c?.blown && !stalled.current && shiftCd.current <= 0) {
       const spd = Math.abs(p.fwd)
       if (spd < 0.8 && brakeInput > 0.6 && g >= 0) { gear.current = -1; shiftCd.current = 0.4; shiftClack() }
       else if (spd < 0.8 && gas > 0.3 && g === -1) { gear.current = 1; shiftCd.current = 0.4; shiftClack() }
@@ -264,7 +273,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       }
       if (rpm.current > 1.02 && wrRaw <= 1.05) rpm.current = 1.0 + Math.random() * 0.02
       rpm.current = clamp(rpm.current, 0, 1.6)
-      if (!IS_TOUCH && launch.current <= 0 && rpm.current < 0.09) {
+      if (!autoBox && launch.current <= 0 && rpm.current < 0.09) {
         stalled.current = true; stallSound(); engineStop()
         if (screeching.current) { screechStop(); screeching.current = false }
       }

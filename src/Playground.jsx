@@ -266,7 +266,7 @@ function RubbleBlock({ position }) {
   )
 }
 
-export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, joyRef }) {
+export default function Playground({ vehiclesRef, playerPosRef, paused, carActive, onExitDrive, carProfile, joyRef, auto }) {
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused}>
       <WorldColliders />
@@ -284,7 +284,7 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
-      <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} joyRef={joyRef} />
+      <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} joyRef={joyRef} auto={auto} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
       <VehiclePusher vehiclesRef={vehiclesRef} idx={2} args={[0.7, 1.2, 2.2]} />
       <PlayerPusher playerPosRef={playerPosRef} />

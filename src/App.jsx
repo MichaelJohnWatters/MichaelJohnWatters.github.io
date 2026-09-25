@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { ScrollControls } from '@react-three/drei'
+import { ScrollControls, Environment, Lightformer } from '@react-three/drei'
 import Room from './Room'
 import CameraRig from './CameraRig'
 import Player from './Player'
@@ -58,7 +58,15 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
           <pointLight position={[0.5, 1.3, -2.15]} intensity={2.2} color="#ffab7a" distance={4.5} decay={2} />
         </>
       )}
-      {/* No Environment IBL — it floods the night scene with daylight. */}
+      {/* A DIM, night-toned reflection environment built from Lightformers (no
+          HDRI file, no daylight flood) — just enough for the car paint, glass and
+          metal to catch cool/neon highlights. Kept low via environmentIntensity. */}
+      <Environment resolution={128} environmentIntensity={daytime ? 0.6 : 0.32} background={false}>
+        <Lightformer intensity={1.2} color="#8ea0c8" position={[0, 6, -9]} scale={[14, 6, 1]} />
+        <Lightformer intensity={0.7} color="#5a6a90" position={[-9, 3, 5]} scale={[7, 7, 1]} />
+        <Lightformer intensity={0.9} color="#c79663" position={[9, 3, 5]} scale={[7, 7, 1]} />
+        <Lightformer intensity={0.5} color="#3a4260" position={[0, -5, 0]} scale={[14, 14, 1]} rotation={[Math.PI / 2, 0, 0]} />
+      </Environment>
       <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />

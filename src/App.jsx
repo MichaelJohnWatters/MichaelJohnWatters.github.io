@@ -439,9 +439,13 @@ export default function App() {
       <button className="ctl ctl-mute" onClick={toggleMute} title="toggle sound">
         {muted ? '🔇' : '🔊'}
       </button>
-      <button className="ctl ctl-lights" onClick={toggleLights} title="toggle lights (L)">
-        {lights ? '💡' : '🌙'}
-      </button>
+      {/* workshop-lights toggle is a garage/scene control — hide it while driving
+          so the only 💡 in the car is the headlight flash (no duplicate bulbs) */}
+      {mode !== 'drive' && (
+        <button className="ctl ctl-lights" onClick={toggleLights} title="toggle lights (L)">
+          {lights ? '💡' : '🌙'}
+        </button>
+      )}
       <button
         className="ctl ctl-day"
         onClick={() => {

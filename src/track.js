@@ -95,7 +95,8 @@ for (let i = 0; i < N; i++) {
 // vertex normal, segments strung between consecutive offset vertices). Because
 // consecutive barriers share an exact offset vertex, they can't overlap or poke
 // into the track at a join. A gap is left at the access-road mouth.
-const OFF = TRACK_W / 2 + 0.7
+const OFF = TRACK_W / 2 + 4.5 // barriers sit back from the road so the darker
+// gravel between the tarmac and the wall is real, drivable run-off
 const inMouth = (x, z) => x > -8 && x < 8 && z > 55 && z < 105
 export const TRACK_BARRIERS = []
 for (const sign of [1, -1]) {
@@ -119,3 +120,7 @@ export const TRACK_DASHES = TRACK_SEG.filter((_, i) => i % 2 === 0).map((s) => (
 
 // the access road from the garage's north gate up to the start/finish
 export const ACCESS = { x: 0, z0: 34, z1: 100, w: 8 }
+
+// start/finish line across the main straight — a lap counts when the car
+// crosses it heading north (the racing direction, up the right straight)
+export const FINISH = { z: 116, halfW: TRACK_W / 2 + 4 }

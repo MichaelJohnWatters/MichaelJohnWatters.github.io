@@ -635,6 +635,42 @@ body {
   top: 2rem;
   left: 2rem;
 }
+/* lap timer HUD — top centre while driving */
+.lap-hud {
+  position: fixed;
+  top: 1.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  text-align: center;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  color: #f2f2f4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.lap-hud .lap-cur {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.lap-hud .lap-sub {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.85;
+  display: flex;
+  gap: 0.9rem;
+  justify-content: center;
+}
+.lap-hud .lap-sub b {
+  font-weight: 700;
+  color: #ffd9a0;
+}
+@media (pointer: coarse) {
+  .lap-hud .lap-cur {
+    font-size: 1.5rem;
+  }
+}
 /* compact icon action buttons (mobile, in-car): flash / view / horn */
 .ctl-drive {
   padding: 0.45rem 0.55rem;

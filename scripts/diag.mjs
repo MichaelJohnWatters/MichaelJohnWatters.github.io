@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage()
+const errs=[], logs=[]
+page.on('pageerror',e=>errs.push(String(e).slice(0,200)))
+page.on('console',m=>{ if(m.type()==='error') logs.push(m.text().slice(0,200)) })
+page.on('requestfailed', r=>logs.push('REQFAIL '+r.url().slice(-40)+' '+r.failure()?.errorText))
+await page.setViewport({ width: 1200, height: 750 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' })
+await new Promise(r=>setTimeout(r,9000))
+const state = await page.evaluate(()=>({ boot: !!document.getElementById('boot'), canvas: !!document.querySelector('canvas'), viteOverlay: !!document.querySelector('vite-error-overlay'), bodyText: document.body.innerText.slice(0,80) }))
+console.log('state:', JSON.stringify(state))
+console.log('pageerrors:', errs.slice(0,4))
+console.log('console errors:', logs.slice(0,6))
+await b.close()

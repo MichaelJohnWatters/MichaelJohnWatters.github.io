@@ -1,0 +1,13 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,100)))
+await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,4500))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(x=>getComputedStyle(x).overflowY==='auto'); if(el)el.scrollTop=el.scrollHeight }); await new Promise(r=>setTimeout(r,2500))
+await page.mouse.move(120,400); await page.evaluate(()=>document.querySelector('.ctl-step')?.click()); await new Promise(r=>setTimeout(r,1200))
+await page.evaluate(()=>document.exitPointerLock&&document.exitPointerLock()); await new Promise(r=>setTimeout(r,600))
+const s = await page.evaluate(()=>({ fp: document.documentElement.classList.contains('fp-cursor'), locked: document.documentElement.classList.contains('locked'), bodyCursor: getComputedStyle(document.body).cursor }))
+console.log('explore FP state:', JSON.stringify(s))
+console.log('=> cursor visible when unlocked?', s.fp && !s.locked && s.bodyCursor !== 'none' ? 'YES (fixed)' : 'NO')
+console.log('errors:', errs.slice(0,3))
+await b.close()

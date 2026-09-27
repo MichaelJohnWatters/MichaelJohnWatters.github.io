@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage()
+await page.setViewport({ width: 1200, height: 750 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,4500))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(x=>getComputedStyle(x).overflowY==='auto'); if(el)el.scrollTop=el.scrollHeight }); await new Promise(r=>setTimeout(r,2500))
+await page.mouse.move(200,400); await page.evaluate(()=>document.querySelector('.ctl-step')?.click()); await new Promise(r=>setTimeout(r,800))
+await page.keyboard.press('KeyE'); await new Promise(r=>setTimeout(r,700))
+await page.keyboard.press('KeyI'); await new Promise(r=>setTimeout(r,300))
+// nudge forward a touch so lights are on and we see the car in the chase cam
+await page.keyboard.down('ShiftLeft'); await page.keyboard.press('ArrowUp'); await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,500)); await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW')
+await new Promise(r=>setTimeout(r,600))
+await page.screenshot({ path:'scripts/car-close.png' })
+await b.close()
+console.log('shot')

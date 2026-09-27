@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,140)))
+await page.setViewport({ width: 1000, height: 700 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,7000))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(x=>getComputedStyle(x).overflowY==='auto'); if(el)el.scrollTop=el.scrollHeight }); await new Promise(r=>setTimeout(r,2500))
+await page.evaluate(()=>document.querySelector('.ctl-step')?.click()); await new Promise(r=>setTimeout(r,800))
+await page.evaluate(()=>window.__drive && window.__drive(1)); await new Promise(r=>setTimeout(r,700)) // ride bike (arcade)
+console.log('bikephys toggle present?', await page.evaluate(()=>!!document.querySelector('.ctl-bikephys')))
+await page.evaluate(()=>document.querySelector('.ctl-bikephys')?.click()); await new Promise(r=>setTimeout(r,900)) // → physics
+const spd=()=>page.evaluate(()=>document.getElementById('spd-num')?.textContent)
+console.log('PHYSICS bike — hold W:')
+await page.keyboard.down('KeyW'); for(let i=0;i<5;i++){ await new Promise(r=>setTimeout(r,350)); console.log('spd', await spd()) } await page.keyboard.up('KeyW')
+console.log('errors:', errs.slice(0,3))
+await b.close()

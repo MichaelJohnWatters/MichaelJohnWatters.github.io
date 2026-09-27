@@ -1,0 +1,16 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,120)))
+await page.setViewport({ width: 1200, height: 750 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,7000))
+await page.evaluate(() => { const el=[...document.querySelectorAll('div')].find(x=>getComputedStyle(x).overflowY==='auto'); if(el)el.scrollTop=el.scrollHeight }); await new Promise(r=>setTimeout(r,2500))
+await page.evaluate(()=>document.querySelector('.ctl-step')?.click()); await new Promise(r=>setTimeout(r,700))
+await page.keyboard.press('KeyE'); await new Promise(r=>setTimeout(r,700))
+// teleport onto the road at the course start, looking down it
+await page.evaluate(()=>window.__place && window.__place(0.3, 38, 3)); await new Promise(r=>setTimeout(r,600))
+await page.screenshot({ path:'scripts/course1.png' })
+// midway (jump/barrels/chicane)
+await page.evaluate(()=>window.__place && window.__place(0.3, 108, 3)); await new Promise(r=>setTimeout(r,600))
+await page.screenshot({ path:'scripts/course2.png' })
+console.log('errors:', errs.slice(0,3))
+await b.close()

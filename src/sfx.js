@@ -218,7 +218,7 @@ export function engineStart(kind = 'car') {
   noise.start()
   // bikes: higher-pitched, revvier, a bit more grit
   engine = { o1, o2, sub, lfo, lp, ng, out, base: bike ? 70 : 42, span: bike ? 230 : 150, chop: bike ? 30 : 16, chopSpan: bike ? 120 : 74 }
-  out.gain.linearRampToValueAtTime(0.5, ac.currentTime + 0.4)
+  out.gain.linearRampToValueAtTime(0.24, ac.currentTime + 0.4)
 }
 export function engineSpeed(rpm, cut = false) {
   // rpm: 0..1 (idle → redline). cut = rev-limiter fuel cut (duck the note).
@@ -231,7 +231,7 @@ export function engineSpeed(rpm, cut = false) {
   engine.lfo.frequency.value = engine.chop + r * engine.chopSpan // firing rate climbs with revs
   engine.lp.frequency.value = 400 + r * 3200 // opens up = brighter at revs
   engine.ng.gain.value = cut ? 0.04 : 0.012 + r * 0.03
-  engine.out.gain.value = cut ? 0.05 : 0.32 + r * 0.24 // fuel cut = the note drops out
+  engine.out.gain.value = cut ? 0.03 : 0.16 + r * 0.13 // fuel cut = the note drops out
 }
 export function engineStop() {
   if (!engine) return

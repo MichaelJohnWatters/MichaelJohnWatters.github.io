@@ -10,6 +10,7 @@ import Joystick from './Joystick'
 import Phone from './Phone'
 import { CIVIC, BIKES, PARKED } from './layout'
 import { CARS, TUNE, TYPE_PROFILE, BIKE, BIKE_CHASSIS } from './cars'
+import { FINISH } from './track'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -80,6 +81,68 @@ function TvAudio({ tv, vol }) {
   return null
 }
 
+// Lap timing: reads the active vehicle's pose from vehiclesRef each frame and
+// counts a lap when it crosses the start/finish line heading north (the racing
+// direction). Writes straight to the HUD DOM nodes so it never re-renders React.
+const fmtLap = (s) => {
+  const m = Math.floor(s / 60)
+  return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`
+}
+function LapTimer({ vehiclesRef, driving, active }) {
+  const t = useRef(0)
+  const best = useRef(Infinity)
+  const laps = useRef(0)
+  const started = useRef(false)
+  const prevZ = useRef(null)
+  const acc = useRef(0)
+  const set = (id, v) => {
+    const e = document.getElementById(id)
+    if (e) e.textContent = v
+  }
+  useFrame((_, dt) => {
+    if (!active) {
+      if (started.current || prevZ.current !== null) {
+        started.current = false
+        prevZ.current = null
+        t.current = 0
+        laps.current = 0
+        best.current = Infinity
+        set('lap-cur', '0:00.0')
+        set('lap-last', '—')
+        set('lap-best', '—')
+        set('lap-count', '0')
+      }
+      return
+    }
+    const c = vehiclesRef.current[driving]
+    if (!c) return
+    if (started.current) t.current += dt
+    if (prevZ.current !== null) {
+      const crossed = prevZ.current < FINISH.z && c.z >= FINISH.z && Math.abs(c.x) < FINISH.halfW
+      if (crossed) {
+        if (started.current && t.current > 3) {
+          laps.current += 1
+          if (t.current < best.current) best.current = t.current
+          set('lap-last', fmtLap(t.current))
+          set('lap-best', fmtLap(best.current))
+          set('lap-count', String(laps.current))
+          t.current = 0
+        } else {
+          started.current = true
+          t.current = 0
+        }
+      }
+    }
+    prevZ.current = c.z
+    acc.current += dt
+    if (acc.current > 0.1) {
+      acc.current = 0
+      set('lap-cur', fmtLap(t.current))
+    }
+  })
+  return null
+}
+
 function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvVol, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   const bikePhysicsDrive = bikePhysics && mode === 'drive' && driving === 1
@@ -136,6 +199,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       {mode === 'drive' && !carPhysicsDrive && !bikePhysicsDrive && (
         <Drive vehiclesRef={vehiclesRef} index={driving} doors={doors} onExit={onExitDrive} joyRef={joyRef} auto={auto} />
       )}
+      <LapTimer vehiclesRef={vehiclesRef} driving={driving} active={mode === 'drive'} />
       {/* the cannon-es physics playground (paused while at the desk) — also
           hosts the real raycast-vehicle Civic when physics mode is on */}
       <Playground
@@ -664,6 +728,15 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
+          {/* lap timer — populated each frame by <LapTimer> writing to these ids */}
+          <div className="lap-hud">
+            <div className="lap-cur" id="lap-cur">0:00.0</div>
+            <div className="lap-sub">
+              <span>last <b id="lap-last">—</b></span>
+              <span>best <b id="lap-best">—</b></span>
+              <span>laps <b id="lap-count">0</b></span>
+            </div>
+          </div>
           {/* reset/flip the car upright — car only (desktop also has R key) */}
           {driving === 0 && (
             <button className="ctl ctl-drive ctl-reset" title="flip the car back upright (R)" aria-label="reset car" onClick={() => window.dispatchEvent(new Event('car-reset'))}>↻</button>

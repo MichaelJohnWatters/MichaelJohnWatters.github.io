@@ -1133,6 +1133,11 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
           <planeGeometry args={[ACCESS.w, ACCESS.z1 - ACCESS.z0]} />
           <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
         </mesh>
+        {/* start/finish line across the main straight */}
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.002, 116]}>
+          <planeGeometry args={[13, 1.4]} />
+          <meshBasicMaterial color="#e8e8ea" />
+        </mesh>
         {/* road surface: one oriented quad per centreline segment */}
         {TRACK_SEG.map((s, i) => (
           <group key={'tr' + i} position={[s.mx, 0, s.mz]} rotation={[0, -s.ang, 0]}>

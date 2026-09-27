@@ -1139,6 +1139,39 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             </mesh>
           ))
         })()}
+        {/* --- return straight (west) + connectors = a full oval lap.
+            The main road is the east side; this is the west side; two cross
+            connectors close the ends. A grass median forces a proper circuit.
+            All inside the existing x±20 corridor, so containment is unchanged. */}
+        <mesh rotation-x={-Math.PI / 2} position={[-16, -0.005, (50 + 528) / 2]}>
+          <planeGeometry args={[8, 528 - 50]} />
+          <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+        </mesh>
+        {[525, 46].map((cz, i) => (
+          <mesh key={'con' + i} rotation-x={-Math.PI / 2} position={[-7.85, -0.005, cz]}>
+            <planeGeometry args={[24.3, 10]} />
+            <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+          </mesh>
+        ))}
+        {(() => {
+          const d = []
+          for (let z = 60; z < 520; z += 12) d.push(z)
+          return d.map((z, i) => (
+            <mesh key={'rr' + i} rotation-x={-Math.PI / 2} position={[-16, 0.001, z]}>
+              <planeGeometry args={[0.16, 1.6]} />
+              <meshStandardMaterial color="#8f8f7a" />
+            </mesh>
+          ))
+        })()}
+        {/* grass median (central reservation) */}
+        <mesh rotation-x={-Math.PI / 2} position={[-7.85, 0.002, (55 + 518) / 2]}>
+          <planeGeometry args={[6.5, 518 - 55]} />
+          <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
+        </mesh>
+        <mesh position={[-7.85, 0.45, (55 + 518) / 2]}>
+          <boxGeometry args={[5, 0.9, 518 - 55]} />
+          <meshStandardMaterial color={daytime ? '#3e4f34' : '#242c1f'} />
+        </mesh>
         {/* roundabout: asphalt disc, grass island with a kerb, centre lamp */}
         <group position={[RBT.x, 0, RBT.z]}>
           <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>

@@ -1,0 +1,18 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1024, height: 700 })
+const errs=[]; page.on('pageerror',e=>errs.push(String(e)))
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,7000))
+// enter the bay car (physics)
+await page.evaluate(()=>window.__enterCar && window.__enterCar(0)); await new Promise(r=>setTimeout(r,600))
+await page.evaluate(()=>window.__drive && window.__drive(0)); await new Promise(r=>setTimeout(r,900))
+// drop onto the return straight (west, x-16) heading north
+await page.evaluate(()=>window.__place && window.__place(-16, 120, 0)); await new Promise(r=>setTimeout(r,400))
+const p0 = await page.evaluate(()=>({x:window.__car.x, z:window.__car.z}))
+await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,4000)); await page.keyboard.up('KeyW')
+const p1 = await page.evaluate(()=>({x:window.__car.x, z:window.__car.z}))
+console.log('start', JSON.stringify(p0))
+console.log('after 4s W', JSON.stringify(p1))
+console.log('dz (north travel):', (p1.z-p0.z).toFixed(1), ' dx drift:', (p1.x-p0.x).toFixed(1))
+console.log('pageerrors:', errs.length)
+await b.close()

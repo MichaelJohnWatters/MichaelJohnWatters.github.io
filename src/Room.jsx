@@ -2,7 +2,8 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT, LOBE, PARKED } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, PARKED } from './layout'
+import { TRACK_SEG, TRACK_BARRIERS, TRACK_DASHES, TRACK_W, ACCESS } from './track'
 import Monitors from './Monitors'
 import { SHAPES } from './cars'
 
@@ -1103,7 +1104,6 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
           [0, WORLD.minZ, 56.5, 0.25], // south
           [(-28 + (ROAD.x - 4.2)) / 2, LOT.maxZ, ROAD.x - 4.2 + 28, 0.25], // north-left
           [(ROAD.x + 4.2 + 28) / 2, LOT.maxZ, 28 - (ROAD.x + 4.2), 0.25], // north-right
-          [0, 561, 40.6, 0.25], // far cap behind the roundabout
         ].map(([px2, pz2, pw2, pd2], i) => (
           <mesh key={'h' + i} position={[px2, 0.7, pz2]}>
             <boxGeometry args={[pw2, 1.4, pd2]} />
@@ -1116,105 +1116,62 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             <meshStandardMaterial color={daytime ? '#8a8a90' : '#3c3c44'} />
           </mesh>
         ))}
-        {/* hedges flanking the road corridor — the west side (x-20) is split
-            with a gap at z540-550 where the lobe link road cuts through */}
-        {[
-          [20, (LOT.maxZ + 561) / 2, 561 - LOT.maxZ],
-          [-20, (LOT.maxZ + 540) / 2, 540 - LOT.maxZ],
-          [-20, 555.5, 11],
-        ].map(([x, cz, len], i) => (
-          <mesh key={'hedge' + i} position={[x, 0.45, cz]}>
-            <boxGeometry args={[0.6, 0.9, len]} />
-            <meshStandardMaterial color={daytime ? '#3e4f34' : '#242c1f'} />
-          </mesh>
-        ))}
-
-        {/* --- The road north: ~500m straight to a roundabout --- */}
-        <mesh rotation-x={-Math.PI / 2} position={[ROAD.x, -0.005, (ROAD.z0 + ROAD.z1) / 2]}>
-          <planeGeometry args={[ROAD.w, ROAD.z1 - ROAD.z0]} />
-          <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
-        </mesh>
-        {(() => {
-          const dashes = []
-          for (let z = 40; z < ROAD.z1 - 4; z += 12) dashes.push(z)
-          return dashes.map((z, i) => (
-            <mesh key={'rd' + i} rotation-x={-Math.PI / 2} position={[ROAD.x, 0.001, z]}>
-              <planeGeometry args={[0.16, 1.6]} />
-              <meshStandardMaterial color="#8f8f7a" />
-            </mesh>
-          ))
-        })()}
-        {/* --- the west lobe: a big roundabout hanging off the main one by a
-            short link, so you drive up, loop it, and come back the same way.
-            Ground patch + asphalt disc + grass island + link road. --- */}
-        <mesh rotation-x={-Math.PI / 2} position={[-54, -0.021, LOBE.z]}>
-          <planeGeometry args={[72, 66]} />
+        {/* ===== The circuit — road, dashes and barriers all derive from the
+            same centreline in track.js, so nothing can be an invisible wall ===== */}
+        {/* gravel apron under the whole circuit */}
+        <mesh rotation-x={-Math.PI / 2} position={[-42, -0.025, 310]}>
+          <planeGeometry args={[118, 548]} />
           <meshStandardMaterial color={daytime ? '#77776e' : '#2b2b30'} />
         </mesh>
-        {/* link road main-roundabout → lobe */}
-        <mesh rotation-x={-Math.PI / 2} position={[-21.85, -0.005, LOBE.z]}>
-          <planeGeometry args={[12.3, 8]} />
+        {/* grassy infield */}
+        <mesh rotation-x={-Math.PI / 2} position={[-42, -0.015, 310]}>
+          <planeGeometry args={[68, 392]} />
+          <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
+        </mesh>
+        {/* access road from the garage gate up to the start/finish */}
+        <mesh rotation-x={-Math.PI / 2} position={[ACCESS.x, -0.005, (ACCESS.z0 + ACCESS.z1) / 2]}>
+          <planeGeometry args={[ACCESS.w, ACCESS.z1 - ACCESS.z0]} />
           <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
         </mesh>
-        {/* lobe roundabout: asphalt disc, kerb ring, big grass island, lamp */}
-        <group position={[LOBE.x, 0, LOBE.z]}>
-          <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
-            <circleGeometry args={[LOBE.outerR, 48]} />
-            <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
-          </mesh>
-          <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
-            <ringGeometry args={[LOBE.islandR, LOBE.islandR + 0.5, 40]} />
-            <meshStandardMaterial color={daytime ? '#9a9aa0' : '#55555c'} />
-          </mesh>
-          <mesh rotation-x={-Math.PI / 2} position-y={0.002}>
-            <circleGeometry args={[LOBE.islandR, 40]} />
-            <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
-          </mesh>
-          <mesh position={[0, 3, 0]}>
-            <cylinderGeometry args={[0.08, 0.11, 6, 8]} />
-            <meshStandardMaterial color="#2e2e34" />
-          </mesh>
-          <mesh position={[0, 6, 0]}>
-            <boxGeometry args={[0.6, 0.16, 0.6]} />
-            <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={daytime ? 0.1 : 1.8} />
-          </mesh>
-          {mode !== 'desk' && !daytime && (
-            <pointLight position={[0, 5.6, 0]} intensity={2.4} color="#ffd9a0" distance={26} decay={2} />
-          )}
-        </group>
-        {/* roundabout: asphalt disc, grass island with a kerb, centre lamp */}
-        <group position={[RBT.x, 0, RBT.z]}>
-          <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
-            <circleGeometry args={[RBT.outerR, 40]} />
-            <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
-          </mesh>
-          <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
-            <ringGeometry args={[RBT.islandR, RBT.islandR + 0.5, 32]} />
-            <meshStandardMaterial color={daytime ? '#9a9aa0' : '#55555c'} />
-          </mesh>
-          <mesh rotation-x={-Math.PI / 2} position-y={0.002}>
-            <circleGeometry args={[RBT.islandR, 32]} />
-            <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
-          </mesh>
-          <mesh position={[0, 2.2, 0]}>
-            <cylinderGeometry args={[0.06, 0.09, 4.4, 8]} />
-            <meshStandardMaterial color="#2e2e34" />
-          </mesh>
-          <mesh position={[0, 4.4, 0]}>
-            <boxGeometry args={[0.5, 0.14, 0.5]} />
-            <meshStandardMaterial
-              color="#26262a"
-              emissive="#ffd9a0"
-              emissiveIntensity={daytime ? 0.1 : 1.6}
-            />
-          </mesh>
-          {mode !== 'desk' && !daytime && (
-            <pointLight position={[0, 4.1, 0]} intensity={2} color="#ffd9a0" distance={16} decay={2} />
-          )}
-        </group>
-        {/* road lamps — emissive heads only (the headlights do the work) */}
-        {[74, 154, 234, 314, 394, 474].map((z, i) => (
-          <group key={'rl' + i} position={[i % 2 ? -5.8 : 6.4, 0, z]}>
+        {/* road surface: one oriented quad per centreline segment */}
+        {TRACK_SEG.map((s, i) => (
+          <group key={'tr' + i} position={[s.mx, 0, s.mz]} rotation={[0, -s.ang, 0]}>
+            <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
+              <planeGeometry args={[s.len + 0.6, TRACK_W]} />
+              <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+            </mesh>
+          </group>
+        ))}
+        {/* dashed centre line */}
+        {TRACK_DASHES.map((d, i) => (
+          <group key={'td' + i} position={[d.x, 0.001, d.z]} rotation={[0, -d.ang, 0]}>
+            <mesh rotation-x={-Math.PI / 2}>
+              <planeGeometry args={[2, 0.16]} />
+              <meshBasicMaterial color="#8f8f7a" />
+            </mesh>
+          </group>
+        ))}
+        {/* barriers — same transforms as the colliders, so they line up exactly */}
+        {TRACK_BARRIERS.map((b, i) => (
+          <group key={'tbv' + i} position={[b.x, 0.6, b.z]} rotation={[0, -b.ang, 0]}>
+            <mesh>
+              <boxGeometry args={[b.len, 1.2, 0.4]} />
+              <meshStandardMaterial
+                color={daytime ? '#c9ccd2' : '#5a5d66'}
+                emissive="#ff5a3c"
+                emissiveIntensity={daytime ? 0 : 0.35}
+                roughness={0.6}
+              />
+            </mesh>
+          </group>
+        ))}
+        {/* trackside lamps — down the outside of both straights (clear of the
+            barriers), emissive heads only (the headlights do the work) */}
+        {[
+          ...[140, 220, 300, 380, 460].map((z) => [9, z]),
+          ...[140, 220, 300, 380, 460].map((z) => [-93, z]),
+        ].map(([lx, z], i) => (
+          <group key={'rl' + i} position={[lx, 0, z]}>
             <mesh position={[0, 1.6, 0]}>
               <cylinderGeometry args={[0.05, 0.07, 3.2, 8]} />
               <meshStandardMaterial color="#2e2e34" />

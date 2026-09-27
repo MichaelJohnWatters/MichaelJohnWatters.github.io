@@ -1,0 +1,12 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,8000))
+await page.evaluate(()=>window.__enterCar && window.__enterCar(0)); await new Promise(r=>setTimeout(r,600))
+await page.evaluate(()=>window.__drive && window.__drive(0)); await new Promise(r=>setTimeout(r,900))
+await page.evaluate(()=>window.__place && window.__place(0,300,20)); await new Promise(r=>setTimeout(r,300))
+await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,800))
+const fps = await page.evaluate(()=>new Promise(res=>{let n=0;const t0=performance.now();function f(){n++;if(performance.now()-t0<3000)requestAnimationFrame(f);else res(Math.round(n/((performance.now()-t0)/1000)))}requestAnimationFrame(f)}))
+await page.keyboard.up('KeyW')
+console.log('FPS on the track while driving:', fps)
+await b.close()

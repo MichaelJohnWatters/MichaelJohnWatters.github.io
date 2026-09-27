@@ -51,7 +51,36 @@ function SkyBody({ daytime }) {
   )
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics }) {
+// Positional TV audio: the cave TV's YouTube embed can't be routed through a
+// WebAudio PannerNode (cross-origin iframe), so we fake 3D falloff by scaling
+// the player's set-volume via the IFrame API by distance from the screen.
+const TV_POS = [4.9, 1.55, -2.97] // the wall-TV mesh
+function TvAudio({ tv, vol }) {
+  const acc = useRef(0)
+  const last = useRef(-1)
+  useFrame(({ camera }, dt) => {
+    if (!tv) return
+    acc.current += dt
+    if (acc.current < 0.15) return // throttle the postMessage spam
+    acc.current = 0
+    const dx = camera.position.x - TV_POS[0]
+    const dy = camera.position.y - TV_POS[1]
+    const dz = camera.position.z - TV_POS[2]
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+    // full volume within ~3m of the couch, fading to silence by ~18m
+    const falloff = Math.max(0, Math.min(1, 1 - (dist - 3) / 15))
+    const v = Math.round(vol * falloff)
+    if (v === last.current) return
+    last.current = v
+    document.querySelector('.cave-tv iframe')?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func: 'setVolume', args: [v] }),
+      '*'
+    )
+  })
+  return null
+}
+
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvVol, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   const bikePhysicsDrive = bikePhysics && mode === 'drive' && driving === 1
   return (
@@ -62,6 +91,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
       <fog attach="fog" args={[daytime ? '#a9c6de' : '#3b3352', 14, daytime ? 90 : 80]} />
       <Exposure lights={lights} daytime={daytime} />
       <SkyBody daytime={daytime} />
+      <TvAudio tv={tv} vol={tvVol} />
 
       {/* LIGHTING — default mood is DUSK (warm low sun + dusky-blue sky). The
           wall switch (or L / 💡) toggles the shop work-lights; the ☀️/🌃 toggle
@@ -472,6 +502,7 @@ export default function App() {
             daytime={daytime}
             onToggleLights={toggleLights}
             tv={tv}
+            tvVol={tvVol}
             tvMuted={muted}
             onTvToggle={tvToggle}
             onPhone={() => setPhone(true)}

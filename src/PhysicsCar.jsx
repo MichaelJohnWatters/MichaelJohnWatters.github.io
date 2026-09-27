@@ -438,8 +438,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     }
     if (import.meta.env.DEV) {
       window.__car = P2 // self-test hooks (dev only — stripped from production)
-      window.__place = (x, z, vz) => {
-        chassisApi.position.set(x, 1.2, z); chassisApi.quaternion.set(0, 0, 0, 1)
+      window.__place = (x, z, vz, yaw = 0) => {
+        chassisApi.position.set(x, 1.2, z); chassisApi.quaternion.set(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2))
         chassisApi.velocity.set(0, 0, vz); chassisApi.angularVelocity.set(0, 0, 0)
         gear.current = 3; stalled.current = false; rpm.current = 0.6
       }

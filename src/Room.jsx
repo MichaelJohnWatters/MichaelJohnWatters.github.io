@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT, PARKED } from './layout'
+import { GARAGE, DOORS, LIFT, CIVIC, BIKES, CAVE, SWITCHES, YARD, WORLD, LOT, ROAD, RBT, LOBE, PARKED } from './layout'
 import Monitors from './Monitors'
 import { SHAPES } from './cars'
 
@@ -1116,10 +1116,15 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             <meshStandardMaterial color={daytime ? '#8a8a90' : '#3c3c44'} />
           </mesh>
         ))}
-        {/* hedges flanking the road corridor */}
-        {[-20, 20].map((x, i) => (
-          <mesh key={'hedge' + i} position={[x, 0.45, (LOT.maxZ + 561) / 2]}>
-            <boxGeometry args={[0.6, 0.9, 561 - LOT.maxZ]} />
+        {/* hedges flanking the road corridor — the west side (x-20) is split
+            with a gap at z540-550 where the lobe link road cuts through */}
+        {[
+          [20, (LOT.maxZ + 561) / 2, 561 - LOT.maxZ],
+          [-20, (LOT.maxZ + 540) / 2, 540 - LOT.maxZ],
+          [-20, 555.5, 11],
+        ].map(([x, cz, len], i) => (
+          <mesh key={'hedge' + i} position={[x, 0.45, cz]}>
+            <boxGeometry args={[0.6, 0.9, len]} />
             <meshStandardMaterial color={daytime ? '#3e4f34' : '#242c1f'} />
           </mesh>
         ))}
@@ -1139,39 +1144,44 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             </mesh>
           ))
         })()}
-        {/* --- return straight (west) + connectors = a full oval lap.
-            The main road is the east side; this is the west side; two cross
-            connectors close the ends. A grass median forces a proper circuit.
-            All inside the existing x±20 corridor, so containment is unchanged. */}
-        <mesh rotation-x={-Math.PI / 2} position={[-16, -0.005, (50 + 528) / 2]}>
-          <planeGeometry args={[8, 528 - 50]} />
+        {/* --- the west lobe: a big roundabout hanging off the main one by a
+            short link, so you drive up, loop it, and come back the same way.
+            Ground patch + asphalt disc + grass island + link road. --- */}
+        <mesh rotation-x={-Math.PI / 2} position={[-54, -0.021, LOBE.z]}>
+          <planeGeometry args={[72, 66]} />
+          <meshStandardMaterial color={daytime ? '#77776e' : '#2b2b30'} />
+        </mesh>
+        {/* link road main-roundabout → lobe */}
+        <mesh rotation-x={-Math.PI / 2} position={[-21.85, -0.005, LOBE.z]}>
+          <planeGeometry args={[12.3, 8]} />
           <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
         </mesh>
-        {[525, 46].map((cz, i) => (
-          <mesh key={'con' + i} rotation-x={-Math.PI / 2} position={[-7.85, -0.005, cz]}>
-            <planeGeometry args={[24.3, 10]} />
+        {/* lobe roundabout: asphalt disc, kerb ring, big grass island, lamp */}
+        <group position={[LOBE.x, 0, LOBE.z]}>
+          <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
+            <circleGeometry args={[LOBE.outerR, 48]} />
             <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
           </mesh>
-        ))}
-        {(() => {
-          const d = []
-          for (let z = 60; z < 520; z += 12) d.push(z)
-          return d.map((z, i) => (
-            <mesh key={'rr' + i} rotation-x={-Math.PI / 2} position={[-16, 0.001, z]}>
-              <planeGeometry args={[0.16, 1.6]} />
-              <meshStandardMaterial color="#8f8f7a" />
-            </mesh>
-          ))
-        })()}
-        {/* grass median (central reservation) */}
-        <mesh rotation-x={-Math.PI / 2} position={[-7.85, 0.002, (55 + 518) / 2]}>
-          <planeGeometry args={[6.5, 518 - 55]} />
-          <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
-        </mesh>
-        <mesh position={[-7.85, 0.45, (55 + 518) / 2]}>
-          <boxGeometry args={[5, 0.9, 518 - 55]} />
-          <meshStandardMaterial color={daytime ? '#3e4f34' : '#242c1f'} />
-        </mesh>
+          <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
+            <ringGeometry args={[LOBE.islandR, LOBE.islandR + 0.5, 40]} />
+            <meshStandardMaterial color={daytime ? '#9a9aa0' : '#55555c'} />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position-y={0.002}>
+            <circleGeometry args={[LOBE.islandR, 40]} />
+            <meshStandardMaterial color={daytime ? '#4a5c3a' : '#26301f'} />
+          </mesh>
+          <mesh position={[0, 3, 0]}>
+            <cylinderGeometry args={[0.08, 0.11, 6, 8]} />
+            <meshStandardMaterial color="#2e2e34" />
+          </mesh>
+          <mesh position={[0, 6, 0]}>
+            <boxGeometry args={[0.6, 0.16, 0.6]} />
+            <meshStandardMaterial color="#26262a" emissive="#ffd9a0" emissiveIntensity={daytime ? 0.1 : 1.8} />
+          </mesh>
+          {mode !== 'desk' && !daytime && (
+            <pointLight position={[0, 5.6, 0]} intensity={2.4} color="#ffd9a0" distance={26} decay={2} />
+          )}
+        </group>
         {/* roundabout: asphalt disc, grass island with a kerb, centre lamp */}
         <group position={[RBT.x, 0, RBT.z]}>
           <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>

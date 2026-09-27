@@ -37,6 +37,7 @@ const BOOKMARKS = [
   ['This site', './', 'embed'], // the garage, recursively 🤯
   ['CV', 'cv/michael-watters-cv.html', 'embed'],
   ['MX-5 wiki', 'https://en.wikipedia.org/wiki/Mazda_MX-5', 'embed'],
+  ["Jamie's office", 'https://office.jamieio.com', 'live'], // live app — direct iframe
   ['GitHub', 'https://github.com/MichaelJohnWatters', 'tab'],
   ['LinkedIn', 'https://www.linkedin.com/in/michael-watters-b50437167', 'tab'],
 ]
@@ -310,6 +311,10 @@ function WebBrowser({ focused }) {
               if (external) {
                 window.open(url, '_blank', 'noopener')
                 setStatus(`→ opened ${label} in your browser`)
+              } else if (kind === 'live') {
+                // live app — direct iframe (runs the real JS/rooms in-world)
+                setNotice(null)
+                openPage(url, label, true)
               } else if (kind === 'embed' || SEARCH_PROXY) {
                 // worker mode tries ANY site through the proxy — blockers
                 // (LinkedIn) fall through to the notice automatically

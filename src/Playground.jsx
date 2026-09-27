@@ -336,7 +336,7 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
           auto={auto}
         />
       ) : (
-        <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[0.7, 1.2, 2.2]} />
+        <VehiclePusher vehiclesRef={vehiclesRef} idx={1} args={[1.0, 1.4, 2.6]} />
       )}
       <PlayerPusher playerPosRef={playerPosRef} />
       {/* lot props — kept light now that the road has a full course (perf) */}

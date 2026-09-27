@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES, PARKED, BIKES } from './layout'
+import { WORLD, LOT, ROAD, LOBE, BUILDING_WALLS, CIRCLES, PARKED, BIKES } from './layout'
 import { BIKE, BIKE_CHASSIS } from './cars'
 import { impact } from './sfx'
 import PhysicsCar from './PhysicsCar'
@@ -315,11 +315,20 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <Fence position={[(ROAD.x + 4.2 + 28) / 2, 1, LOT.maxZ]} args={[28 - (ROAD.x + 4.2), 2, 0.3]} />
       <Fence position={[WORLD.minX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
       <Fence position={[WORLD.maxX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
-      <Fence position={[-20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
+      {/* west corridor wall — split with a gap at z540-550 for the lobe link */}
+      <Fence position={[-20, 1, (LOT.maxZ + 540) / 2]} args={[0.3, 2, 540 - LOT.maxZ]} />
+      <Fence position={[-20, 1, 555.5]} args={[0.3, 2, 11]} />
       <Fence position={[20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
       <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
-      {/* central reservation between the two straights — makes it a real lap */}
-      <Fence position={[-7.85, 1, (55 + 518) / 2]} args={[5, 2, 518 - 55]} />
+      {/* the west lobe (big roundabout) boundary: a box around it with a gap on
+          the east where the link road joins, plus side walls along the link */}
+      <Fence position={[-89, 1, LOBE.z]} args={[0.3, 2, 62]} />
+      <Fence position={[-58, 1, 576]} args={[62, 2, 0.3]} />
+      <Fence position={[-58, 1, 514]} args={[62, 2, 0.3]} />
+      <Fence position={[-27, 1, 527.5]} args={[0.3, 2, 27]} />
+      <Fence position={[-27, 1, 562]} args={[0.3, 2, 26]} />
+      <Fence position={[-21.5, 1, 549]} args={[11, 2, 0.3]} />
+      <Fence position={[-21.5, 1, 541]} args={[11, 2, 0.3]} />
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
       <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} spawn={carSpawn} joyRef={joyRef} auto={auto} />

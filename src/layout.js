@@ -19,8 +19,14 @@ export const WORLD = { minX: -28, maxX: 28, minZ: -18, maxZ: 566 }
 export const LOT = { maxZ: 34 } // the walled yard around the garage
 export const ROAD = { x: 0.3, w: 8, z0: 34, z1: 534 }
 export const RBT = { x: 0.3, z: 545, outerR: 16, islandR: 7 }
-// round obstacles (the roundabout island) — checked as circles
-export const CIRCLES = [{ x: RBT.x, z: RBT.z, r: RBT.islandR + 0.4 }]
+// the big "lobe" roundabout west of the main one — the loop you drive out to,
+// linked to the main roundabout by a short road at z=545
+export const LOBE = { x: -58, z: 545, outerR: 30, islandR: 22 }
+// round obstacles (roundabout islands) — checked as circles
+export const CIRCLES = [
+  { x: RBT.x, z: RBT.z, r: RBT.islandR + 0.4 },
+  { x: LOBE.x, z: LOBE.z, r: LOBE.islandR + 0.4 },
+]
 
 // (legacy close-yard bound — the lamp/bins cluster still anchors here)
 export const YARD = { maxZ: 11.3 }

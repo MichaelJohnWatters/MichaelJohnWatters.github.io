@@ -318,6 +318,8 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <Fence position={[-20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
       <Fence position={[20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
       <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
+      {/* central reservation between the two straights — makes it a real lap */}
+      <Fence position={[-7.85, 1, (55 + 518) / 2]} args={[5, 2, 518 - 55]} />
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
       <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} spawn={carSpawn} joyRef={joyRef} auto={auto} />

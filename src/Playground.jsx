@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Physics, usePlane, useBox, useCylinder, useSphere } from '@react-three/cannon'
-import { WORLD, LOT, ROAD, LOBE, BUILDING_WALLS, CIRCLES, PARKED, BIKES } from './layout'
+import { WORLD, LOT, ROAD, BUILDING_WALLS, CIRCLES, PARKED, BIKES } from './layout'
+import { TRACK_BARRIERS, ACCESS } from './track'
 import { BIKE, BIKE_CHASSIS } from './cars'
 import { impact } from './sfx'
 import PhysicsCar from './PhysicsCar'
@@ -22,8 +23,8 @@ function Ground() {
 }
 
 // invisible static walls so props stay in the lot
-function Fence({ position, args }) {
-  const [ref] = useBox(() => ({ type: 'Static', position, args }))
+function Fence({ position, args, rotation = [0, 0, 0] }) {
+  const [ref] = useBox(() => ({ type: 'Static', position, rotation, args }))
   return <mesh ref={ref} visible={false} />
 }
 
@@ -266,8 +267,9 @@ function RoadCourse() {
       {[84, 90, 96].map((z) => (
         <StaticBox key={'sb' + z} position={[ROAD.x, 0.12, z]} args={[10, 0.24, 0.8]} color="#c9a23a" />
       ))}
-      {/* 3 · JUMP — kicker ramp for airtime */}
-      <Ramp z={118} rot={0.34} len={7} w={10} />
+      {/* 3 · JUMP — kicker ramp for airtime (rot NEGATIVE so the low edge is on
+          the approaching/south side and a northbound car rides up, not into it) */}
+      <Ramp z={118} rot={-0.34} len={7} w={10} />
       {/* 4 · BARREL GAUNTLET — smash straight through */}
       {[[-4, 150], [4, 153], [0, 156], [-4, 159], [4, 162]].map(([x, z], i) => (
         <Barrel key={'bg' + i} position={[ROAD.x + x, 0.5, z]} color={i % 2 ? '#c0392b' : '#2e6da4'} />
@@ -276,7 +278,7 @@ function RoadCourse() {
       <StaticBox position={[ROAD.x - 7, 0.7, 188]} args={[18, 1.4, 0.6]} color="#9a3b3b" />
       <StaticBox position={[ROAD.x + 7, 0.7, 208]} args={[18, 1.4, 0.6]} color="#9a3b3b" />
       {/* 6 · BIG KICKER — a bigger, wider launch */}
-      <Ramp z={244} rot={0.42} len={9} w={12} color="#55555e" />
+      <Ramp z={244} rot={-0.42} len={9} w={12} color="#55555e" />
       {[[-1.5, 262], [1.2, 265], [0, 268]].map(([x, z], i) => (
         <RubbleBlock key={'rb' + i} position={[ROAD.x + x, 0.4, z]} />
       ))}
@@ -306,29 +308,22 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
   return (
     <Physics gravity={[0, -9.81, 0]} allowSleep broadphase="SAP" isPaused={paused} defaultContactMaterial={{ friction: 0.08, restitution: 0.12 }}>
       <WorldColliders idleCars={idleCars} />
-      <RoadCourse />
       <Ground />
-      {/* perimeter keeps the toys in — with a gap where the road exits, so
-          you CAN boot a barrel all the way to the roundabout */}
+      {/* lot perimeter — walls the garage yard, with a gap on the north side
+          where the access road leaves for the circuit */}
       <Fence position={[0, 1, WORLD.minZ]} args={[WORLD.maxX - WORLD.minX, 2, 0.3]} />
       <Fence position={[(-28 + ROAD.x - 4.2) / 2, 1, LOT.maxZ]} args={[ROAD.x - 4.2 + 28, 2, 0.3]} />
       <Fence position={[(ROAD.x + 4.2 + 28) / 2, 1, LOT.maxZ]} args={[28 - (ROAD.x + 4.2), 2, 0.3]} />
       <Fence position={[WORLD.minX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
       <Fence position={[WORLD.maxX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
-      {/* west corridor wall — split with a gap at z540-550 for the lobe link */}
-      <Fence position={[-20, 1, (LOT.maxZ + 540) / 2]} args={[0.3, 2, 540 - LOT.maxZ]} />
-      <Fence position={[-20, 1, 555.5]} args={[0.3, 2, 11]} />
-      <Fence position={[20, 1, (LOT.maxZ + 561) / 2]} args={[0.3, 2, 561 - LOT.maxZ]} />
-      <Fence position={[0, 1, 561]} args={[40.6, 2, 0.3]} />
-      {/* the west lobe (big roundabout) boundary: a box around it with a gap on
-          the east where the link road joins, plus side walls along the link */}
-      <Fence position={[-89, 1, LOBE.z]} args={[0.3, 2, 62]} />
-      <Fence position={[-58, 1, 576]} args={[62, 2, 0.3]} />
-      <Fence position={[-58, 1, 514]} args={[62, 2, 0.3]} />
-      <Fence position={[-27, 1, 527.5]} args={[0.3, 2, 27]} />
-      <Fence position={[-27, 1, 562]} args={[0.3, 2, 26]} />
-      <Fence position={[-21.5, 1, 549]} args={[11, 2, 0.3]} />
-      <Fence position={[-21.5, 1, 541]} args={[11, 2, 0.3]} />
+      {/* access road side walls, garage gate up to the circuit's start/finish */}
+      <Fence position={[ACCESS.x - ACCESS.w / 2 - 0.6, 1, (LOT.maxZ + 90) / 2]} args={[0.3, 2, 90 - LOT.maxZ]} />
+      <Fence position={[ACCESS.x + ACCESS.w / 2 + 0.6, 1, (LOT.maxZ + 90) / 2]} args={[0.3, 2, 90 - LOT.maxZ]} />
+      {/* the circuit's barriers — one box per segment side, derived from the
+          same centreline as the road so collision always matches the visuals */}
+      {TRACK_BARRIERS.map((b, i) => (
+        <Fence key={'tb' + i} position={[b.x, 0.6, b.z]} rotation={[0, -b.ang, 0]} args={[b.len, 1.2, 0.5]} />
+      ))}
       {/* pushers — the Civic is either a kinematic pusher (arcade) or a real
           raycast vehicle (physics mode) */}
       <PhysicsCar vehiclesRef={vehiclesRef} active={carActive} onExit={onExitDrive} profile={carProfile} spawn={carSpawn} joyRef={joyRef} auto={auto} />

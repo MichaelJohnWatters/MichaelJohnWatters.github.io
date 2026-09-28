@@ -935,7 +935,7 @@ const D = maxZ - minZ
 const CX = (minX + maxX) / 2
 const CZ = (minZ + maxZ) / 2
 
-export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch', idleCars = [], bikePhysics = false }) {
+export default function Room({ mode = 'desk', onZoom, lights = true, daytime = false, onToggleLights, fp = false, tv = null, tvMuted = false, onTvToggle, onPhone, phoneHeld = false, doors = [false, false], onDoorToggle, vehiclesRef, headlights = -1, physicsMode = false, carColor = '#2f6fb0', carType = 'hatch', idleCars = [], bikePhysics = false, countdown = null }) {
   const switchesRef = useRef([])
   const doorRefs = useRef([]) // drum meshes double as the click/aim targets
   return (
@@ -1138,6 +1138,32 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
           <planeGeometry args={[13, 1.4]} />
           <meshBasicMaterial color="#e8e8ea" />
         </mesh>
+        {/* start-light gantry over the line — lights build up red on the 3-2-1
+            count, then flip green on GO (driven by the countdown prop) */}
+        <group position={[0, 0, 116]}>
+          {[-7.6, 7.6].map((x, i) => (
+            <mesh key={'gp' + i} position={[x, 3, 0]}>
+              <boxGeometry args={[0.32, 6, 0.32]} />
+              <meshStandardMaterial color="#2a2a30" metalness={0.5} roughness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[0, 6, 0]}>
+            <boxGeometry args={[15.8, 0.5, 0.4]} />
+            <meshStandardMaterial color="#2a2a30" metalness={0.5} roughness={0.6} />
+          </mesh>
+          {[-3.4, 0, 3.4].map((x, i) => {
+            const go = countdown === 'GO'
+            const lit = typeof countdown === 'number' && 3 - countdown >= i // build up 1→2→3
+            const col = go ? '#2bff5c' : lit ? '#ff1e1e' : '#2a0e0e'
+            const on = go || lit
+            return (
+              <mesh key={'gl' + i} position={[x, 5.55, 0.28]}>
+                <boxGeometry args={[1.5, 0.85, 0.2]} />
+                <meshStandardMaterial color="#0c0c0e" emissive={col} emissiveIntensity={on ? 2.4 : 0.12} toneMapped={false} />
+              </mesh>
+            )
+          })}
+        </group>
         {/* road surface: one oriented quad per centreline segment */}
         {TRACK_SEG.map((s, i) => (
           <group key={'tr' + i} position={[s.mx, 0, s.mz]} rotation={[0, -s.ang, 0]}>

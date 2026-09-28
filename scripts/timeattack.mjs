@@ -1,0 +1,21 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1024, height: 700 })
+const errs=[]; page.on('pageerror',e=>errs.push(String(e)))
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,8000))
+await page.evaluate(()=>window.__enterCar && window.__enterCar(0)); await new Promise(r=>setTimeout(r,600))
+await page.evaluate(()=>window.__drive && window.__drive(0)); await new Promise(r=>setTimeout(r,900))
+// move car away, then hit grid-start
+await page.evaluate(()=>window.__place && window.__place(0,300,0)); await new Promise(r=>setTimeout(r,500))
+await page.click('.ctl-gridstart'); await new Promise(r=>setTimeout(r,300))
+const p = await page.evaluate(()=>({x:+window.__car.x.toFixed(1), z:+window.__car.z.toFixed(1)}))
+const cd1 = await page.evaluate(()=>document.querySelector('.countdown')?.textContent)
+console.log('after grid-start: car at', JSON.stringify(p), ' countdown shows:', cd1)
+await new Promise(r=>setTimeout(r,1100)); console.log('~1.1s later countdown:', await page.evaluate(()=>document.querySelector('.countdown')?.textContent))
+await new Promise(r=>setTimeout(r,2200)); console.log('~3.3s later countdown:', await page.evaluate(()=>document.querySelector('.countdown')?.textContent || 'GONE'))
+// simulate a best lap being saved directly, then confirm it persists to storage read
+await page.evaluate(()=>localStorage.setItem('nightgarage.bestLap','37.4'))
+const stored = await page.evaluate(()=>localStorage.getItem('nightgarage.bestLap'))
+console.log('best-lap storage read:', stored)
+console.log('errs:', errs.length, errs.slice(0,2).join(' | '))
+await b.close()

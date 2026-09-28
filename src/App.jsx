@@ -88,6 +88,7 @@ const fmtLap = (s) => {
   const m = Math.floor(s / 60)
   return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`
 }
+const LAP_KEY = 'nightgarage.bestLap'
 function LapTimer({ vehiclesRef, driving, active }) {
   const t = useRef(0)
   const best = useRef(Infinity)
@@ -99,19 +100,32 @@ function LapTimer({ vehiclesRef, driving, active }) {
     const e = document.getElementById(id)
     if (e) e.textContent = v
   }
+  const showBest = () => set('lap-best', best.current === Infinity ? '—' : fmtLap(best.current))
+  const resetLap = () => {
+    started.current = false
+    prevZ.current = null
+    t.current = 0
+    laps.current = 0
+    set('lap-cur', '0:00.0')
+    set('lap-last', '—')
+    set('lap-count', '0')
+  }
+  // load the saved best lap and reset the running lap on a grid restart
+  useEffect(() => {
+    const stored = parseFloat(localStorage.getItem(LAP_KEY))
+    if (stored > 0) best.current = stored
+    showBest()
+    const onReset = () => {
+      resetLap()
+      showBest()
+    }
+    window.addEventListener('lap-reset', onReset)
+    return () => window.removeEventListener('lap-reset', onReset)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   useFrame((_, dt) => {
     if (!active) {
-      if (started.current || prevZ.current !== null) {
-        started.current = false
-        prevZ.current = null
-        t.current = 0
-        laps.current = 0
-        best.current = Infinity
-        set('lap-cur', '0:00.0')
-        set('lap-last', '—')
-        set('lap-best', '—')
-        set('lap-count', '0')
-      }
+      if (started.current || prevZ.current !== null) resetLap()
       return
     }
     const c = vehiclesRef.current[driving]
@@ -121,11 +135,25 @@ function LapTimer({ vehiclesRef, driving, active }) {
       const crossed = prevZ.current < FINISH.z && c.z >= FINISH.z && Math.abs(c.x) < FINISH.halfW
       if (crossed) {
         if (started.current && t.current > 3) {
+          const lap = t.current
           laps.current += 1
-          if (t.current < best.current) best.current = t.current
-          set('lap-last', fmtLap(t.current))
-          set('lap-best', fmtLap(best.current))
+          set('lap-last', fmtLap(lap))
           set('lap-count', String(laps.current))
+          if (lap < best.current) {
+            best.current = lap
+            showBest()
+            try {
+              localStorage.setItem(LAP_KEY, String(lap))
+            } catch (e) {
+              /* private mode / storage blocked — best just won't persist */
+            }
+            const h = document.querySelector('.lap-hud')
+            if (h) {
+              h.classList.remove('lap-flash')
+              void h.offsetWidth // restart the flash animation
+              h.classList.add('lap-flash')
+            }
+          }
           t.current = 0
         } else {
           started.current = true
@@ -143,7 +171,7 @@ function LapTimer({ vehiclesRef, driving, active }) {
   return null
 }
 
-function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvVol, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics }) {
+function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvVol, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics, countdown }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
   const bikePhysicsDrive = bikePhysics && mode === 'drive' && driving === 1
   return (
@@ -188,7 +216,7 @@ function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoo
         <Lightformer intensity={0.7} color="#6a6fa0" position={[-10, 3, 5]} scale={[7, 7, 1]} />
         <Lightformer intensity={0.6} color="#4a4360" position={[0, -5, 0]} scale={[16, 16, 1]} rotation={[Math.PI / 2, 0, 0]} />
       </Environment>
-      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} idleCars={idleCars} bikePhysics={bikePhysics} />
+      <Room mode={mode} onZoom={onZoom} lights={lights} daytime={daytime} onToggleLights={onToggleLights} fp={mode === 'explore' && !IS_TOUCH} tv={tv} tvMuted={tvMuted} onTvToggle={onTvToggle} onPhone={onPhone} phoneHeld={phoneHeld} doors={doors} onDoorToggle={onDoorToggle} vehiclesRef={vehiclesRef} headlights={mode === 'drive' ? driving : -1} physicsMode={physicsMode} carColor={carProfile.color} carType={carProfile.type} idleCars={idleCars} bikePhysics={bikePhysics} countdown={countdown} />
       {mode === 'desk' && (
         <CameraRig hintRef={hintRef} onSeated={onSeated} zoom={zoom} onZoomExit={onZoomExit} />
       )}
@@ -305,6 +333,32 @@ export default function App() {
     setSpawn([c.x + Math.cos(c.heading) * 2.0, 0, c.z - Math.sin(c.heading) * 2.0])
     setMode('explore')
   }
+  // time-attack: 3-2-1-GO countdown after a grid start
+  const [countdown, setCountdown] = useState(null) // null | 3 | 2 | 1 | 'GO'
+  useEffect(() => {
+    if (countdown == null) return
+    const t = setTimeout(
+      () => setCountdown((c) => (c === 'GO' ? null : c === 1 ? 'GO' : c - 1)),
+      countdown === 'GO' ? 800 : 1000,
+    )
+    return () => clearTimeout(t)
+  }, [countdown])
+  const startLap = () => {
+    clickDown()
+    window.dispatchEvent(new Event('grid-start')) // drop the car on the grid
+    window.dispatchEvent(new Event('lap-reset')) // clear the running lap
+    setCountdown(3)
+  }
+  // G restarts a timed lap while driving
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code === 'KeyG' && mode === 'drive') startLap()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
+
   const [tvVol, setTvVol] = useState(70) // TV volume, driven from the phone
 
   // Drive the embed's player via the IFrame API postMessage channel
@@ -592,6 +646,7 @@ export default function App() {
             onEnterCar={enterCar}
             auto={autoBox}
             bikePhysics={bikePhysics}
+            countdown={countdown}
           />
         </ScrollControls>
       </Canvas>
@@ -737,6 +792,12 @@ export default function App() {
               <span>laps <b id="lap-count">0</b></span>
             </div>
           </div>
+          {/* grid restart for a timed lap (G on desktop) */}
+          <button className="ctl ctl-drive ctl-gridstart" title="restart a timed lap from the grid (G)" onClick={startLap}>🏁</button>
+          {/* 3-2-1-GO countdown overlay */}
+          {countdown != null && (
+            <div className={`countdown${countdown === 'GO' ? ' go' : ''}`}>{countdown === 'GO' ? 'GO!' : countdown}</div>
+          )}
           {/* reset/flip the car upright — car only (desktop also has R key) */}
           {driving === 0 && (
             <button className="ctl ctl-drive ctl-reset" title="flip the car back upright (R)" aria-label="reset car" onClick={() => window.dispatchEvent(new Event('car-reset'))}>↻</button>

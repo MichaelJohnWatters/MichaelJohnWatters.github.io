@@ -316,9 +316,11 @@ export default function Playground({ vehiclesRef, playerPosRef, paused, carActiv
       <Fence position={[(ROAD.x + 4.2 + 28) / 2, 1, LOT.maxZ]} args={[28 - (ROAD.x + 4.2), 2, 0.3]} />
       <Fence position={[WORLD.minX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
       <Fence position={[WORLD.maxX, 1, (WORLD.minZ + LOT.maxZ) / 2]} args={[0.3, 2, LOT.maxZ - WORLD.minZ]} />
-      {/* access road side walls, garage gate up to the circuit's start/finish */}
-      <Fence position={[ACCESS.x - ACCESS.w / 2 - 0.6, 1, (LOT.maxZ + 90) / 2]} args={[0.3, 2, 90 - LOT.maxZ]} />
-      <Fence position={[ACCESS.x + ACCESS.w / 2 + 0.6, 1, (LOT.maxZ + 90) / 2]} args={[0.3, 2, 90 - LOT.maxZ]} />
+      {/* access road side walls — only from the garage gate up to z56, i.e.
+          BELOW where the bottom sweeper curves in (its apex is at z58), so the
+          returning car can't clip them on the way back to the start line */}
+      <Fence position={[ACCESS.x - ACCESS.w / 2 - 0.6, 1, (LOT.maxZ + 56) / 2]} args={[0.3, 2, 56 - LOT.maxZ]} />
+      <Fence position={[ACCESS.x + ACCESS.w / 2 + 0.6, 1, (LOT.maxZ + 56) / 2]} args={[0.3, 2, 56 - LOT.maxZ]} />
       {/* the circuit's barriers — one box per segment side, derived from the
           same centreline as the road so collision always matches the visuals */}
       {TRACK_BARRIERS.map((b, i) => (

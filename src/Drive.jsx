@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLLIDERS, BUILDING_WALLS, WORLD, GARAGE, DOORS, CIRCLES } from './layout'
+import { TRACK_BARRIERS } from './track'
 import { IS_TOUCH } from './touch'
 import { engineStart, engineSpeed, engineStop, horn, screechStart, screechStop, shiftClack, explode, starter, stallSound } from './sfx'
 
@@ -36,6 +37,25 @@ function hitsBox(x, z, b, r) {
   return x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r
 }
 
+// outer bound for arcade vehicles — wide enough to cover the whole circuit
+// (the old WORLD box was ±28 in x, which walled the bike off mid-track)
+const ARENA = { minX: -98, maxX: 28, minZ: -18, maxZ: 592 }
+
+// the circuit barriers are rotated boxes; project the point onto each barrier's
+// length/depth axes so the arcade bike stops at the walls like the physics car
+function hitsBarrier(x, z, r) {
+  for (const b of TRACK_BARRIERS) {
+    const dx = x - b.x
+    const dz = z - b.z
+    const c = Math.cos(b.ang)
+    const s = Math.sin(b.ang)
+    const lx = dx * c + dz * s // along the barrier
+    const lz = -dx * s + dz * c // across it
+    if (Math.abs(lx) < b.len / 2 + r && Math.abs(lz) < 0.3 + r) return true
+  }
+  return false
+}
+
 function vehicleBlocked(x, z, r, doors, others) {
   for (const b of COLLIDERS) if (hitsBox(x, z, b, r)) return true
   for (const b of BUILDING_WALLS) if (hitsBox(x, z, b, r)) return true
@@ -47,8 +67,9 @@ function vehicleBlocked(x, z, r, doors, others) {
     }
     if (!inDoor && x > GARAGE.minX && x < GARAGE.maxX) return true
   }
-  if (x < WORLD.minX + r + 0.2 || x > WORLD.maxX - r - 0.2) return true
-  if (z < WORLD.minZ + r + 0.2 || z > WORLD.maxZ - r - 0.2) return true
+  if (x < ARENA.minX + r + 0.2 || x > ARENA.maxX - r - 0.2) return true
+  if (z < ARENA.minZ + r + 0.2 || z > ARENA.maxZ - r - 0.2) return true
+  if (hitsBarrier(x, z, r)) return true
   for (const c of CIRCLES) if (Math.hypot(x - c.x, z - c.z) < r + c.r) return true
   for (const o of others) if (Math.hypot(x - o.x, z - o.z) < r + o.r) return true
   return false

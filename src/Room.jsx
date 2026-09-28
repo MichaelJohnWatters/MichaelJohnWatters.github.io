@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, useLayoutEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScroll, Stars } from '@react-three/drei'
 import * as THREE from 'three'
@@ -929,6 +929,68 @@ function Person() {
   )
 }
 
+// The circuit's road quads, dashes and barriers are static and numerous
+// (~200), so draw them as three InstancedMeshes (3 draw calls instead of ~200)
+// — this is what keeps the frame rate up on the straights where you see the
+// whole oval at once. A unit plane/box is scaled+oriented per instance.
+function TrackInstances({ daytime }) {
+  const road = useRef()
+  const dash = useRef()
+  const bar = useRef()
+  useLayoutEffect(() => {
+    const d = new THREE.Object3D()
+    TRACK_SEG.forEach((s, i) => {
+      d.position.set(s.mx, -0.004, s.mz)
+      d.rotation.set(0, 0, 0)
+      d.rotateY(-s.ang)
+      d.rotateX(-Math.PI / 2)
+      d.scale.set(s.len + 0.6, TRACK_W, 1)
+      d.updateMatrix()
+      road.current.setMatrixAt(i, d.matrix)
+    })
+    road.current.instanceMatrix.needsUpdate = true
+    TRACK_DASHES.forEach((dd, i) => {
+      d.position.set(dd.x, 0.001, dd.z)
+      d.rotation.set(0, 0, 0)
+      d.rotateY(-dd.ang)
+      d.rotateX(-Math.PI / 2)
+      d.scale.set(2, 0.16, 1)
+      d.updateMatrix()
+      dash.current.setMatrixAt(i, d.matrix)
+    })
+    dash.current.instanceMatrix.needsUpdate = true
+    TRACK_BARRIERS.forEach((bb, i) => {
+      d.position.set(bb.x, 0.6, bb.z)
+      d.rotation.set(0, -bb.ang, 0)
+      d.scale.set(bb.len, 1.2, 0.4)
+      d.updateMatrix()
+      bar.current.setMatrixAt(i, d.matrix)
+    })
+    bar.current.instanceMatrix.needsUpdate = true
+  }, [])
+  return (
+    <>
+      <instancedMesh ref={road} args={[undefined, undefined, TRACK_SEG.length]}>
+        <planeGeometry args={[1, 1]} />
+        <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
+      </instancedMesh>
+      <instancedMesh ref={dash} args={[undefined, undefined, TRACK_DASHES.length]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color="#8f8f7a" />
+      </instancedMesh>
+      <instancedMesh ref={bar} args={[undefined, undefined, TRACK_BARRIERS.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          color={daytime ? '#c9ccd2' : '#5a5d66'}
+          emissive="#ff5a3c"
+          emissiveIntensity={daytime ? 0 : 0.35}
+          roughness={0.6}
+        />
+      </instancedMesh>
+    </>
+  )
+}
+
 const { minX, maxX, minZ, maxZ, ceiling } = GARAGE
 const W = maxX - minX
 const D = maxZ - minZ
@@ -1164,38 +1226,9 @@ export default function Room({ mode = 'desk', onZoom, lights = true, daytime = f
             )
           })}
         </group>
-        {/* road surface: one oriented quad per centreline segment */}
-        {TRACK_SEG.map((s, i) => (
-          <group key={'tr' + i} position={[s.mx, 0, s.mz]} rotation={[0, -s.ang, 0]}>
-            <mesh rotation-x={-Math.PI / 2} position-y={-0.004}>
-              <planeGeometry args={[s.len + 0.6, TRACK_W]} />
-              <meshStandardMaterial color={daytime ? '#5c5c62' : '#35353b'} />
-            </mesh>
-          </group>
-        ))}
-        {/* dashed centre line */}
-        {TRACK_DASHES.map((d, i) => (
-          <group key={'td' + i} position={[d.x, 0.001, d.z]} rotation={[0, -d.ang, 0]}>
-            <mesh rotation-x={-Math.PI / 2}>
-              <planeGeometry args={[2, 0.16]} />
-              <meshBasicMaterial color="#8f8f7a" />
-            </mesh>
-          </group>
-        ))}
-        {/* barriers — same transforms as the colliders, so they line up exactly */}
-        {TRACK_BARRIERS.map((b, i) => (
-          <group key={'tbv' + i} position={[b.x, 0.6, b.z]} rotation={[0, -b.ang, 0]}>
-            <mesh>
-              <boxGeometry args={[b.len, 1.2, 0.4]} />
-              <meshStandardMaterial
-                color={daytime ? '#c9ccd2' : '#5a5d66'}
-                emissive="#ff5a3c"
-                emissiveIntensity={daytime ? 0 : 0.35}
-                roughness={0.6}
-              />
-            </mesh>
-          </group>
-        ))}
+        {/* road surface, centre-line dashes and barriers — instanced (3 draw
+            calls) so the frame rate holds up when the whole oval is in view */}
+        <TrackInstances daytime={daytime} />
         {/* trackside lamps — down the outside of both straights (clear of the
             barriers), emissive heads only (the headlights do the work) */}
         {[

@@ -197,6 +197,17 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       chassisApi.wakeUp()
       camReady.current = false
     }
+    // time-attack: drop the driven vehicle onto the grid at the start/finish,
+    // facing north (the racing direction), at a dead stop for a standing start
+    const gridStart = () => {
+      if (!active) return
+      chassisApi.position.set(0, 1.4, 108)
+      chassisApi.quaternion.set(0, 0, 0, 1)
+      chassisApi.velocity.set(0, 0, 0)
+      chassisApi.angularVelocity.set(0, 0, 0)
+      chassisApi.wakeUp()
+      camReady.current = false
+    }
     const map = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r' }
     const down = (e) => {
       if (map[e.code]) keys.current[map[e.code]] = true
@@ -222,6 +233,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
     window.addEventListener('vehicle-horn', honk)
     window.addEventListener('drive-cam', cycleView)
     window.addEventListener('car-reset', resetCar)
+    window.addEventListener('grid-start', gridStart)
     if (document.pointerLockElement) document.exitPointerLock()
     return () => {
       engineStop()
@@ -232,6 +244,7 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       window.removeEventListener('vehicle-horn', honk)
       window.removeEventListener('drive-cam', cycleView)
       window.removeEventListener('car-reset', resetCar)
+      window.removeEventListener('grid-start', gridStart)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])

@@ -10,7 +10,7 @@ import Joystick from './Joystick'
 import Phone from './Phone'
 import { CIVIC, BIKES, PARKED } from './layout'
 import { CARS, TUNE, TYPE_PROFILE, BIKE, BIKE_CHASSIS } from './cars'
-import { FINISH } from './track'
+import { FINISH, TRACK_SEG } from './track'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
@@ -89,32 +89,72 @@ const fmtLap = (s) => {
   return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`
 }
 const LAP_KEY = 'nightgarage.bestLap'
+const GHOST_KEY = 'nightgarage.ghost'
+const SEG_MID = TRACK_SEG.map((s) => [s.mx, s.mz])
+// where am I round the lap, 0..1 — nearest centreline segment (used for sectors)
+function lapProgress(x, z) {
+  let bi = 0
+  let bd = Infinity
+  for (let i = 0; i < SEG_MID.length; i++) {
+    const dx = x - SEG_MID[i][0]
+    const dz = z - SEG_MID[i][1]
+    const d = dx * dx + dz * dz
+    if (d < bd) {
+      bd = d
+      bi = i
+    }
+  }
+  return bi / SEG_MID.length
+}
+const setTxt = (id, v) => {
+  const e = document.getElementById(id)
+  if (e) e.textContent = v
+}
 function LapTimer({ vehiclesRef, driving, active }) {
   const t = useRef(0)
   const best = useRef(Infinity)
   const laps = useRef(0)
   const started = useRef(false)
   const prevZ = useRef(null)
-  const acc = useRef(0)
-  const set = (id, v) => {
-    const e = document.getElementById(id)
-    if (e) e.textContent = v
-  }
-  const showBest = () => set('lap-best', best.current === Infinity ? '—' : fmtLap(best.current))
+  const hudAcc = useRef(0)
+  const sampAcc = useRef(0)
+  const rec = useRef([]) // current lap samples {t,x,z,h}
+  const ghost = useRef(null) // best lap samples
+  const sector = useRef(0)
+  const sectorT = useRef(0)
+  const bestSectors = useRef(null)
+  const curSectors = useRef([])
+  const gRef = useRef() // ghost car group
+
+  const showBest = () => setTxt('lap-best', best.current === Infinity ? '—' : fmtLap(best.current))
   const resetLap = () => {
     started.current = false
     prevZ.current = null
     t.current = 0
     laps.current = 0
-    set('lap-cur', '0:00.0')
-    set('lap-last', '—')
-    set('lap-count', '0')
+    rec.current = []
+    sector.current = 0
+    sectorT.current = 0
+    curSectors.current = []
+    setTxt('lap-cur', '0:00.0')
+    setTxt('lap-last', '—')
+    setTxt('lap-count', '0')
+    setTxt('lap-delta', '')
+    for (const s of [1, 2, 3]) setTxt('sec' + s, '—')
   }
-  // load the saved best lap and reset the running lap on a grid restart
   useEffect(() => {
-    const stored = parseFloat(localStorage.getItem(LAP_KEY))
-    if (stored > 0) best.current = stored
+    const b = parseFloat(localStorage.getItem(LAP_KEY))
+    if (b > 0) best.current = b
     showBest()
+    try {
+      const g = JSON.parse(localStorage.getItem(GHOST_KEY))
+      if (g && g.samples) {
+        ghost.current = g.samples
+        bestSectors.current = g.sectors
+      }
+    } catch (e) {
+      /* no / bad ghost stored */
+    }
     const onReset = () => {
       resetLap()
       showBest()
@@ -124,52 +164,139 @@ function LapTimer({ vehiclesRef, driving, active }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useFrame((_, dt) => {
+    const g = gRef.current
     if (!active) {
       if (started.current || prevZ.current !== null) resetLap()
+      if (g) g.visible = false
       return
     }
     const c = vehiclesRef.current[driving]
-    if (!c) return
-    if (started.current) t.current += dt
+    if (!c) {
+      if (g) g.visible = false
+      return
+    }
+    if (started.current) {
+      t.current += dt
+      // record the running lap
+      sampAcc.current += dt
+      if (sampAcc.current >= 0.06) {
+        sampAcc.current = 0
+        rec.current.push({ t: +t.current.toFixed(2), x: +c.x.toFixed(2), z: +c.z.toFixed(2), h: +(c.heading || 0).toFixed(3) })
+      }
+      // sector splits by lap progress (thirds)
+      const prog = lapProgress(c.x, c.z)
+      const sec = prog < 0.34 ? 0 : prog < 0.67 ? 1 : 2
+      if (sec === sector.current + 1) {
+        const st = t.current - sectorT.current
+        curSectors.current[sector.current] = st
+        const bs = bestSectors.current?.[sector.current]
+        const dl = bs != null ? st - bs : null
+        setTxt('sec' + (sector.current + 1), fmtSec(st) + (dl != null ? ` ${dl >= 0 ? '+' : ''}${dl.toFixed(1)}` : ''))
+        sector.current = sec
+        sectorT.current = t.current
+      }
+      // live delta vs the ghost (nearest recorded point by position)
+      if (ghost.current && ghost.current.length) {
+        let bd = Infinity
+        let bt = 0
+        for (const s of ghost.current) {
+          const dx = c.x - s.x
+          const dz = c.z - s.z
+          const d = dx * dx + dz * dz
+          if (d < bd) {
+            bd = d
+            bt = s.t
+          }
+        }
+        const delta = t.current - bt
+        const e = document.getElementById('lap-delta')
+        if (e) {
+          e.textContent = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
+          e.className = 'lap-delta ' + (delta <= 0 ? 'ahead' : 'behind')
+        }
+      }
+    }
+    // ghost car playback (by lap time)
+    if (g) {
+      const arr = ghost.current
+      if (arr && arr.length && started.current && t.current <= arr[arr.length - 1].t) {
+        let i = 1
+        while (i < arr.length && arr[i].t < t.current) i++
+        const a = arr[i - 1]
+        const b = arr[Math.min(i, arr.length - 1)]
+        const f = b.t > a.t ? (t.current - a.t) / (b.t - a.t) : 0
+        g.position.set(a.x + (b.x - a.x) * f, 0, a.z + (b.z - a.z) * f)
+        g.rotation.y = a.h - Math.PI / 2
+        g.visible = true
+      } else {
+        g.visible = false
+      }
+    }
+    // finish line
     if (prevZ.current !== null) {
       const crossed = prevZ.current < FINISH.z && c.z >= FINISH.z && Math.abs(c.x) < FINISH.halfW
       if (crossed) {
         if (started.current && t.current > 3) {
           const lap = t.current
           laps.current += 1
-          set('lap-last', fmtLap(lap))
-          set('lap-count', String(laps.current))
+          setTxt('lap-last', fmtLap(lap))
+          setTxt('lap-count', String(laps.current))
           if (lap < best.current) {
             best.current = lap
             showBest()
+            curSectors.current[2] = lap - sectorT.current
+            ghost.current = rec.current.slice()
+            bestSectors.current = curSectors.current.slice()
             try {
               localStorage.setItem(LAP_KEY, String(lap))
+              localStorage.setItem(GHOST_KEY, JSON.stringify({ samples: ghost.current, sectors: bestSectors.current }))
             } catch (e) {
-              /* private mode / storage blocked — best just won't persist */
+              /* storage blocked */
             }
             const h = document.querySelector('.lap-hud')
             if (h) {
               h.classList.remove('lap-flash')
-              void h.offsetWidth // restart the flash animation
+              void h.offsetWidth
               h.classList.add('lap-flash')
             }
           }
           t.current = 0
+          rec.current = []
+          sector.current = 0
+          sectorT.current = 0
+          curSectors.current = []
         } else {
           started.current = true
           t.current = 0
+          rec.current = []
+          sector.current = 0
+          sectorT.current = 0
+          curSectors.current = []
         }
       }
     }
     prevZ.current = c.z
-    acc.current += dt
-    if (acc.current > 0.1) {
-      acc.current = 0
-      set('lap-cur', fmtLap(t.current))
+    hudAcc.current += dt
+    if (hudAcc.current > 0.1) {
+      hudAcc.current = 0
+      setTxt('lap-cur', fmtLap(t.current))
     }
   })
-  return null
+  // translucent ghost car (nose along +x, oriented via rotation.y = heading-π/2)
+  return (
+    <group ref={gRef} visible={false}>
+      <mesh position={[0, 0.55, 0]}>
+        <boxGeometry args={[4.2, 0.7, 1.8]} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.3} emissive="#5ad8ff" emissiveIntensity={0.5} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh position={[-0.3, 1.05, 0]}>
+        <boxGeometry args={[2, 0.55, 1.6]} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.3} emissive="#5ad8ff" emissiveIntensity={0.5} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
+  )
 }
+const fmtSec = (s) => s.toFixed(1)
 
 function Scene({ hintRef, mode, onSeated, onNearSeat, onSit, zoom, onZoom, onZoomExit, joyRef, lights, daytime, onToggleLights, tv, tvVol, tvMuted, onTvToggle, onPhone, phoneHeld, sofa, onSofaToggle, onNearSofa, doors, onDoorToggle, vehiclesRef, driving, onNearVehicle, onDrive, onExitDrive, spawn, playerPosRef, torch, physicsMode, carProfile, carSpawn, idleCars, onNearCar, onEnterCar, auto, bikePhysics, countdown }) {
   const carPhysicsDrive = physicsMode && mode === 'drive' && driving === 0
@@ -786,10 +913,16 @@ export default function App() {
           {/* lap timer — populated each frame by <LapTimer> writing to these ids */}
           <div className="lap-hud">
             <div className="lap-cur" id="lap-cur">0:00.0</div>
+            <div className="lap-delta" id="lap-delta"></div>
             <div className="lap-sub">
               <span>last <b id="lap-last">—</b></span>
               <span>best <b id="lap-best">—</b></span>
               <span>laps <b id="lap-count">0</b></span>
+            </div>
+            <div className="lap-sec">
+              <span>S1 <b id="sec1">—</b></span>
+              <span>S2 <b id="sec2">—</b></span>
+              <span>S3 <b id="sec3">—</b></span>
             </div>
           </div>
           {/* grid restart for a timed lap (G on desktop) */}

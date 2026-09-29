@@ -666,6 +666,30 @@ body {
   font-weight: 700;
   color: #ffd9a0;
 }
+.lap-hud .lap-delta {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.1;
+  min-height: 1.1rem;
+}
+.lap-hud .lap-delta.ahead {
+  color: #2bff5c;
+}
+.lap-hud .lap-delta.behind {
+  color: #ff5a4d;
+}
+.lap-hud .lap-sec {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  opacity: 0.8;
+  display: flex;
+  gap: 0.7rem;
+  justify-content: center;
+}
+.lap-hud .lap-sec b {
+  font-weight: 700;
+  color: #cfe3ff;
+}
 @media (pointer: coarse) {
   .lap-hud .lap-cur {
     font-size: 1.5rem;

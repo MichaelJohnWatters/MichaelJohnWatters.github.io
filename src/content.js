@@ -11,6 +11,7 @@ export const OS_WINDOWS = [
       'Michael Watters — Scala Engineer, Belfast.',
       'Currently building regulatory reporting for an AI-powered anti-money-laundering (AML) compliance platform — taking compliance data through to submission to government authorities. Financial crime / RegTech.',
       'Full delivery lifecycle: Scala & Go services, Kubernetes deployments, GitHub Actions CI/CD and QA automation — with a background in large-scale data pipelines.',
+      '→ Open to new backend / Scala / Go / data roles. Open projects/ for the highlights, or contact.sh to reach me.',
     ],
   },
   {
@@ -66,6 +67,7 @@ export const OS_WINDOWS = [
     defW: 340,
     defH: 160,
     body: [
+      '# open to new roles — let’s talk',
       'email:    mjwatters@outlook.com',
       'github:   github.com/MichaelJohnWatters',
       'linkedin: linkedin.com/in/michael-watters-b50437167',

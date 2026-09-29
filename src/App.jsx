@@ -260,23 +260,28 @@ function LapTimer({ vehiclesRef, driving, active }) {
     if (hudAcc.current > 0.1) {
       hudAcc.current = 0
       setTxt('lap-cur', fmtLap(t.current))
-      // live delta vs the ghost (nearest recorded point) — throttled to 10Hz so
-      // the search + the className style-recalc don't run every frame
-      if (started.current && ghost.current && ghost.current.length) {
-        let bd = Infinity
-        let bt = 0
-        for (const s of ghost.current) {
-          const dx = c.x - s.x
-          const dz = c.z - s.z
-          const d = dx * dx + dz * dz
-          if (d < bd) {
-            bd = d
-            bt = s.t
+      // the delta slot doubles as guidance: no ghost yet → tell the visitor how
+      // to get one; racing a ghost → live +/- delta (throttled to 10Hz so the
+      // nearest-point search + className style-recalc don't run every frame)
+      const e = document.getElementById('lap-delta')
+      if (e) {
+        const haveGhost = ghost.current && ghost.current.length
+        if (!haveGhost) {
+          e.textContent = 'finish a lap to race a ghost'
+          if (e.className !== 'lap-delta hint') e.className = 'lap-delta hint'
+        } else if (started.current) {
+          let bd = Infinity
+          let bt = 0
+          for (const s of ghost.current) {
+            const dx = c.x - s.x
+            const dz = c.z - s.z
+            const d = dx * dx + dz * dz
+            if (d < bd) {
+              bd = d
+              bt = s.t
+            }
           }
-        }
-        const delta = t.current - bt
-        const e = document.getElementById('lap-delta')
-        if (e) {
+          const delta = t.current - bt
           e.textContent = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
           const cls = 'lap-delta ' + (delta <= 0 ? 'ahead' : 'behind')
           if (e.className !== cls) e.className = cls

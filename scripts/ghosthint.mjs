@@ -1,0 +1,13 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1024, height: 700 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,3000))
+await page.evaluate(()=>{localStorage.removeItem('nightgarage.ghost');localStorage.removeItem('nightgarage.bestLap')})
+await page.reload({waitUntil:'domcontentloaded'}); await new Promise(r=>setTimeout(r,7000))
+await page.evaluate(()=>window.__enterCar && window.__enterCar(0)); await new Promise(r=>setTimeout(r,600))
+await page.evaluate(()=>window.__drive && window.__drive(0)); await new Promise(r=>setTimeout(r,900))
+await page.evaluate(()=>window.__place && window.__place(0,150,10)); await new Promise(r=>setTimeout(r,300))
+await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,700))
+console.log('no-ghost hint:', JSON.stringify(await page.evaluate(()=>({d:document.getElementById('lap-delta')?.textContent, cls:document.getElementById('lap-delta')?.className}))))
+await page.keyboard.up('KeyW')
+await b.close()

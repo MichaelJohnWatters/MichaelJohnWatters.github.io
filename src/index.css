@@ -678,6 +678,12 @@ body {
 .lap-hud .lap-delta.behind {
   color: #ff5a4d;
 }
+.lap-hud .lap-delta.hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.65;
+  color: #cfe3ff;
+}
 .lap-hud .lap-sec {
   margin-top: 0.2rem;
   font-size: 0.72rem;

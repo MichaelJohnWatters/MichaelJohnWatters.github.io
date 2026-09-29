@@ -494,7 +494,10 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       camera.position.set(p.x - fx * back, p.y + high, p.z - fz * back)
       camLook.current.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2)
     }
-    camera.position.lerp(tmp.set(p.x - fx * back, p.y + high, p.z - fz * back), 1 - Math.pow(0.0016, dt))
+    // frame-rate-independent smoothing (dt-based). The position used to trail at
+    // ~160ms which floats behind at the speeds the long straights allow — tighten
+    // to ~85ms so the camera stays with the car without snapping to the raw pose.
+    camera.position.lerp(tmp.set(p.x - fx * back, p.y + high, p.z - fz * back), 1 - Math.exp(-dt * 12))
     camLook.current.lerp(tmp.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2), 1 - Math.exp(-dt * 26))
     camera.lookAt(camLook.current)
     camera.updateMatrixWorld()

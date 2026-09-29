@@ -195,26 +195,6 @@ function LapTimer({ vehiclesRef, driving, active }) {
         sector.current = sec
         sectorT.current = t.current
       }
-      // live delta vs the ghost (nearest recorded point by position)
-      if (ghost.current && ghost.current.length) {
-        let bd = Infinity
-        let bt = 0
-        for (const s of ghost.current) {
-          const dx = c.x - s.x
-          const dz = c.z - s.z
-          const d = dx * dx + dz * dz
-          if (d < bd) {
-            bd = d
-            bt = s.t
-          }
-        }
-        const delta = t.current - bt
-        const e = document.getElementById('lap-delta')
-        if (e) {
-          e.textContent = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
-          e.className = 'lap-delta ' + (delta <= 0 ? 'ahead' : 'behind')
-        }
-      }
     }
     // ghost car playback (by lap time)
     if (g) {
@@ -280,6 +260,28 @@ function LapTimer({ vehiclesRef, driving, active }) {
     if (hudAcc.current > 0.1) {
       hudAcc.current = 0
       setTxt('lap-cur', fmtLap(t.current))
+      // live delta vs the ghost (nearest recorded point) — throttled to 10Hz so
+      // the search + the className style-recalc don't run every frame
+      if (started.current && ghost.current && ghost.current.length) {
+        let bd = Infinity
+        let bt = 0
+        for (const s of ghost.current) {
+          const dx = c.x - s.x
+          const dz = c.z - s.z
+          const d = dx * dx + dz * dz
+          if (d < bd) {
+            bd = d
+            bt = s.t
+          }
+        }
+        const delta = t.current - bt
+        const e = document.getElementById('lap-delta')
+        if (e) {
+          e.textContent = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`
+          const cls = 'lap-delta ' + (delta <= 0 ? 'ahead' : 'behind')
+          if (e.className !== cls) e.className = cls
+        }
+      }
     }
   })
   // translucent ghost car (nose along +x, oriented via rotation.y = heading-π/2)

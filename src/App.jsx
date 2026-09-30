@@ -280,8 +280,12 @@ function LapTimer({ vehiclesRef, driving, active }) {
           if (e.className !== 'lap-delta hint') e.className = 'lap-delta hint'
         } else if (started.current) {
           let bd = Infinity
-          let bt = 0
+          let bt = t.current
           for (const s of ghost.current) {
+            // only match samples near the current time, so the start/finish
+            // (where lap-start and lap-end positions coincide) doesn't match
+            // the ghost's far end and blow the delta up
+            if (Math.abs(s.t - t.current) > 30) continue
             const dx = c.x - s.x
             const dz = c.z - s.z
             const d = dx * dx + dz * dz
@@ -300,14 +304,21 @@ function LapTimer({ vehiclesRef, driving, active }) {
   })
   // translucent ghost car (nose along +x, oriented via rotation.y = heading-π/2)
   return (
-    <group ref={gRef} visible={false}>
-      <mesh position={[0, 0.55, 0]}>
+    // renderOrder + depthTest:false → the ghost draws on top of everything, so
+    // it's visible even when it overlaps your car or sits behind a wall
+    <group ref={gRef} visible={false} renderOrder={999}>
+      <mesh position={[0, 0.55, 0]} renderOrder={999}>
         <boxGeometry args={[4.2, 0.7, 1.8]} />
-        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.42} emissive="#5ad8ff" emissiveIntensity={0.9} depthWrite={false} toneMapped={false} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.55} emissive="#5ad8ff" emissiveIntensity={1.2} depthWrite={false} depthTest={false} toneMapped={false} />
       </mesh>
-      <mesh position={[-0.3, 1.05, 0]}>
+      <mesh position={[-0.3, 1.05, 0]} renderOrder={999}>
         <boxGeometry args={[2, 0.55, 1.6]} />
-        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.42} emissive="#5ad8ff" emissiveIntensity={0.9} depthWrite={false} toneMapped={false} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.55} emissive="#5ad8ff" emissiveIntensity={1.2} depthWrite={false} depthTest={false} toneMapped={false} />
+      </mesh>
+      {/* tall beacon so you can always spot where the ghost is on the track */}
+      <mesh position={[0, 7, 0]} renderOrder={999}>
+        <cylinderGeometry args={[0.18, 0.18, 12, 6]} />
+        <meshBasicMaterial color="#5ad8ff" transparent opacity={0.35} depthWrite={false} depthTest={false} toneMapped={false} />
       </mesh>
     </group>
   )

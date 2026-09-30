@@ -635,6 +635,20 @@ body {
   top: 2rem;
   left: 2rem;
 }
+/* diagnostic fps readout — bottom-left while driving */
+.fps-hud {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #9adcff;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.4rem;
+  pointer-events: none;
+}
 /* lap timer HUD — top centre while driving */
 .lap-hud {
   position: fixed;

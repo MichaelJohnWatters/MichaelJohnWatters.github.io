@@ -125,6 +125,9 @@ function LapTimer({ vehiclesRef, driving, active }) {
   const bestSectors = useRef(null)
   const curSectors = useRef([])
   const gRef = useRef() // ghost car group
+  const fpsN = useRef(0) // fps meter (diagnostic)
+  const fpsAcc = useRef(0)
+  const fpsWorst = useRef(0)
 
   const showBest = () => setTxt('lap-best', best.current === Infinity ? '—' : fmtLap(best.current))
   const resetLap = () => {
@@ -164,6 +167,16 @@ function LapTimer({ vehiclesRef, driving, active }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useFrame((_, dt) => {
+    // fps meter (diagnostic) — reports average fps + worst frame time each 0.5s
+    fpsN.current++
+    fpsAcc.current += dt
+    if (dt > fpsWorst.current) fpsWorst.current = dt
+    if (fpsAcc.current >= 0.5) {
+      setTxt('fps-num', `${Math.round(fpsN.current / fpsAcc.current)} fps · worst ${Math.round(fpsWorst.current * 1000)}ms`)
+      fpsN.current = 0
+      fpsAcc.current = 0
+      fpsWorst.current = 0
+    }
     const g = gRef.current
     if (!active) {
       if (started.current || prevZ.current !== null) resetLap()
@@ -937,6 +950,8 @@ export default function App() {
           <button className="ctl ctl-back" onClick={exitDrive}>
             {vehiclesRef.current[driving]?.kind === 'bike' ? '🏍' : '🚗'} get off (E)
           </button>
+          {/* diagnostic fps/frame-time readout */}
+          <div className="fps-hud" id="fps-num">— fps</div>
           {/* lap timer — populated each frame by <LapTimer> writing to these ids */}
           <div className="lap-hud">
             <div className="lap-cur" id="lap-cur">0:00.0</div>

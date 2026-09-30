@@ -1,0 +1,12 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1280, height: 800 })
+await page.goto('http://localhost:5173', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,8000))
+await page.evaluate(()=>window.__enterCar && window.__enterCar(0)); await new Promise(r=>setTimeout(r,600))
+await page.evaluate(()=>window.__drive && window.__drive(0)); await new Promise(r=>setTimeout(r,900))
+await page.evaluate(()=>window.__place && window.__place(0,150,20)); await new Promise(r=>setTimeout(r,400))
+await page.keyboard.down('KeyW'); await new Promise(r=>setTimeout(r,800))
+const r = await page.evaluate(()=>new Promise(res=>{const d=[];let last=performance.now();function f(){const n=performance.now();d.push(n-last);last=n;if(d.length<200)requestAnimationFrame(f);else{const m=d.reduce((a,b)=>a+b,0)/d.length;const sd=Math.sqrt(d.reduce((a,b)=>a+(b-m)**2,0)/d.length);const spikes=d.filter(x=>x>m*1.8).length;res({fps:Math.round(1000/m),sd:+sd.toFixed(1),max:+Math.max(...d).toFixed(1),spikes})}}requestAnimationFrame(f)}))
+await page.keyboard.up('KeyW')
+console.log(JSON.stringify(r))
+await b.close()

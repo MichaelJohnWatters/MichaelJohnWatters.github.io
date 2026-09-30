@@ -944,7 +944,9 @@ function TrackInstances({ daytime }) {
       d.rotation.set(0, 0, 0)
       d.rotateY(-s.ang)
       d.rotateX(-Math.PI / 2)
-      d.scale.set(s.len + 0.6, TRACK_W, 1)
+      // exact length (was +0.6) so segments meet edge-to-edge instead of
+      // overlapping — overlapping coplanar quads z-fight and shimmer as you move
+      d.scale.set(s.len, TRACK_W, 1)
       d.updateMatrix()
       road.current.setMatrixAt(i, d.matrix)
     })

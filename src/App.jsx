@@ -239,6 +239,15 @@ function LapTimer({ vehiclesRef, driving, active }) {
               void h.offsetWidth
               h.classList.add('lap-flash')
             }
+            // announce the ghost so the visitor knows to keep driving — the ghost
+            // starts on top of you and only separates as the lap goes on
+            const m = document.getElementById('lap-msg')
+            if (m) {
+              m.textContent = laps.current === 1 ? '◇ GHOST SET — chase it this lap!' : '◇ NEW BEST — ghost updated!'
+              m.classList.remove('show')
+              void m.offsetWidth
+              m.classList.add('show')
+            }
           }
           t.current = 0
           rec.current = []
@@ -294,11 +303,11 @@ function LapTimer({ vehiclesRef, driving, active }) {
     <group ref={gRef} visible={false}>
       <mesh position={[0, 0.55, 0]}>
         <boxGeometry args={[4.2, 0.7, 1.8]} />
-        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.3} emissive="#5ad8ff" emissiveIntensity={0.5} depthWrite={false} toneMapped={false} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.42} emissive="#5ad8ff" emissiveIntensity={0.9} depthWrite={false} toneMapped={false} />
       </mesh>
       <mesh position={[-0.3, 1.05, 0]}>
         <boxGeometry args={[2, 0.55, 1.6]} />
-        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.3} emissive="#5ad8ff" emissiveIntensity={0.5} depthWrite={false} toneMapped={false} />
+        <meshStandardMaterial color="#5ad8ff" transparent opacity={0.42} emissive="#5ad8ff" emissiveIntensity={0.9} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
   )
@@ -931,6 +940,7 @@ export default function App() {
               <span>S2 <b id="sec2">—</b></span>
               <span>S3 <b id="sec3">—</b></span>
             </div>
+            <div className="lap-msg" id="lap-msg"></div>
           </div>
           {/* grid restart for a timed lap (G on desktop) */}
           <button className="ctl ctl-drive ctl-gridstart" title="restart a timed lap from the grid (G)" onClick={startLap}>🏁</button>

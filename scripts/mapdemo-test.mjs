@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:'new', args:['--use-angle=metal','--enable-gpu'] })
+const page = await b.newPage(); await page.setViewport({ width: 1000, height: 700 })
+const errs=[]; page.on('pageerror',e=>errs.push(String(e)))
+await page.goto('http://localhost:5173/#mapdemo', { waitUntil:'domcontentloaded' }); await new Promise(r=>setTimeout(r,6000))
+const m = await page.evaluate(()=>{ const d=window.__mapdemo; return d ? {colliders:d.colliders.length, spawns:Object.keys(d.spawns), pois:Object.keys(d.pois), track:d.track.length} : null })
+await page.screenshot({ path:'scripts/mapdemo.png' })
+console.log('parsed from test.glb:', JSON.stringify(m))
+console.log('errs:', errs.length, errs.slice(0,2).join(' | '))
+await b.close()

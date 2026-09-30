@@ -748,7 +748,11 @@ export default function App() {
       </div>
       <Canvas
         dpr={[1, 1.25]}
-        camera={{ position: [-8.23, 5.2, 1.92], fov: 45 }}
+        // the circuit spans ~600m; with the default 0.1 near plane, depth
+        // precision is poor far away and the coplanar road/line/grass decals
+        // z-fight and shimmer as you move. A log depth buffer fixes it.
+        gl={{ logarithmicDepthBuffer: true }}
+        camera={{ position: [-8.23, 5.2, 1.92], fov: 45, near: 0.3, far: 1200 }}
         onCreated={() => {
           // scene is live — fade the static boot screen away
           const b = document.getElementById('boot')

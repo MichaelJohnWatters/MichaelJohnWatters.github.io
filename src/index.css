@@ -696,6 +696,32 @@ body {
   font-weight: 700;
   color: #cfe3ff;
 }
+.lap-hud .lap-msg {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #5ad8ff;
+  text-shadow: 0 0 14px rgba(90, 216, 255, 0.7);
+  opacity: 0;
+  min-height: 1.1rem;
+}
+.lap-hud .lap-msg.show {
+  animation: lap-msg-fade 3.8s ease-out;
+}
+@keyframes lap-msg-fade {
+  0% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+  12%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
 @media (pointer: coarse) {
   .lap-hud .lap-cur {
     font-size: 1.5rem;

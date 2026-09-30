@@ -494,12 +494,8 @@ export default function PhysicsCar({ vehiclesRef, active, onExit, profile = DEFA
       camera.position.set(p.x - fx * back, p.y + high, p.z - fz * back)
       camLook.current.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2)
     }
-    // frame-rate-independent smoothing (dt-based). Track at the SAME rate as the
-    // car body (VehicleRig uses exp(-dt*32)) — if the camera is softer than the
-    // body, the car surges around in the frame at speed and reads as lag. Matched
-    // rates keep the car locked in view; the body proves this rate is judder-free.
-    camera.position.lerp(tmp.set(p.x - fx * back, p.y + high, p.z - fz * back), 1 - Math.exp(-dt * 20))
-    camLook.current.lerp(tmp.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2), 1 - Math.exp(-dt * 22))
+    camera.position.lerp(tmp.set(p.x - fx * back, p.y + high, p.z - fz * back), 1 - Math.pow(0.0016, dt))
+    camLook.current.lerp(tmp.set(p.x + fx * 2, p.y + 0.6, p.z + fz * 2), 1 - Math.exp(-dt * 26))
     camera.lookAt(camLook.current)
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()

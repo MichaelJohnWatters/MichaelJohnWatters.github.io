@@ -51,7 +51,12 @@ function hitsBarrier(x, z, r) {
     const s = Math.sin(b.ang)
     const lx = dx * c + dz * s // along the barrier
     const lz = -dx * s + dz * c // across it
-    if (Math.abs(lx) < b.len / 2 + r && Math.abs(lz) < 0.3 + r) return true
+    // expand only the DEPTH by r, not the length — expanding the length made each
+    // barrier's box poke past its ends, so at the curved sweeper joins the boxes
+    // bulged into the racing line (the "invisible bump where two pieces connect").
+    // Barriers meet at shared vertices, so a tiny 0.1 length margin covers the
+    // joins without the bulge.
+    if (Math.abs(lx) < b.len / 2 + 0.1 && Math.abs(lz) < 0.25 + r) return true
   }
   return false
 }

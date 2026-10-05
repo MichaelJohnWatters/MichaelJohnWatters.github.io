@@ -14,7 +14,6 @@ import { FINISH, TRACK_SEG } from './track'
 import { clickDown, startRoomTone, setMuted, isMuted, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { complete, onComplete } from './tasks'
-import { TV_PRESETS, ytSearch } from './content'
 
 // Global brightness: lights-on raises the tone-mapping exposure — the one
 // knob that brightens every surface uniformly. Daytime overrides.
@@ -56,6 +55,7 @@ function SkyBody({ daytime }) {
 // WebAudio PannerNode (cross-origin iframe), so we fake 3D falloff by scaling
 // the player's set-volume via the IFrame API by distance from the screen.
 const TV_POS = [4.9, 1.55, -2.97] // the wall-TV mesh
+const MY_VIDEO = 'LX_7pl26hVU' // the video the cave TV plays by default
 function TvAudio({ tv, vol }) {
   const acc = useRef(0)
   const last = useRef(-1)
@@ -526,7 +526,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
-  const [tvVol, setTvVol] = useState(70) // TV volume, driven from the phone
+  const [tvVol, setTvVol] = useState(25) // TV volume (low-ish), driven from the phone
 
   // Drive the embed's player via the IFrame API postMessage channel
   // (enablejsapi=1 on the iframe).
@@ -567,17 +567,15 @@ export default function App() {
     setTv(id)
     complete('tv') // whiteboard task
   }
-  // Clicking the TV itself: off → quick-cast the default channel; on → off.
+  // Clicking the TV itself: off → cast my own video; on → off. No search/worker
+  // needed — the click is the autoplay gesture, so it just plays.
   const tvToggle = () => {
     clickDown()
     if (tv) {
       setTv(null)
       return
     }
-    ytSearch(TV_PRESETS[0].q).then((items) => {
-      if (items[0]) cast(items[0].id)
-      else setPhone(true) // no worker/results: hand over the remote
-    })
+    cast(MY_VIDEO)
   }
   // Phone up: free the mouse (exit pointer lock) so the buttons are
   // clickable; Player ignores keys/look while it's open.

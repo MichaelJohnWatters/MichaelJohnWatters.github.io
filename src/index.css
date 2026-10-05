@@ -1907,13 +1907,15 @@ html.clutch-in .clutch-tag {
 
 /* Man-cave TV: live stream rendered on the 3D screen (Monitors.jsx) */
 .cave-tv {
-  width: 400px;
-  height: 225px;
+  width: 1280px;
+  height: 720px;
   background: #000;
   overflow: hidden;
 }
 .cave-tv iframe {
   display: block;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 

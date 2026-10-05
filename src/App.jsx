@@ -62,7 +62,7 @@ function TvAudio({ tv, vol }) {
   useFrame(({ camera }, dt) => {
     if (!tv) return
     acc.current += dt
-    if (acc.current < 0.15) return // throttle the postMessage spam
+    if (acc.current < 0.15) return // throttle the setVolume calls
     acc.current = 0
     const dx = camera.position.x - TV_POS[0]
     const dy = camera.position.y - TV_POS[1]
@@ -73,10 +73,9 @@ function TvAudio({ tv, vol }) {
     const v = Math.round(vol * falloff)
     if (v === last.current) return
     last.current = v
-    document.querySelector('.cave-tv iframe')?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func: 'setVolume', args: [v] }),
-      '*'
-    )
+    try {
+      window.__caveTv?.setVolume?.(v)
+    } catch {}
   })
   return null
 }
@@ -423,10 +422,10 @@ export default function App() {
   const [nearSeat, setNearSeat] = useState(false)
   const [zoomScreen, setZoomScreen] = useState(null) // null | 'A' | 'B'
   const [muted, setMutedUI] = useState(false)
-  const [lights, setLights] = useState(true) // workshop lights on by default
+  const [lights, setLights] = useState(false) // workshop lights off by default (moodier vibe)
   const [daytime, setDaytime] = useState(false) // ☀️ world time-of-day
   const [toast, setToast] = useState(null) // task-complete popup
-  const [tv, setTv] = useState(null) // cave TV: casting videoId, or null = off
+  const [tv, setTv] = useState(MY_VIDEO) // cave TV: casting videoId, or null = off (auto-on)
   const [phone, setPhone] = useState(false) // the cast-remote phone overlay
   const [nearSofa, setNearSofa] = useState(false)
   const [sofa, setSofa] = useState(false) // sat on the couch, watching the TV
@@ -531,11 +530,9 @@ export default function App() {
   // Drive the embed's player via the IFrame API postMessage channel
   // (enablejsapi=1 on the iframe).
   const sendTvVolume = (v) => {
-    const f = document.querySelector('.cave-tv iframe')
-    f?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func: 'setVolume', args: [v] }),
-      '*',
-    )
+    try {
+      window.__caveTv?.setVolume?.(v)
+    } catch {}
   }
   useEffect(() => {
     sendTvVolume(tvVol)

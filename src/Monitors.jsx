@@ -10,6 +10,34 @@ import { clickDown, clickUp, keyClack } from './sfx'
 import { IS_TOUCH } from './touch'
 import { TASKS, complete, useTasks, resetTasks } from './tasks'
 
+// --- Cave TV config ---
+const TV_START = 5 // seconds: where a fresh cast of the video begins
+const TV_RATE = 2 // playback speed
+const TV_VOL = 25 // initial low-ish volume (App refines it by distance)
+// Render the embed at 720p worth of DOM pixels so YouTube serves HD on the
+// big screen instead of the ~360p it picks from a small player (the blur).
+const TV_PX = { w: 1280, h: 720 }
+
+// Load the YouTube IFrame Player API once. Resolves with window.YT. Using the
+// real API (not a bare <iframe>) gets us getCurrentTime (resume), setPlaybackRate
+// (2x), and reliable mute/unmute around the browser autoplay policy.
+let ytApi
+function loadYT() {
+  if (window.YT?.Player) return Promise.resolve(window.YT)
+  if (ytApi) return ytApi
+  ytApi = new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.()
+      resolve(window.YT)
+    }
+    const s = document.createElement('script')
+    s.src = 'https://www.youtube.com/iframe_api'
+    document.head.appendChild(s)
+  })
+  return ytApi
+}
+
 // Whiteboard on the back wall, left of the desk — live task list.
 function Whiteboard({ portal, eraserRef }) {
   const done = useTasks()
@@ -373,6 +401,127 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   tvPropRef.current = tv
   const onTvToggleRef = useRef(onTvToggle)
   onTvToggleRef.current = onTvToggle
+  // YouTube IFrame player + playback bookkeeping.
+  const tvHostRef = useRef() // the div the YT API swaps for its <iframe>
+  const tvPlayerRef = useRef(null)
+  const tvResumeRef = useRef(TV_START) // last known position; survives off→on
+  const tvLastVidRef = useRef(null) // detect a channel change vs a resume
+  const tvArmedRef = useRef(false) // a user gesture has happened (sound unlock)
+  const tvMutedRef = useRef(tvMuted)
+  tvMutedRef.current = tvMuted
+
+  // First user gesture anywhere unlocks audio: the TV autoplays muted (browser
+  // policy), then we unmute once the user clicks/scrolls/types/touches.
+  useEffect(() => {
+    const arm = () => {
+      tvArmedRef.current = true
+      if (!tvMutedRef.current) {
+        try {
+          tvPlayerRef.current?.unMute?.()
+        } catch {}
+      }
+    }
+    const opts = { passive: true }
+    window.addEventListener('pointerdown', arm, opts)
+    window.addEventListener('keydown', arm)
+    window.addEventListener('touchstart', arm, opts)
+    window.addEventListener('wheel', arm, opts)
+    return () => {
+      window.removeEventListener('pointerdown', arm, opts)
+      window.removeEventListener('keydown', arm)
+      window.removeEventListener('touchstart', arm, opts)
+      window.removeEventListener('wheel', arm, opts)
+    }
+  }, [])
+
+  // Create / tear down the player when the TV turns on / off or changes channel.
+  useEffect(() => {
+    if (!tv) return
+    let cancelled = false
+    let poll
+    const build = (YT, tries = 30) => {
+      if (cancelled) return
+      const host = tvHostRef.current
+      if (!host) {
+        // drei's <Html> may not have committed its DOM yet — retry next frame.
+        if (tries > 0) requestAnimationFrame(() => build(YT, tries - 1))
+        return
+      }
+      const sameVid = tv === tvLastVidRef.current
+      const start = Math.max(0, Math.floor(sameVid ? tvResumeRef.current : TV_START))
+      tvLastVidRef.current = tv
+      // YT.Player REPLACES the node it's given with its <iframe>. Hand it a
+      // plain DOM child we made (not a React node) so React never tries to
+      // reconcile — otherwise unmount throws removeChild-not-a-child.
+      const mount = document.createElement('div')
+      host.appendChild(mount)
+      tvPlayerRef.current = new YT.Player(mount, {
+        host: 'https://www.youtube-nocookie.com',
+        videoId: tv,
+        width: TV_PX.w,
+        height: TV_PX.h,
+        playerVars: {
+          autoplay: 1,
+          start,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          playsinline: 1,
+          rel: 0,
+          mute: 1, // start muted so autoplay is allowed; unmute on gesture
+          loop: 1,
+          playlist: tv, // required for loop of a single video
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (e) => {
+            try {
+              e.target.setPlaybackRate(TV_RATE)
+              e.target.setVolume(TV_VOL) // low-ish before any unmute — no 100% blip
+              if (tvArmedRef.current && !tvMutedRef.current) e.target.unMute()
+            } catch {}
+            // App drives positional volume through this (the API ignores the
+            // raw postMessage commands a bare embed accepts).
+            window.__caveTv = e.target
+            poll = setInterval(() => {
+              try {
+                const t = e.target.getCurrentTime?.()
+                if (t) tvResumeRef.current = t
+              } catch {}
+            }, 500)
+          },
+        },
+      })
+    }
+    loadYT().then((YT) => build(YT))
+    return () => {
+      cancelled = true
+      if (poll) clearInterval(poll)
+      const p = tvPlayerRef.current
+      tvPlayerRef.current = null
+      if (window.__caveTv === p) window.__caveTv = null
+      if (p) {
+        try {
+          const t = p.getCurrentTime?.()
+          if (t) tvResumeRef.current = t // remember where we were, for resume
+        } catch {}
+        try {
+          p.destroy()
+        } catch {}
+      }
+    }
+  }, [tv])
+
+  // Site mute toggle → mute/unmute the live player without reloading it.
+  useEffect(() => {
+    const p = tvPlayerRef.current
+    if (!p) return
+    try {
+      if (tvMuted) p.mute()
+      else if (tvArmedRef.current) p.unMute()
+    } catch {}
+  }, [tvMuted])
   const onPhoneRef = useRef(onPhone)
   onPhoneRef.current = onPhone
   const phoneMeshRef = useRef() // the prop on the couch armrest
@@ -733,18 +882,11 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
           )}
         </mesh>
         {tv && (
-          <Html {...common} distanceFactor={(400 * 2.1) / 400} position={[0, 0, 0.004]}>
+          /* distanceFactor keeps the 2.1m plane size while the DOM renders at
+             720p — the YT API swaps the inner div for its <iframe>. */
+          <Html {...common} distanceFactor={(400 * 2.1) / TV_PX.w} position={[0, 0, 0.004]}>
             <div className="cave-tv">
-              {/* sound on: casting was a click, so the allow=autoplay iframe
-                  may start unmuted (site 🔇 forces mute) */}
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${tv}?autoplay=1&start=5&mute=${tvMuted ? 1 : 0}&controls=0&disablekb=1&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
-                title="cave tv"
-                width={400}
-                height={225}
-                frameBorder="0"
-                allow="autoplay; encrypted-media"
-              />
+              <div ref={tvHostRef} />
             </div>
           </Html>
         )}

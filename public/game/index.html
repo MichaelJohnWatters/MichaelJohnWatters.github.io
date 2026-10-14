@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Night Drive</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0c0a1c; overflow: hidden; }
+      /* fill the monitor; pixelated keeps the arcade crispness */
+      canvas { display: block; width: 100vw; height: 100vh; outline: none; image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <!-- macroquad/miniquad render into #glcanvas; tabindex lets it hold keyboard focus -->
+    <canvas id="glcanvas" tabindex="1"></canvas>
+    <!-- stub: macroquad's loader references register_plugin for optional
+         plugins (audio etc.); harmless no-op keeps the console clean -->
+    <script>window.register_plugin = window.register_plugin || function () {};</script>
+    <script src="mq_js_bundle.js"></script>
+    <script>
+      // A tiny numbers-only plugin the wasm calls into (see main.rs):
+      //  • high score persistence (localStorage)
+      //  • a pitched engine synthesised in Web Audio — macroquad can't re-pitch a
+      //    sample, so the engine note is an oscillator we re-tune each frame.
+      var NIGHTDRIVE_HS = "nightdrive.best";
+
+      // ── Web Audio engine ──────────────────────────────────────────────────
+      var actx = null, osc = null, sub = null, flt = null, gain = null;
+      var whine = null, wgain = null; // turbo whistle (fades in at high speed)
+      function engineInit() {
+        if (actx) return;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        actx = new AC();
+        osc = actx.createOscillator(); osc.type = "sawtooth"; // buzzy = engine-ish
+        sub = actx.createOscillator(); sub.type = "square";   // sub-octave body
+        flt = actx.createBiquadFilter(); flt.type = "lowpass";
+        flt.frequency.value = 1000; flt.Q.value = 7;
+        gain = actx.createGain(); gain.gain.value = 0.0;
+        osc.connect(flt); sub.connect(flt); flt.connect(gain); gain.connect(actx.destination);
+        osc.frequency.value = 50; sub.frequency.value = 25;
+        osc.start(); sub.start();
+        // turbo whistle: a high sine that spools up only near top speed
+        whine = actx.createOscillator(); whine.type = "sine";
+        wgain = actx.createGain(); wgain.gain.value = 0.0;
+        whine.connect(wgain); wgain.connect(actx.destination);
+        whine.frequency.value = 2200;
+        whine.start();
+      }
+
+      miniquad_add_plugin({
+        register_plugin: function (importObject) {
+          var env = importObject.env;
+          env.hs_load = function () {
+            var v = parseFloat(localStorage.getItem(NIGHTDRIVE_HS));
+            return isFinite(v) ? v : 0;
+          };
+          env.hs_save = function (v) {
+            try { localStorage.setItem(NIGHTDRIVE_HS, String(v)); } catch (e) {}
+          };
+          env.engine_start = function () {
+            engineInit();
+            if (actx.state === "suspended") actx.resume();
+            gain.gain.setTargetAtTime(0.085, actx.currentTime, 0.05);
+          };
+          env.engine_stop = function () {
+            if (gain) gain.gain.setTargetAtTime(0.0, actx.currentTime, 0.08);
+            if (wgain) wgain.gain.setTargetAtTime(0.0, actx.currentTime, 0.1);
+          };
+          env.engine_set = function (freq) {
+            if (!osc) return;
+            var t = actx.currentTime;
+            osc.frequency.setTargetAtTime(freq, t, 0.04);
+            sub.frequency.setTargetAtTime(freq * 0.5, t, 0.04);
+            // open the filter as revs climb → brighter/harsher at speed
+            flt.frequency.setTargetAtTime(600 + freq * 6, t, 0.06);
+            // turbo: freq ~110→179 maps to the top ~half of the speed range;
+            // the whistle spools in (squared, so it arrives gently) and rises.
+            var turbo = Math.max(0, Math.min(1, (freq - 110) / (179 - 110)));
+            whine.frequency.setTargetAtTime(2200 + turbo * 2800, t, 0.08);
+            wgain.gain.setTargetAtTime(turbo * turbo * 0.03, t, 0.1);
+          };
+        },
+        on_init: function () {},
+        name: "nightdrive_fx",
+        version: "0.1",
+      });
+      load("night-drive.wasm"); // built by game/build.sh into this folder
+    </script>
+  </body>
+</html>

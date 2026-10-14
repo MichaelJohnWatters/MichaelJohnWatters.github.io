@@ -1,0 +1,4 @@
+# Let wasm-ld treat the hs_load/hs_save externs as JS imports (resolved by the
+# tiny storage plugin in public/game/index.html) instead of link errors.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=--import-undefined"]

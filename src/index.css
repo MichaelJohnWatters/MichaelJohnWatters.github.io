@@ -1966,3 +1966,38 @@ html.clutch-in .clutch-tag {
   0%, 100% { box-shadow: 0 0 0 0 rgba(120, 220, 160, 0.4); }
   50% { box-shadow: 0 0 0 8px rgba(120, 220, 160, 0); }
 }
+
+/* ======== Night Drive (the floppy game on the primary monitor) ======== */
+.game-screen {
+  position: absolute;
+  inset: 0;
+  background: #0c0a1c;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.game-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #0c0a1c;
+  /* canvas is pointer-events:none, so auto here lets real clicks + keystrokes
+     reach the game — click the screen to focus, then steer with the arrows */
+  pointer-events: auto;
+  transition: opacity 0.4s ease;
+}
+.game-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #ff50c8;
+  font-family: 'DejaVu Sans Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.game-loading span { color: #8a84a0; font-size: 12px; }

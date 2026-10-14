@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.local
 .vite
+
+# Rust build artifacts for the floppy game
+game/night-drive/target/

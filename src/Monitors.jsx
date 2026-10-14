@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { Html, useScroll } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,7 +6,7 @@ import { MONITORS, CAVE } from './layout'
 import ComputerOS from './ComputerOS'
 import { respond, CLEAR } from './claudeTerm'
 import { downloadCV } from './content'
-import { clickDown, clickUp, keyClack } from './sfx'
+import { clickDown, clickUp, keyClack, doorMotor } from './sfx'
 import { IS_TOUCH } from './touch'
 import { TASKS, complete, useTasks, resetTasks } from './tasks'
 
@@ -331,7 +331,164 @@ function TerminalScreen({ mon, active, focused, onFocusClick }) {
 // How close (metres) you must be to use each physical prop — you shouldn't
 // be able to poke the TV from the other side of the garage. The sofa sits
 // ~1.9m from the TV; the desk chair ~1.5m from the whiteboard.
-const RANGE = { switch: 3.5, eraser: 3, tv: 4.5, phone: 2.5, door: 6 }
+const RANGE = { switch: 3.5, eraser: 3, tv: 4.5, phone: 2.5, door: 6, floppy: 2.2 }
+
+// Paint a believable 3.5" floppy top: coloured shell, metal shutter, and a
+// paper label — a home-made "NIGHT DRIVE" game disk. Drawn once to a canvas and
+// mapped onto the diskette's top face.
+function makeFloppyLabel() {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 256
+  const g = c.getContext('2d')
+  // shell (night-blue)
+  g.fillStyle = '#17142e'
+  g.fillRect(0, 0, 256, 256)
+  g.strokeStyle = 'rgba(255,255,255,0.15)'
+  g.lineWidth = 4
+  g.strokeRect(2, 2, 252, 252)
+  // metal shutter across the top edge, with its window
+  const sh = g.createLinearGradient(0, 0, 0, 58)
+  sh.addColorStop(0, '#dcdce2')
+  sh.addColorStop(0.5, '#a6a6ae')
+  sh.addColorStop(1, '#cfcfd6')
+  g.fillStyle = sh
+  g.fillRect(40, 8, 176, 48)
+  g.fillStyle = '#6a6a72'
+  g.fillRect(150, 8, 42, 48)
+  // paper label
+  g.fillStyle = '#f3ead2'
+  g.fillRect(16, 72, 224, 168)
+  g.lineWidth = 3
+  g.strokeStyle = '#ff50c8'
+  g.strokeRect(16, 72, 224, 168)
+  // neon header bar
+  g.fillStyle = '#17142e'
+  g.fillRect(16, 72, 224, 20)
+  // title (handwritten-ish, arcade colours)
+  g.textAlign = 'center'
+  g.fillStyle = '#d6358f'
+  g.font = 'bold 34px "DejaVu Sans Mono", monospace'
+  g.fillText('NIGHT', 128, 150)
+  g.fillStyle = '#2aa7c9'
+  g.fillText('DRIVE', 128, 186)
+  // subtitle + spec
+  g.fillStyle = '#7a7360'
+  g.font = 'bold 13px monospace'
+  g.fillText('★ made in rust ★', 128, 212)
+  g.fillStyle = '#9a927c'
+  g.font = 'bold 11px monospace'
+  g.fillText('3.5"  HD  1.44MB', 128, 230)
+  const tex = new THREE.CanvasTexture(c)
+  tex.anisotropy = 4
+  return tex
+}
+
+const lerp = (a, b, t) => a + (b - a) * t
+
+// An external 3.5" floppy drive that sits on the desk, plus its diskette.
+// Ejected, the disk leans out of the slot toward the seat; inserting slides +
+// flattens it into the drive. `driveRef` is the raycast target (recursive) so
+// clicking either the drive or the disk toggles.
+function Floppy({ driveRef, inserted }) {
+  const diskRef = useRef()
+  const ledRef = useRef()
+  const prog = useRef(inserted ? 1 : 0)
+  const label = useMemo(makeFloppyLabel, [])
+  useEffect(() => () => label.dispose(), [label])
+
+  useFrame((_, dt) => {
+    const target = inserted ? 1 : 0
+    prog.current += (target - prog.current) * Math.min(1, dt * 6)
+    const p = prog.current
+    const d = diskRef.current
+    if (d) {
+      // ejected (p=0): up+forward, leaning toward the viewer; inserted (p=1):
+      // flat and slid back inside the drive body (which then occludes it).
+      d.position.set(0, lerp(0.052, 0.03, p), lerp(0.12, -0.03, p))
+      d.rotation.x = lerp(1.0, 0, p)
+      d.visible = !(inserted && p > 0.97)
+    }
+    if (ledRef.current) {
+      // activity LED: amber + flickering while the disk is inserted; dark idle
+      const lit = inserted ? 0.7 + 0.3 * Math.sin(prog.current * 0 + performance.now() / 90) : 0
+      ledRef.current.material.emissiveIntensity = Math.max(0, lit)
+    }
+  })
+
+  return (
+    // driveRef wraps BOTH the drive and the disk so a recursive raycast hits
+    // either one — click the unit anywhere to insert / eject. Sits in the gap
+    // between the two monitors, facing the seat.
+    <group ref={driveRef} position={[0.08, 0.74, -2.68]} rotation-y={0}>
+      {/* drive body */}
+      <mesh position={[0, 0.028, 0]} castShadow>
+        <boxGeometry args={[0.17, 0.056, 0.15]} />
+        <meshStandardMaterial color="#d8d2c2" />
+      </mesh>
+      {/* darker front plate facing the seat (+z) */}
+      <mesh position={[0, 0.028, 0.0755]}>
+        <boxGeometry args={[0.172, 0.058, 0.004]} />
+        <meshStandardMaterial color="#b7b1a2" />
+      </mesh>
+      {/* the slot */}
+      <mesh position={[-0.008, 0.034, 0.078]}>
+        <boxGeometry args={[0.12, 0.009, 0.006]} />
+        <meshStandardMaterial color="#1a1a1e" />
+      </mesh>
+      {/* eject button */}
+      <mesh position={[0.066, 0.02, 0.078]}>
+        <boxGeometry args={[0.018, 0.012, 0.006]} />
+        <meshStandardMaterial color="#9a9488" />
+      </mesh>
+      {/* activity LED */}
+      <mesh ref={ledRef} position={[-0.07, 0.02, 0.078]}>
+        <boxGeometry args={[0.01, 0.006, 0.005]} />
+        <meshStandardMaterial color="#5a3a00" emissive="#ffae2a" emissiveIntensity={0} toneMapped={false} />
+      </mesh>
+
+      {/* the diskette */}
+      <group ref={diskRef} position={[0, 0.052, 0.12]} rotation-x={1.0}>
+        {/* shell edges (thin box) */}
+        <mesh castShadow>
+          <boxGeometry args={[0.092, 0.005, 0.096]} />
+          <meshStandardMaterial color="#2a2d36" />
+        </mesh>
+        {/* labelled top face */}
+        <mesh position={[0, 0.0027, 0]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[0.092, 0.096]} />
+          <meshStandardMaterial map={label} roughness={0.85} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+// The arcade game (Night Drive) shown on the primary monitor while the floppy
+// is in. A same-origin iframe to /game/ (built from game/night-drive, Rust →
+// wasm), remounted each insert for a fresh game. The canvas is pointer-events:
+// none, so this iframe gets REAL input — click the screen to focus, then drive.
+function GameScreen({ mon }) {
+  const [ready, setReady] = useState(false)
+  return (
+    <div className="game-screen" style={{ width: mon.pxW, height: mon.pxH }}>
+      {!ready && (
+        <div className="game-loading">
+          <b>▓ DISK INSERTED</b>
+          <span>loading NIGHT DRIVE…</span>
+        </div>
+      )}
+      <iframe
+        className="game-frame"
+        src="game/index.html"
+        title="Night Drive"
+        scrolling="no"
+        onLoad={() => setReady(true)}
+        style={{ opacity: ready ? 1 : 0 }}
+      />
+    </div>
+  )
+}
 
 // Live clock for the phone prop's lock screen.
 function LockClock() {
@@ -532,6 +689,20 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
   doorsRef.current = doors
   const onDoorToggleRef = useRef(onDoorToggle)
   onDoorToggleRef.current = onDoorToggle
+  // Floppy drive on the desk — a clickable prop. Inserting/ejecting is a local
+  // animation for now; no behaviour is wired to it yet (a future feature can
+  // hook into `floppyIn` / toggleFloppy here).
+  const floppyRef = useRef()
+  const [floppyIn, setFloppyIn] = useState(false)
+  const floppyInRef = useRef(floppyIn)
+  floppyInRef.current = floppyIn
+  const toggleFloppy = () => {
+    doorMotor() // the drive whir
+    setFloppyIn((v) => !v)
+  }
+  const onFloppyRef = useRef(toggleFloppy)
+  onFloppyRef.current = toggleFloppy
+  if (import.meta.env.DEV) window.__floppy = toggleFloppy // test-only insert/eject
   // First person: aim from the SCREEN CENTRE (crosshair), not the mouse.
   const fpRef = useRef(fp)
   fpRef.current = fp
@@ -656,6 +827,15 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
             return
           }
         }
+        if (floppyRef.current) {
+          // recursive: clicking the drive OR the leaning disk both count
+          const h = raycaster.intersectObject(floppyRef.current, true)[0]
+          if (inReach(h, RANGE.floppy)) {
+            clickDown()
+            onFloppyRef.current?.() // insert / eject the floppy
+            return
+          }
+        }
         const drs = (doorRefsRef.current?.current || []).filter(Boolean)
         if (drs.length) {
           const dh = raycaster.intersectObjects(drs, false)[0]
@@ -773,12 +953,20 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     if (eraserRef.current) targets.push(eraserRef.current)
     if (tvRef.current) targets.push(tvRef.current)
     if (phoneMeshRef.current) targets.push(phoneMeshRef.current)
-    const inter = targets.length ? r.rc.intersectObjects(targets, false)[0] : null
+    if (floppyRef.current) targets.push(floppyRef.current)
+    // recursive so the floppy group's child meshes (drive + disk) register
+    const inter = targets.length ? r.rc.intersectObjects(targets, true)[0] : null
     const hit = inter?.object || null
     const dist = inter?.distance ?? Infinity
+    // is the hit the floppy unit (any descendant of its group)?
+    let anc = hit
+    while (anc && anc !== floppyRef.current) anc = anc.parent
+    const isFloppy = !!anc && !!floppyRef.current
     let label = ''
     if (hit) {
-      if (hit === eraserRef.current && dist <= RANGE.eraser) label = 'wipe the whiteboard'
+      if (isFloppy && dist <= RANGE.floppy)
+        label = floppyInRef.current ? 'eject the floppy' : 'insert the floppy'
+      else if (hit === eraserRef.current && dist <= RANGE.eraser) label = 'wipe the whiteboard'
       else if (hit === tvRef.current && dist <= RANGE.tv)
         label = tvPropRef.current ? 'turn the TV off' : 'turn the TV on'
       else if (hit === phoneMeshRef.current && dist <= RANGE.phone) label = 'pick up the phone'
@@ -837,6 +1025,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
     <>
       {hardware(MONITORS.primary, glassA)}
       {hardware(MONITORS.secondary, glassB)}
+      <Floppy driveRef={floppyRef} inserted={floppyIn} />
       <Whiteboard portal={portal} eraserRef={eraserRef} />
       {/* The cast-remote phone on the couch armrest — always-on lock screen
           (live clock). Hidden while "held" (the DOM overlay is up) so it
@@ -1009,6 +1198,7 @@ export default function Monitors({ mode = 'desk', onZoom, switchesRef, onToggleL
               focusedWin={mode === 'desk' && focused.startsWith('win:') ? focused.slice(4) : null}
               onFocus={setFocused}
             />
+            {floppyIn && <GameScreen mon={MONITORS.primary} />}
             <WinCursor refEl={curA} mon={MONITORS.primary} />
           </div>
         </Html>
